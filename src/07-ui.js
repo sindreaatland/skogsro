@@ -23,13 +23,14 @@ function hudUpdate(dt) {
   const others = [...NET.peers.values()].filter(r => r.started).map(r => r.name);
   $('who').hidden = !others.length; if (others.length) setText('who', 'Sammen med ' + others.join(', '));
   $('windArrow').style.transform = 'rotate(' + (G.wind.a + Math.PI / 2) + 'rad)';
-  // ammo
-  const cap = ST.cap[lv('mag')], key = cap + ':' + P.ammo + ':' + (P.reload > 0);
+  // våpen og ammo
+  const hg = hagle(), cap = gunCap(), key = G.gun + ':' + cap + ':' + P.ammo + ':' + (P.reload > 0);
   if (HUD.last.ammo !== key) {
     HUD.last.ammo = key; const el = $('ammo'); el.innerHTML = '';
-    for (let i = 0; i < cap; i++) { const s = document.createElement('span'); s.className = 'rnd' + (i < P.ammo && !P.reload ? ' on' : ''); el.appendChild(s); }
+    for (let i = 0; i < cap; i++) { const s = document.createElement('span'); s.className = 'rnd' + (hg ? ' sh' : '') + (i < P.ammo && !P.reload ? ' on' : ''); el.appendChild(s); }
   }
-  setText('ammoTxt', P.reload > 0 ? 'Lader …' : P.ammo ? ST.cap[lv('mag')] > 1 ? P.ammo + ' i magasinet' : 'Patron i kammeret' : 'Tomt · R');
+  setText('gunName', hg ? 'Hagle' : 'Rifle');
+  setText('ammoTxt', P.reload > 0 ? 'Lader …' : !P.ammo ? 'Tomt · R' : cap === 1 ? 'Patron i kammeret' : P.ammo + (hg ? ' i hagla' : ' i magasinet'));
   setText('callName', UPG[7].lv[lv('call')]);
   $('callCd').style.height = (P.callCd / 9 * 100) + '%';
   setText('scentN', '× ' + G.scents);
@@ -58,8 +59,15 @@ function hudUpdate(dt) {
 
 // ---------- bua ----------
 let shopCat = 'rifle';
+const upg = id => UPG.find(u => u.id === id);
 function statRows() {
   const L = id => lv(id);
+  if (shopCat === 'hagle') return [
+    ['Skudd', HST.cap[L('hagle')] / 3, upg('hagle').lv[L('hagle')]],
+    ['Samlet sverm', 1 - (HST.spread[L('choke')] - 0.03) / 0.05, upg('choke').lv[L('choke')]],
+    ['Kraft per hagl', HST.pdmg[L('shell')] / 3.2, upg('shell').lv[L('shell')]],
+    ['Hold', HST.prange[L('shell')] / 145, Math.round(HST.prange[L('shell')] * M_PER_PX) + ' m med full kraft'],
+  ];
   return [
     ['Skade', ST.dmg[L('caliber')] / 145, UPG[2].lv[L('caliber')]],
     ['Presisjon', 1 - (ST.spread[L('barrel')] - 0.2) / 1.0, Math.round(ST.range[L('barrel')] * M_PER_PX) + ' m hold'],
@@ -70,7 +78,7 @@ function statRows() {
   ];
 }
 function renderShop() {
-  setText('shopKr', fmtKr(G.money));
+  setText('shopKr', fmtKr(G.money)); setText('statLab', shopCat === 'hagle' ? 'Hagla di nå' : 'Rifla di nå');
   document.querySelectorAll('#shopTabs button').forEach(bt => bt.setAttribute('aria-selected', bt.dataset.cat === shopCat));
   const list = $('shopList'); list.innerHTML = '';
   for (const u of UPG.filter(u => u.cat === shopCat)) {
@@ -102,12 +110,13 @@ function buy(u) {
   const L = lv(u.id); if (L >= u.lv.length - 1) return;
   const p = u.price[L + 1]; if (G.money < p) { sfx.deny(); return; }
   G.money -= p; G.up[u.id] = L + 1; sfx.buy();
-  if (u.id === 'mag') P.ammo = ST.cap[lv('mag')];
+  if (u.id === 'mag' || u.id === 'hagle') refill();
+  if (u.id === 'hagle' && L === 0) msg('Trykk 2 for å ta hagla, 1 for rifla.', 'good');
   save(); renderShop();
 }
 function openShop() {
   G.paused = true; G.panel = 'shop'; P.aim = false; try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
-  P.ammo = ST.cap[lv('mag')]; P.reload = 0; P.cold = 0; // ovnen i bua tørker klærne
+  refill(); P.cold = 0; // ovnen i bua tørker klærne
   $('sleepBtn').hidden = mp();
   renderShop(); $('shop').hidden = false; sfx.ui();
 }
@@ -117,14 +126,14 @@ function openBook() {
   for (const sp of SPECIES) {
     const k = G.journal.filter(j => j.sp === sp), best = k.reduce((a, j) => Math.max(a, j.kg), 0);
     const d = document.createElement('div'); d.className = 'sp' + (k.length ? '' : ' none');
-    d.innerHTML = `<img alt="" src="${ICONURL['an_' + sp]}"><div class="sp-n">${SPEC[sp].name}</div><div class="sp-c">${k.length ? k.length + ' felt · størst ' + best + ' kg' : 'Ikke felt ennå'}</div>`;
+    d.innerHTML = `<img alt="" src="${ICONURL['an_' + sp]}"><div class="sp-n">${SPEC[sp].name}</div><div class="sp-c">${k.length ? k.length + ' felt · størst ' + fmtKg(best) : 'Ikke felt ennå'}</div>`;
     sum.appendChild(d);
   }
   const L = $('bookList'); L.innerHTML = '';
   if (!G.journal.length) L.innerHTML = '<p class="empty">Jaktboka er tom. Første dyr du tar vare på blir skrevet inn her.</p>';
   for (const j of G.journal.slice(0, 60)) {
     const r = document.createElement('div'); r.className = 'entry';
-    r.innerHTML = `<span class="e-d">Dag ${j.day}</span><span class="e-n">${SPEC[j.sp].name}, ${SPEC[j.sp].sexn[j.sex]}</span><span class="e-k">${j.kg} kg</span><span class="e-z">${ZONES[j.zone][0]} · ${j.m} m</span><span class="e-kr">${fmtKr(j.kr)}</span>`;
+    r.innerHTML = `<span class="e-d">Dag ${j.day}</span><span class="e-n">${SPEC[j.sp].name}, ${SPEC[j.sp].sexn[j.sex]}</span><span class="e-k">${fmtKg(j.kg)}</span><span class="e-z">${ZONES[j.zone][0]} · ${j.m} m</span><span class="e-kr">${fmtKr(j.kr)}</span>`;
     L.appendChild(r);
   }
   const tot = G.journal.reduce((a, j) => a + j.kr, 0);
@@ -145,7 +154,8 @@ function closePanel() { if (!G.panel) return; $(G.panel).hidden = true; G.panel 
 function startGame(fresh) {
   if (fresh) { G.money = 0; for (const u of UPG) G.up[u.id] = 0; G.scents = 2; G.journal = []; if (!mp()) { G.day = 1; G.hour = 6.6; G.animals = []; } save(); }
   netSetName(); auInit(); G.started = true; G.paused = false; $('title').hidden = true; netAway();
-  P.ammo = ST.cap[lv('mag')];
+  if (!lv('hagle')) G.gun = 'rifle';
+  refill();
   const [s, d] = windName();
   msg('Vinden kommer ' + d + '. Gå mot vinden, så kjenner ikke dyrene lukta di.');
   msg('Høyreklikk for å sikte, venstreklikk for å skyte. Q lokker, E setter ut luktstoff.');
@@ -172,6 +182,8 @@ function bindInput() {
     if (G.panel) return;
     switch (e.code) {
       case 'KeyR': startReload(); break;
+      case 'Digit1': switchGun('rifle'); break;
+      case 'Digit2': switchGun('hagle'); break;
       case 'KeyQ': doCall(); break;
       case 'KeyE': placeScent(); break;
       case 'KeyF': interact(); break;

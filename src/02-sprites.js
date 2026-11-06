@@ -276,7 +276,7 @@ const SPEC = {
   radyr: { name: 'Rådyr', sexn: { m: 'bukk', f: 'geit' }, seed: 11, L: 16, Hh: 7, leg: 9, lw: 2, ll: 1, legIn: 2, sw: 2, hock: 1, rumpR: 4, chestR: 3.6, neckL: 6.5, neckA: 62, neckW: 1.9, hl: 4.4, hh: 3.6, sl: 2.6, sh: 2.2, sdy: 0.5, hd: 14, ear: 3, ant: { m: 'roe' },
     col: { dk: '#74452a', body: '#a0633a', lt: '#bd8250', belly: '#d4b088', rump: '#f0e8d4', legLo: '#7c4c2e', legFar: '#5c3824', nose: '#1e1614' },
     kg: { m: [20, 32], f: [17, 27] }, hp: 35, value: 260, walk: 13, run: 104, sight: 150, smell: 215, hear: 1, nerv: 1.2, grp: [1, 2] },
-  rev: { name: 'Rev', sexn: { m: 'hannrev', f: 'tispe' }, seed: 23, L: 13, Hh: 5, leg: 5, lw: 2, ll: 1, legIn: 2, sw: 1.6, hock: 0.6, rumpR: 3, chestR: 3, neckL: 3.4, neckA: 40, neckW: 1.9, hl: 4.2, hh: 3.6, sl: 3, sh: 1.6, sdy: 0.8, hd: 8, ear: 3, headT: 'fox', tail: 9,
+  rev: { name: 'Rev', sexn: { m: 'hannrev', f: 'tispe' }, seed: 23, small: 1, L: 13, Hh: 5, leg: 5, lw: 2, ll: 1, legIn: 2, sw: 1.6, hock: 0.6, rumpR: 3, chestR: 3, neckL: 3.4, neckA: 40, neckW: 1.9, hl: 4.2, hh: 3.6, sl: 3, sh: 1.6, sdy: 0.8, hd: 8, ear: 3, headT: 'fox', tail: 9,
     col: { dk: '#a04a22', body: '#d0682c', lt: '#ea8c3e', belly: '#efe6d6', legU: '#b4561f', legLo: '#2a201c', legFar: '#3a2218', nose: '#1a1412' },
     kg: { m: [6, 10], f: [5, 8] }, hp: 20, value: 140, walk: 16, run: 96, sight: 150, smell: 200, hear: 1.15, nerv: 1.3, grp: [1, 1] },
   hjort: { name: 'Hjort', sexn: { m: 'bukk', f: 'kolle' }, seed: 37, L: 25, Hh: 10, leg: 13, lw: 2, ll: 1, legIn: 3, sw: 2.6, hock: 1.4, rumpR: 5.5, chestR: 5.2, neckL: 9, neckA: 58, neckW: 2.9, hl: 6, hh: 4.6, sl: 4, sh: 2.8, sdy: 0.7, hd: 16, ear: 3, ant: { m: 'red' }, tail: 2,
@@ -294,6 +294,34 @@ const SPEC = {
   bjorn: { name: 'Bjørn', sexn: { m: 'hannbjørn', f: 'binne' }, seed: 79, L: 25, Hh: 13, leg: 8, lw: 4, ll: 4, legIn: 4, sw: 2.2, hock: 0.4, rumpR: 7, chestR: 7, hump: 2.4, neckL: 5, neckA: 10, neckW: 4.6, hl: 7, hh: 6.6, sl: 3.6, sh: 3, sdy: 1.2, hd: 16, ear: 1, headT: 'bear', paw: 1,
     col: { dk: '#472e1e', body: '#684630', lt: '#86603e', legLo: '#583a26', legFar: '#3a2618', nose: '#1a1412', snout: '#b08c62' },
     kg: { m: [160, 320], f: [100, 200] }, hp: 160, value: 2600, walk: 12, run: 84, sight: 120, smell: 300, hear: 0.9, nerv: 0.6, grp: [1, 1] },
+  gaupe: { name: 'Gaupe', sexn: { m: 'hann', f: 'hunn' }, seed: 91, L: 15, Hh: 7, leg: 7, lw: 2, ll: 1, legIn: 2, sw: 2, hock: 1, rumpR: 3.8, chestR: 3.6, neckL: 3, neckA: 40, neckW: 2.4, hl: 5, hh: 4.6, sl: 1.8, sh: 2, sdy: 0.6, hd: 10, ear: 3, headT: 'lynx', spots: '#6a4a30',
+    col: { dk: '#7a5a3a', body: '#a8845a', lt: '#c8a676', belly: '#e8dcc4', legLo: '#8a6a48', legFar: '#5a4430', nose: '#2a1e18' },
+    kg: { m: [18, 28], f: [14, 21] }, hp: 32, value: 2200, walk: 12, run: 100, sight: 180, smell: 190, hear: 1.25, nerv: 1.2, grp: [1, 1] },
+  ulv: { name: 'Ulv', sexn: { m: 'hannulv', f: 'tispe' }, seed: 109, L: 20, Hh: 8, leg: 9, lw: 2, ll: 1, legIn: 2, sw: 2.2, hock: 1, rumpR: 4.2, chestR: 4.6, neckL: 4.4, neckA: 34, neckW: 3, hl: 5, hh: 4.2, sl: 3.6, sh: 2, sdy: 0.8, hd: 10, ear: 3, headT: 'wolf', tail: 9,
+    col: { dk: '#5a5450', body: '#8a827a', lt: '#b0a89c', belly: '#d8d2c6', legU: '#7a726a', legLo: '#a09888', legFar: '#5a5450', nose: '#1a1614' },
+    kg: { m: [38, 60], f: [30, 45] }, hp: 55, value: 3200, walk: 17, run: 108, sight: 170, smell: 300, hear: 1.2, nerv: 1, grp: [1, 3] },
+  hare: { name: 'Hare', sexn: { m: 'hann', f: 'hunn' }, seed: 97, small: 1, L: 9, Hh: 6, leg: 3, lw: 1, ll: 1, legIn: 1, sw: 1.6, hock: 1.4, rumpR: 3.6, chestR: 2.4, neckL: 2, neckA: 50, neckW: 1.6, hl: 3.4, hh: 2.8, sl: 1.6, sh: 1.6, sdy: 0.3, hd: 12, ear: 6, headT: 'hare', tail: 2,
+    col: { dk: '#6a5a46', body: '#94806a', lt: '#b4a28a', belly: '#e8e2d4', legLo: '#a08c74', legFar: '#6a5a46', nose: '#3a2a22', tailC: '#f4f0e8' },
+    kg: { m: [3, 5], f: [3, 5] }, hp: 9, value: 110, walk: 10, run: 118, sight: 120, smell: 160, hear: 1.4, nerv: 1.4, grp: [1, 1] },
+  grevling: { name: 'Grevling', sexn: { m: 'hann', f: 'hunn' }, seed: 103, small: 1, L: 14, Hh: 6, leg: 3, lw: 2, ll: 2, legIn: 2, sw: 1.2, hock: 0.3, rumpR: 4, chestR: 3.6, neckL: 2.4, neckA: 0, neckW: 2.6, hl: 4.4, hh: 3.2, sl: 2.6, sh: 1.6, sdy: 0.8, hd: 22, ear: 1, headT: 'badger', tail: 2,
+    col: { dk: '#4a4a48', body: '#7a7874', lt: '#a4a29c', legU: '#24221f', legLo: '#1e1c1a', legFar: '#141210', nose: '#141210', tailC: '#8a8884' },
+    kg: { m: [10, 16], f: [8, 13] }, hp: 22, value: 130, walk: 9, run: 60, sight: 70, smell: 250, hear: 1, nerv: 0.8, grp: [1, 1] },
+  // skogsfugl: egne mål per kjønn (sz) og egen tegning (genBird); flyr opp når de skremmes
+  storfugl: { name: 'Storfugl', sexn: { m: 'tiur', f: 'røy' }, seed: 113, bird: 1, small: 1, L: 14, Hh: 8, leg: 3,
+    sz: { m: { L: 14, Hh: 8, leg: 3, hr: 2.4, bk: 2, tl: 6, tail: 'fan' }, f: { L: 10, Hh: 6, leg: 2.5, hr: 1.8, bk: 1.5, tl: 4, tail: 'short' } },
+    col: { m: { body: ['#24262a', '#3a3d42', '#585c62'], wing: ['#3e2e20', '#5e4630', '#7e6040'], belly: '#2c4a44', tail: '#1a1a1e', beak: '#e8e2c8', leg: '#5a5048', comb: '#d8402c', spot: '#e8e8e0' },
+      f: { body: ['#5a3e24', '#8a6038', '#b08a58'], wing: ['#5a3e24', '#7a5634', '#9a7448'], belly: '#c08a4a', bar: '#3e2a18', tail: '#6a4a2c', beak: '#3a3430', leg: '#6a5a4a' } },
+    kg: { m: [3.6, 5.2], f: [1.7, 2.4] }, hp: 12, value: 420, walk: 7, run: 30, fly: 135, sight: 150, smell: 60, hear: 1.2, nerv: 1.2, grp: [1, 2] },
+  orrfugl: { name: 'Orrfugl', sexn: { m: 'orrhane', f: 'orrhøne' }, seed: 127, bird: 1, small: 1, L: 10, Hh: 6, leg: 2,
+    sz: { m: { L: 10, Hh: 6, leg: 2, hr: 1.8, bk: 1, tl: 5, tail: 'lyre' }, f: { L: 9, Hh: 5.4, leg: 2, hr: 1.7, bk: 1, tl: 3, tail: 'short' } },
+    col: { m: { body: ['#14161e', '#22283a', '#3a4664'], wing: ['#2a2a30', '#40404a', '#5a5a66'], tail: '#14161e', beak: '#1e1c1c', leg: '#4a4a4a', comb: '#d8402c', spot: '#ecece4', under: '#f2f0ea' },
+      f: { body: ['#54402a', '#7e6446', '#a68a64'], wing: ['#54402a', '#6e5638', '#8e7452'], belly: '#9a7a54', bar: '#3a2a1a', tail: '#5a4430', beak: '#2a2420', leg: '#6a5a4a' } },
+    kg: { m: [1.1, 1.5], f: [0.8, 1.1] }, hp: 7, value: 260, walk: 7, run: 30, fly: 150, sight: 130, smell: 50, hear: 1.1, nerv: 1.2, grp: [2, 4] },
+  rype: { name: 'Rype', sexn: { m: 'stegg', f: 'høne' }, seed: 131, bird: 1, small: 1, L: 8, Hh: 5, leg: 2,
+    sz: { m: { L: 8, Hh: 5, leg: 2, hr: 1.6, bk: 1, tl: 2, tail: 'short' }, f: { L: 7.5, Hh: 4.8, leg: 2, hr: 1.5, bk: 1, tl: 2, tail: 'short' } },
+    col: { m: { body: ['#6a3e22', '#94603a', '#b8885a'], wing: ['#c8c4b8', '#ece8dc', '#ffffff'], belly: '#f0ece2', tail: '#2a2420', beak: '#2a2420', leg: '#e8e4d8', comb: '#d8402c' },
+      f: { body: ['#6a4426', '#94683e', '#b88e5e'], wing: ['#c8c4b8', '#ece8dc', '#ffffff'], belly: '#f0ece2', bar: '#4a2e1a', tail: '#2a2420', beak: '#2a2420', leg: '#e8e4d8' } },
+    kg: { m: [0.55, 0.75], f: [0.5, 0.68] }, hp: 4, value: 160, walk: 6, run: 26, fly: 155, sight: 80, smell: 40, hear: 0.9, nerv: 1.3, grp: [3, 6] },
 };
 const SPECIES = Object.keys(SPEC);
 for (const k of SPECIES) SPEC[k].id = k;
@@ -332,7 +360,8 @@ function genAnimal(sp, sex, pose, f) {
   const ntn = c.neck ? T(c.neckDk, c.neck, c.neckLt) : tn;
   const stn = c.snout ? T(c.dk, c.snout, c.snout) : tn;
   const antT = A.ant && A.ant[sex], antC = C('#d6c8a2'), antD = C('#8e7e60');
-  const dead = pose === 'dead';
+  const dead = pose === 'dead', canid = A.headT === 'fox' || A.headT === 'wolf', dark = C('#1a1412');
+  const htn = A.headT === 'badger' ? T('#b8b6b0', '#e4e2dc', '#f4f2ec') : tn;
   let off = [0, 0, 0, 0], lift = [0, 0, 0, 0], bob = 0, nA = A.neckA, earA = 112, tailDroop = 3;
   if (pose === 'walk') { const s = [1, 0, -1, 0][f] * A.sw; off = [s, -s, -s, s]; if (f === 1) lift = [1, 0, 0, 1]; if (f === 3) lift = [0, 1, 1, 0]; nA -= 6; }
   else if (pose === 'run') {
@@ -342,9 +371,19 @@ function genAnimal(sp, sex, pose, f) {
   } else if (pose === 'alert') { nA = Math.min(86, nA + 18); earA = 96; }
   let by, Sx, Sy, hx, hy, hang, antRot = 0, nearLegs = null;
   const tailFn = (ty, droop) => {
-    if (A.headT === 'fox') {
-      for (let i = 0; i <= 12; i++) { const t = i / 12, x = ox - L / 2 + 1 - A.tail * t, y = ty + droop * t * t, rr = 1 + Math.sin(t * Math.PI) * 1.5; shEll(p, x, y, rr, rr, t > 0.72 ? T('#cfc6b6', '#efe6d6', '#ffffff') : tn, 0, seed + 8); }
+    if (canid) {
+      const tip = A.headT === 'fox' ? T('#cfc6b6', '#efe6d6', '#ffffff') : T('#2a2622', '#3a3430', '#4c4640');
+      for (let i = 0; i <= 12; i++) { const t = i / 12, x = ox - L / 2 + 1 - A.tail * t, y = ty + droop * t * t, rr = 1 + Math.sin(t * Math.PI) * 1.5; shEll(p, x, y, rr, rr, t > 0.72 ? tip : tn, 0, seed + 8); }
+    } else if (A.headT === 'lynx') {
+      // kort stump med svart tupp
+      for (let i = 0; i < 4; i++) { const x = ox - L / 2 + 0.5 - i, y = ty - 0.5 + i * droop * 0.12, col = i < 2 ? tn[1] : dark; p.set(x, y, col); p.set(x, y + 1, col); }
     } else if (A.headT === 'boar') { p.line(ox - L / 2, ty - 2, ox - L / 2 - 2, ty + 1, C(c.dk), 1); p.set(ox - L / 2 - 2, ty + 2, C(c.dk)); }
+  };
+  // flekker i pelsen (gaupe), lagt på kroppen før hals og hode
+  const spots = () => {
+    if (!A.spots) return;
+    const sc = C(A.spots);
+    for (let y = Math.floor(by - Hh / 2); y <= by + Hh / 2; y++) for (let x = Math.floor(ox - L / 2); x <= ox + L / 2; x++) { const v = p.get(x, y); if (v && v !== belly && hash2(x, y, seed + 9) < 0.16) p.set(x, y, sc); }
   };
   if (dead) {
     by = oy - Hh * 0.42;
@@ -353,6 +392,7 @@ function genAnimal(sp, sex, pose, f) {
     tailFn(by + 1, 1);
     shEll(p, ox, by, L / 2, Hh * 0.42, tn, belly, seed); shEll(p, ox - L / 2 + A.rumpR * 0.8, by, A.rumpR, Hh * 0.42, tn, belly, seed + 1); shEll(p, ox + L / 2 - A.chestR * 0.8, by, A.chestR, Hh * 0.45, tn, belly, seed + 2);
     if (c.rump) p.ell(ox - L / 2 + 0.5, by, 1.6, Hh * 0.28, C(c.rump));
+    spots();
     Sx = ox + L / 2 - A.chestR * 0.6; Sy = by + 0.5; hx = Sx + A.neckL * 0.95; hy = oy - A.hh / 2; hang = 0.15; antRot = 0.25;
   } else {
     by = oy - leg - Hh / 2 + bob;
@@ -373,6 +413,7 @@ function genAnimal(sp, sex, pose, f) {
     if (c.rump) p.ell(ox - L / 2 + 0.6, by - 0.6, 1.7, Hh * 0.32, C(c.rump));
     if (A.tail === 2) { p.set(ox - L / 2 - 0.4, by - 1.5, C(c.tailC || c.dk)); p.set(ox - L / 2 - 0.4, by - 0.5, C(c.tailC || c.dk)); }
     if (A.headT === 'boar') for (let x = ox - L / 2 + 3; x <= ox + L / 2 + 1; x++) { const dx = (x - ox) / (L / 2 + 1), ty = by - Hh / 2 * Math.sqrt(Math.max(0, 1 - dx * dx)) - (x > ox ? 0.6 : 0); p.set(x, ty - (x & 1), C(c.dk)); p.set(x, ty + 1 - (x & 1), C(c.dk)); }
+    spots();
     Sx = ox + L / 2 - A.chestR * 0.7; Sy = by - Hh * 0.2;
     if (pose === 'graze') { const drop = (oy - A.hh / 2 - 1) - Sy; hx = Sx + Math.max(A.neckL * 0.9, drop * 0.72); hy = oy - A.hh / 2 - 1 + (f ? -1 : 0); hang = 1.0; antRot = 0.6; }
     else { const a = nA * Math.PI / 180; hx = Sx + Math.cos(a) * A.neckL; hy = Sy - Math.sin(a) * A.neckL; hang = A.hd * Math.PI / 180; }
@@ -382,7 +423,7 @@ function genAnimal(sp, sex, pose, f) {
   const steps = Math.max(1, Math.ceil(hyp(hx - Sx, hy - Sy)));
   for (let i = 0; i <= steps; i++) { const t = i / steps, rr = lerp(A.neckW, A.neckW * 0.74, t); shEll(p, lerp(Sx, hx, t), lerp(Sy, hy, t), rr, rr, ntn, 0, seed + 4); }
   if (A.headT === 'elg' && !dead) { const mx = lerp(Sx, hx, 0.62), my = lerp(Sy, hy, 0.62) + A.neckW; p.line(mx, my, mx, my + 3, C(c.dk), 1); p.set(mx + 1, my, C(c.dk)); p.set(mx + 1, my + 1, C(c.dk)); }
-  if (A.headT === 'fox' && !dead) p.ell(Sx + 1, Sy + 2.2, 1.8, 2.2, C(c.belly));
+  if (canid && !dead) p.ell(Sx + 1, Sy + 2.2, 1.8, 2.2, C(c.belly));
   // fjerne gevir bak hodet
   const abx = hx - 0.6, aby = hy - A.hh / 2 + 0.4;
   if (antT) drawAntler(p, abx + 1.6, aby - 0.4, antT, antRot, antD, 1);
@@ -390,22 +431,96 @@ function genAnimal(sp, sex, pose, f) {
   const ea = earA * Math.PI / 180, ex0 = hx - A.hl / 2 + 1.2, ey0 = hy - A.hh / 2 + 0.6;
   if (A.headT === 'bear') { p.ell(hx - 1.6, hy - A.hh / 2 + 0.2, 1.3, 1.3, tn[0]); }
   // hode + snute
-  shEll(p, hx, hy, A.hl / 2, A.hh / 2, tn, 0, seed + 5);
+  shEll(p, hx, hy, A.hl / 2, A.hh / 2, htn, 0, seed + 5);
   const sd = A.hl / 2 + A.sl / 2 - 0.9, sx = hx + Math.cos(hang) * sd, sy = hy + Math.sin(hang) * sd + A.sdy * Math.cos(hang);
-  shEll(p, sx, sy, A.sl / 2 + 0.3, A.sh / 2, stn, 0, seed + 6);
+  shEll(p, sx, sy, A.sl / 2 + 0.3, A.sh / 2, A.headT === 'badger' ? htn : stn, 0, seed + 6);
   const nx = sx + Math.cos(hang) * (A.sl / 2 - 0.2), ny = sy + Math.sin(hang) * (A.sl / 2 - 0.2);
   p.set(nx, ny, C(c.nose));
   if (A.headT === 'boar') { p.set(nx, ny - 1, C(c.nose)); p.set(nx - 1.5, ny + 1.4, C('#f2eee0')); }
   if (A.headT === 'bear') p.set(nx, ny + 0.2, C(c.nose));
-  if (A.headT === 'fox') p.set(sx - 0.5, sy + 1, C(c.belly));
+  if (canid) p.set(sx - 0.5, sy + 1, C(c.belly));
+  // grevlingen: svart stripe fra snuten gjennom øyet og bak til øret
+  if (A.headT === 'badger') { p.line(nx - 1, ny - 1, hx - A.hl / 2 + 0.6, hy - 0.6, dark, 1); p.line(nx - 1.6, ny, hx - 0.4, hy + 0.4, dark, 1); }
   if (!dead) p.set(hx + (hang > 0.6 ? -0.6 : 0.8), hy - (hang > 0.6 ? 0.2 : 0.8), C('#141010'));
   if (A.headT === 'bear') p.ell(hx - 0.4, hy - A.hh / 2 + 0.3, 1.2, 1.2, tn[1]);
-  else if (A.headT === 'fox') { const tx = ex0 + Math.cos(ea) * 3.4, ty = ey0 - Math.sin(ea) * 3.4; p.line(ex0 + 1, ey0, tx + 0.6, ty, tn[1], 1); p.line(ex0, ey0, tx, ty, C('#2a201c'), 1); }
-  else { p.line(ex0, ey0, ex0 + Math.cos(ea) * A.ear, ey0 - Math.sin(ea) * A.ear, tn[2], 1); p.set(ex0 + Math.cos(ea) * A.ear * 0.5 - 1, ey0 - Math.sin(ea) * A.ear * 0.5, tn[0]); }
+  else if (canid) { const tx = ex0 + Math.cos(ea) * 3.4, ty = ey0 - Math.sin(ea) * 3.4; p.line(ex0 + 1, ey0, tx + 0.6, ty, tn[1], 1); p.line(ex0, ey0, tx, ty, C('#2a201c'), 1); }
+  else {
+    const tip = (a, l) => [ex0 + Math.cos(a) * l, ey0 - Math.sin(a) * l];
+    // haren har to lange ører med svarte tupper, gaupa svarte dusker
+    if (A.headT === 'hare') { const [tx, ty] = tip(ea + 0.2, A.ear - 0.5); p.line(ex0 - 1, ey0, tx - 1, ty, tn[1], 1); p.set(tx - 1, ty, dark); }
+    const [tx, ty] = tip(ea, A.ear);
+    p.line(ex0, ey0, tx, ty, tn[2], 1); p.set(ex0 + Math.cos(ea) * A.ear * 0.5 - 1, ey0 - Math.sin(ea) * A.ear * 0.5, tn[0]);
+    if (A.headT === 'hare') p.set(tx, ty, dark);
+    if (A.headT === 'lynx') p.set(tx, ty, dark);
+  }
   if (nearLegs) nearLegs();
   if (antT) drawAntler(p, abx, aby, antT, antRot, antC, 1);
   p.outlineAuto(0.42);
   return mkSpr(p, AOX, AOY, { hc: { x: hx + Math.cos(hang) * A.sl * 0.3 - ox, y: hy - oy, r: Math.max(A.hl, A.hh) / 2 + 1.3 }, nk: [Sx - ox, Sy - oy, hx - ox, hy - oy], bob });
+}
+
+// ---------- Fugler (i profil, mot høyre) ----------
+const BW = 44, BH = 40, BOX = 22, BOY = 32;
+function genBird(sp, sex, pose, f) {
+  const A = SPEC[sp], z = A.sz[sex], c = A.col[sex], p = new Pix(BW, BH), ox = BOX, oy = BOY, seed = A.seed + (sex === 'm' ? 0 : 5);
+  const L = z.L, Hh = z.Hh, tn = T(...c.body), wt = T(...c.wing), bar = c.bar ? C(c.bar) : 0, belly = c.belly ? C(c.belly) : 0;
+  const tailC = C(c.tail), legC = C(c.leg), fly = pose === 'fly', dead = pose === 'dead';
+  // fjærdrakt: skyggelagt, med tverrstriper på hønene
+  const fill = (cx, cy, rx, ry, tns, under) => p.ell(cx, cy, rx, ry, (x, y, dx, dy) => {
+    if (under && dy > 0.3 && dx > -0.4) return under;
+    if (bar && (y + ((x >> 1) & 1)) % 2 === 0 && hash2(x, y, seed) < 0.6) return bar;
+    return tone(tns, 0.6 - dy * 0.5 - dx * 0.05 + (hash2(x >> 1, y >> 1, seed) - 0.5) * 0.14, x, y, 3);
+  });
+  const tri = (ax, ay, bx, by_, cx, cy, col) => {
+    const d = (bx - ax) * (cy - ay) - (cx - ax) * (by_ - ay); if (!d) return;
+    for (let y = Math.floor(Math.min(ay, by_, cy)); y <= Math.ceil(Math.max(ay, by_, cy)); y++) for (let x = Math.floor(Math.min(ax, bx, cx)); x <= Math.ceil(Math.max(ax, bx, cx)); x++) {
+      const u = ((bx - x) * (cy - y) - (cx - x) * (by_ - y)) / d, v = ((cx - x) * (ay - y) - (ax - x) * (cy - y)) / d;
+      if (u >= -0.05 && v >= -0.05 && u + v <= 1.05) p.set(x, y, typeof col === 'function' ? col(x, y) : col);
+    }
+  };
+  const by = dead ? oy - Hh * 0.4 : oy - z.leg - Hh / 2 + (pose === 'walk' && f & 1 ? -0.5 : 0);
+  const step = pose === 'walk' ? [1, 0, -1, 0][f] : 0;
+  const leg = (dx, col) => { const x = ox + 0.5 + dx; p.line(x, by + Hh / 2 - 1, x, oy, col, 1); p.set(x + 1, oy, col); };
+  // halen bak kroppen
+  const tx0 = ox - L / 2 + 1, tdy = fly ? 0.15 : 0.55;
+  if (z.tail === 'fan') for (const k of [-1, 0, 1]) p.line(tx0, by, tx0 - z.tl, by + z.tl * tdy + k * (fly ? 2 : 1.3), tailC, 2);
+  else if (z.tail === 'lyre') {
+    p.line(tx0, by, tx0 - z.tl, by + z.tl * tdy * 0.6, tailC, 2);
+    p.set(tx0 - z.tl - 1, by + z.tl * tdy * 0.6 - 1, tailC); p.set(tx0 - z.tl - 1.6, by + z.tl * tdy * 0.6 - 2, tailC);
+  } else p.line(tx0, by, tx0 - z.tl, by + z.tl * tdy, tailC, 2);
+  if (!fly && !dead) leg(-step - 1, dkc(legC, 0.7));
+  // vinger i flukt: fjern vinge bak kroppen, nær vinge foran
+  const wa = [-1.15, -0.4, 0.6, -0.4][f] || 0, wl = L * 0.85, rx0 = ox + L * 0.05, ry0 = by - Hh * 0.2;
+  const wing = (dx, col) => { const tx = rx0 - wl * 0.3 + dx, ty = ry0 + Math.sin(wa) * wl; tri(rx0 + 2.5 + dx, ry0, rx0 - 3 + dx, ry0, tx, ty, col); tri(rx0 - 3 + dx, ry0, tx, ty, tx - 1.5, ty + (wa < 0 ? 1.5 : -1.5), col); };
+  if (fly) wing(-1.5, (x, y) => dkc(tone(wt, 0.4, x, y, 3), 0.75));
+  // kropp
+  fill(ox, by, L / 2, dead ? Hh * 0.4 : Hh / 2, tn, belly);
+  if (c.under && !dead) p.ell(ox - L / 2 + 1.5, by + Hh * 0.25, 1.6, 1.2, C(c.under));
+  // sammenfoldet vinge langs siden
+  if (!fly) {
+    fill(ox - L * 0.08, by - Hh * 0.05, L * 0.34, Hh * 0.3, wt);
+    if (A.id === 'orrfugl' && sex === 'm') p.line(ox - L * 0.28, by + Hh * 0.2, ox + L * 0.1, by + Hh * 0.2, C(c.spot), 1);
+    else if (c.spot) p.set(ox + L * 0.22, by - Hh * 0.18, C(c.spot));
+  }
+  // hals og hode
+  let hx, hy;
+  if (dead) { hx = ox + L / 2 + z.hr; hy = oy - z.hr; }
+  else if (fly) { hx = ox + L / 2 + z.hr * 0.6; hy = by - Hh * 0.2; }
+  else if (pose === 'graze') { hx = ox + L / 2 + z.hr * 0.6; hy = oy - z.hr - (f ? 1.2 : 0); }
+  else if (pose === 'alert') { hx = ox + L / 2 - z.hr * 0.2; hy = by - Hh / 2 - z.hr * 1.7; }
+  else { hx = ox + L / 2 - z.hr * 0.4 + [0, 0.5, 1, 0.5][f] * (pose === 'walk' ? 1 : 0); hy = by - Hh / 2 - z.hr * 0.5; }
+  const nx0 = ox + L * 0.3, ny0 = by - Hh * 0.12, ns = Math.max(1, Math.ceil(hyp(hx - nx0, hy - ny0)));
+  for (let i = 0; i <= ns; i++) { const t = i / ns, r = lerp(Hh * 0.3, z.hr * 0.85, t); fill(lerp(nx0, hx, t), lerp(ny0, hy, t), r, r, tn, 0); }
+  fill(hx, hy, z.hr, z.hr, tn, 0);
+  const down = pose === 'graze' || dead;
+  p.line(hx + z.hr - 0.2, hy + 0.3, hx + z.hr - 0.2 + (down ? 0.4 : 1) * z.bk, hy + 0.3 + (down ? 1 : 0.4) * z.bk, C(c.beak), 1);
+  if (!dead) p.set(hx + 0.3, hy - 0.4, C('#141010'));
+  if (c.comb && !dead) { p.set(hx, hy - 1.2, C(c.comb)); p.set(hx + 1, hy - 1.2, C(c.comb)); }
+  if (A.id === 'storfugl' && sex === 'm') { p.set(hx + 0.6, hy + z.hr + 0.4, C('#141416')); p.set(hx + 1.2, hy + z.hr + 0.6, C('#141416')); }
+  if (fly) wing(0, (x, y) => tone(wt, 0.75 - (y - ry0) * 0.03, x, y, 3));
+  if (!fly && !dead) leg(step, legC);
+  p.outlineAuto(0.42);
+  return mkSpr(p, BOX, BOY, { hc: { x: hx - ox, y: hy - oy, r: z.hr + 0.9 }, legY: by - oy + Hh / 2 });
 }
 
 // ---------- Jeger ----------
@@ -488,6 +603,9 @@ function genIcons() {
   mk('flask', bottle);
   mk('camo', p => { const g = T('#34482c', '#506a38', '#728a48'); p.rect(5, 4, 8, 11, g[1]); p.rect(2, 5, 3, 8, g[1]); p.rect(13, 5, 3, 8, g[1]); p.rect(7, 3, 4, 2, g[0]); p.rect(8, 5, 2, 10, g[0]); for (const [x, y] of [[6, 7], [11, 9], [6, 12], [3, 8], [14, 7], [11, 13]]) { p.set(x, y, g[2]); p.set(x + 1, y + 1, g[0]); } });
   mk('deo', p => { p.rect(6, 6, 6, 9, C('#5c6e7a')); p.rect(6, 6, 1, 9, C('#8c9ea8')); p.rect(11, 6, 1, 9, C('#3c4a54')); p.rect(7, 4, 4, 2, st[1]); p.rect(8, 2, 3, 2, st[2]); p.set(12, 2, C('#cfe0e8')); p.set(14, 1, C('#cfe0e8')); p.set(14, 3, C('#cfe0e8')); p.rect(7, 9, 4, 3, C('#d8c040')); });
+  mk('hagle', p => { for (let i = 0; i < 11; i++) { const x = 6 + i, y = Math.round(11 - i * 0.6); p.set(x, y, st[1]); p.set(x, y - 1, st[2]); } p.rect(4, 10, 3, 2, st[0]); p.line(7, 12, 10, 10, wd[2], 1); p.rect(1, 11, 4, 2, wd[1]); p.rect(1, 13, 2, 1, wd[0]); p.set(1, 11, wd[2]); p.set(5, 12, st[0]); });
+  mk('choke', p => { p.rect(3, 7, 12, 4, st[1]); p.rect(3, 7, 12, 1, st[2]); p.rect(3, 10, 12, 1, st[0]); for (let x = 4; x < 9; x += 2) { p.set(x, 8, st[0]); p.set(x, 9, st[0]); } p.rect(12, 6, 3, 6, st[0]); p.rect(13, 7, 1, 4, st[2]); });
+  mk('shell', p => { p.rect(6, 3, 6, 10, C('#b8302a')); p.rect(6, 3, 1, 10, C('#d85040')); p.rect(11, 3, 1, 10, C('#8a2020')); p.rect(7, 3, 4, 1, C('#8a2020')); p.rect(5, 13, 8, 3, br[1]); p.rect(5, 13, 1, 3, br[2]); p.rect(12, 13, 1, 3, br[0]); });
   mk('boots', p => { p.rect(5, 2, 5, 10, wd[1]); p.rect(5, 2, 1, 10, wd[2]); p.rect(5, 10, 9, 4, wd[1]); p.rect(11, 10, 3, 1, wd[2]); p.rect(4, 14, 11, 2, C('#201814')); p.rect(5, 2, 5, 1, wd[0]); p.set(9, 5, br[2]); p.set(9, 7, br[2]); });
   return I;
 }
@@ -511,11 +629,13 @@ function genAll() {
   for (const sp of SPECIES) {
     ANI[sp] = {};
     for (const sex of ['m', 'f']) {
-      const o = ANI[sp][sex] = {};
-      o.stand = [genAnimal(sp, sex, 'stand', 0)]; o.alert = [genAnimal(sp, sex, 'alert', 0)];
-      o.graze = [0, 1].map(f => genAnimal(sp, sex, 'graze', f));
-      o.walk = [0, 1, 2, 3].map(f => genAnimal(sp, sex, 'walk', f)); o.run = [0, 1, 2, 3].map(f => genAnimal(sp, sex, 'run', f));
-      o.dead = [genAnimal(sp, sex, 'dead', 0)];
+      const o = ANI[sp][sex] = {}, gen = SPEC[sp].bird ? genBird : genAnimal;
+      o.stand = [gen(sp, sex, 'stand', 0)]; o.alert = [gen(sp, sex, 'alert', 0)];
+      o.graze = [0, 1].map(f => gen(sp, sex, 'graze', f));
+      o.walk = [0, 1, 2, 3].map(f => gen(sp, sex, 'walk', f));
+      o.run = SPEC[sp].bird ? o.walk : [0, 1, 2, 3].map(f => gen(sp, sex, 'run', f));
+      if (SPEC[sp].bird) o.fly = [0, 1, 2, 3].map(f => gen(sp, sex, 'fly', f));
+      o.dead = [gen(sp, sex, 'dead', 0)];
     }
   }
   for (const d of ['side', 'down', 'up']) HUN[d] = [0, 1].map(a => [0, 1, 2, 3, 4].map(i => genHunter(d, i, a)));

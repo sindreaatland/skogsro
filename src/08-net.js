@@ -25,7 +25,7 @@ function netConnect() {
 }
 
 // ---------- dyr over nettet ----------
-const PACK = ['id', 'sp', 'sex', 'state', 'kg', 'face', 'prev', 'lastZone', 'by', 'x', 'y', 'vx', 'vy', 't', 'hp', 'aware', 'tx', 'ty', 'bleed', 'head', 'shotDist', 'deadT'];
+const PACK = ['id', 'sp', 'sex', 'state', 'kg', 'face', 'prev', 'lastZone', 'by', 'x', 'y', 'z', 'vx', 'vy', 't', 'hp', 'aware', 'tx', 'ty', 'bleed', 'head', 'shotDist', 'deadT'];
 function packA(a) {
   const o = {};
   for (const k of PACK) { const v = a[k]; if (v !== undefined) o[k] = typeof v === 'number' && k !== 'id' ? Math.round(v * 100) / 100 : v; }

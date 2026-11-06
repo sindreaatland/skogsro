@@ -57,6 +57,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 #ammo { display: flex; gap: 3px; height: 26px; align-items: flex-end; }
 .rnd { width: 7px; height: 22px; background: #3a3426; border: 1px solid #1a1612; }
 .rnd.on { background: linear-gradient(#c8683a 0 30%, #e0aa40 30%); }
+#gunName { padding-right: 20px; } .rnd.sh { width: 9px; } .rnd.sh.on { background: linear-gradient(#c43a2c 0 72%, #d8a840 72%); }
 #breath { left: 50%; transform: translateX(-50%); bottom: calc(10vh + env(safe-area-inset-bottom, 0px)); width: 240px; padding: 6px 10px; display: grid; gap: 4px; text-align: center; }
 .meter { height: 8px; background: #1f2a23; border: 1px solid #3a4a3e; }
 .meter i { display: block; height: 100%; background: var(--moss); }
@@ -141,22 +142,22 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 <div id="prompt" class="hud box" hidden><kbd>F</kbd><span id="promptTxt"></span></div>
 <div id="breath" class="hud box" hidden><div class="lab" id="breathTxt">Pust · hold Space for å holde pusten</div><div class="meter"><i id="breathFill"></i></div></div>
 <div id="bar" class="hud">
-  <div class="slot box"><div><div class="lab">Rifle</div><div id="ammo"></div><div class="slot-s" id="ammoTxt"></div></div><kbd class="k">R</kbd></div>
+  <div class="slot box"><div><div class="lab" id="gunName">Rifle</div><div id="ammo"></div><div class="slot-s" id="ammoTxt"></div></div><kbd class="k">R</kbd></div>
   <div class="slot box"><img id="callIco" alt=""><div><div class="slot-t" id="callName">Rådyrpipe</div><div class="slot-s">Lokk</div></div><kbd class="k">Q</kbd><div id="callCd"></div></div>
   <div class="slot box"><img id="scentIco" alt=""><div><div class="slot-t" id="scentN">× 2</div><div class="slot-s">Luktstoff</div></div><kbd class="k">E</kbd></div>
 </div>
-<div id="keys" class="hud"><span><kbd>WASD</kbd>gå</span><span><kbd>Shift</kbd>snik</span><span><kbd>Høyreklikk</kbd>sikt</span><span><kbd>Venstreklikk</kbd>skyt</span><span><kbd>Space</kbd>spring · hold pusten</span><span><kbd>F</kbd>handling</span><span><kbd>Esc</kbd>pause</span></div>
+<div id="keys" class="hud"><span><kbd>WASD</kbd>gå</span><span><kbd>Shift</kbd>snik</span><span><kbd>Høyreklikk</kbd>sikt</span><span><kbd>Venstreklikk</kbd>skyt</span><span><kbd>1</kbd><kbd>2</kbd>våpen</span><span><kbd>Space</kbd>spring · hold pusten</span><span><kbd>F</kbd>handling</span><span><kbd>Esc</kbd>pause</span></div>
 
 <div id="shop" class="sheet" hidden>
   <div class="card" role="dialog" aria-label="Jaktbua">
     <div class="card-h"><h2>Jaktbua</h2><span class="money" id="shopKr">0 kr</span><button class="xbtn" type="button" data-close>Gå ut (Esc)</button></div>
     <div class="shop-body">
       <div class="shop-main">
-        <div id="shopTabs" role="tablist"><button type="button" role="tab" data-cat="rifle">Rifla</button><button type="button" role="tab" data-cat="lure">Lokking</button><button type="button" role="tab" data-cat="gear">Utstyr</button></div>
+        <div id="shopTabs" role="tablist"><button type="button" role="tab" data-cat="rifle">Rifla</button><button type="button" role="tab" data-cat="hagle">Hagla</button><button type="button" role="tab" data-cat="lure">Lokking</button><button type="button" role="tab" data-cat="gear">Utstyr</button></div>
         <div id="shopList"></div>
       </div>
       <div class="shop-side">
-        <div class="lab">Rifla di nå</div>
+        <div class="lab" id="statLab">Rifla di nå</div>
         <div id="stats"></div>
         <div class="side-note"><b id="magTxt"></b>. Lokkefløyta når <b id="callTxt"></b>.</div>
         <div class="side-note">Magasinet fylles når du går inn i bua. Ammunisjon er gratis.</div>
@@ -197,7 +198,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
       <div><kbd>Høyreklikk</kbd>Sikt (hold)</div>
       <div><kbd>Venstreklikk</kbd>Skyt</div>
       <div><kbd>Space</kbd>Spring · hold pusten i siktet</div>
-      <div><kbd>R</kbd>Lad om</div>
+      <div><kbd>R</kbd>Lad om · <kbd>1</kbd><kbd>2</kbd>rifle/hagle</div>
       <div><kbd>Q</kbd>Lokkefløyte</div>
       <div><kbd>E</kbd>Sett ut luktstoff</div>
       <div><kbd>F</kbd>Ta vare på dyr · bua</div>

@@ -10,8 +10,10 @@ const SOFT = { fern: 1, grassT: 1, reed: 1, heather: 1 };
 const HITN = { rock: 'en stein', stump: 'en stubbe', log: 'en stokk', juniper: 'en einer', shrub: 'en busk', cabin: 'bua' };
 const CHIP = { rock: '#b4b8ac', juniper: '#4e8270', shrub: '#6a8a3a' };
 
-// Brennvidde i bufferpiksler; synsfeltet blir smalere jo bedre kikkert
-const aimFocal = () => Math.ceil(H / ZB) / 2 / Math.tan(ST.fov[lv('scope')] * Math.PI / 360);
+// Brennvidde i bufferpiksler; synsfeltet blir smalere jo bedre kikkert, og hagla ser vidt uten forstørrelse
+const aimFocal = () => Math.ceil(H / ZB) / 2 / Math.tan((hagle() ? HST.fov : ST.fov[lv('scope')]) * Math.PI / 360);
+// Med hagla kan du se høyt opp etter fugl i lufta
+const pitchMax = () => hagle() ? 0.8 : PITCH_MAX;
 // Jegeren kneler når han sikter; ute på djupt vann er øynene nærmere vannflata
 const aimEye = () => P.deep ? EYE - 5 : EYE;
 const fogSil = s => s._fog || (s._fog = s.pix.sil(FOG).canvas());
@@ -21,20 +23,20 @@ function aimStart(tx, ty) {
   let best = null, bd = 1e9, h = 6;
   for (const a of G.animals) {
     if (a.state === 'dead') continue;
-    const A = SPEC[a.sp], d = hyp(a.x - tx, a.y - A.leg - A.Hh / 2 - ty);
+    const A = SPEC[a.sp], d = hyp(a.x - tx, a.y - (a.z || 0) - A.leg - A.Hh / 2 - ty);
     if (d < A.L / 2 + 8 && d < bd) { bd = d; best = a; }
   }
-  if (best) { tx = best.x; ty = best.y; h = SPEC[best.sp].leg + SPEC[best.sp].Hh / 2; }
+  if (best) { tx = best.x; ty = best.y; h = SPEC[best.sp].leg + SPEC[best.sp].Hh / 2 + (best.z || 0); }
   const d = hyp(tx - P.x, ty - P.y);
   AIM.yaw = AIM.camYaw = d > 8 ? Math.atan2(ty - P.y, tx - P.x) : P.face === 'side' ? (P.flip ? Math.PI : 0) : P.face === 'up' ? -Math.PI / 2 : Math.PI / 2;
-  AIM.pitch = clamp(Math.atan((h - aimEye()) / Math.max(d, 30)), -PITCH_MAX, PITCH_MAX);
+  AIM.pitch = clamp(Math.atan((h - aimEye()) / Math.max(d, 30)), -pitchMax(), pitchMax());
   AIM.ry = AIM.yaw; AIM.rp = AIM.pitch;
   AIM.f = aimFocal(); AIM.t = 0; AIM.kick = 0; AIM.list.length = 0; AIM.pick = null; AIM.range = null;
 }
 // Musa flytter bildet like mange skjermpiksler som den beveger seg, uansett forstørrelse
 function aimLook(dx, dy) {
   const k = 0.9 / (ZB * AIM.f);
-  AIM.yaw += dx * k; AIM.pitch = clamp(AIM.pitch - dy * k, -PITCH_MAX, PITCH_MAX);
+  AIM.yaw += dx * k; AIM.pitch = clamp(AIM.pitch - dy * k, -pitchMax(), pitchMax());
 }
 
 function render3D(dt) {
@@ -84,7 +86,7 @@ function render3D(dt) {
   const add = (wx, wy, s, flip, it) => {
     const dx = wx - P.x, dy = wy - P.y, z = dx * vx + dy * vy;
     if (z < NEAR || z > far) return;
-    const k = f / z, X = Math.round(cx + (dx * rx + dy * ry) * k - (flip ? s.w - s.ax : s.ax) * k), Y = Math.round(hy + (eye - s.ay) * k);
+    const k = f / z, X = Math.round(cx + (dx * rx + dy * ry) * k - (flip ? s.w - s.ax : s.ax) * k), Y = Math.round(hy + (eye - (it.hz || 0) - s.ay) * k);
     const Wd = Math.max(1, Math.round(s.w * k)), Hd = Math.max(1, Math.round(s.h * k));
     if (X > bw || X + Wd < 0 || Y > bh || Y + Hd < 0) return;
     Object.assign(it, { z, k, X, Y, W: Wd, H: Hd, s, flip, fo: fog(z) });
@@ -100,8 +102,8 @@ function render3D(dt) {
         const s = SPR[o.k][o.v];
         add(o.x, o.y, s, false, { o, solid: !SOFT[o.k], sw: s.sway ? (Math.sin(G.t * 1.3 + o.ph) * 0.8 + wl) * wa : 0 });
       }
-  // dyra vises i profil og snus etter hvilken vei de går sett herfra
-  for (const a of G.animals) add(a.x, a.y, animalSprite(a), Math.cos(a.head) * rx + Math.sin(a.head) * ry < 0, { a, solid: a.state !== 'dead' });
+  // dyra vises i profil og snus etter hvilken vei de går sett herfra; fugl i lufta tegnes i sin høyde
+  for (const a of G.animals) add(a.x, a.y, animalSprite(a), Math.cos(a.head) * rx + Math.sin(a.head) * ry < 0, { a, solid: a.state !== 'dead', hz: a.z || 0 });
   for (const r of NET.peers.values()) {
     if (!r.started || r.in) continue;
     const fx = r.face === 'side' ? (r.flip ? -1 : 1) : 0, fy = r.face === 'down' ? 1 : r.face === 'up' ? -1 : 0;
@@ -184,7 +186,6 @@ function aimShot() {
   const sd = ST.spread[lv('barrel')] / 100, gx = gauss() * sd, gy = gauss() * sd * 0.8;
   const px = AIM.sx + gx * AIM.f, py = AIM.sy - gy * AIM.f, pk = aimPick(px, py);
   const r = { ang: AIM.camYaw + Math.atan((px - AIM.cx) / AIM.f), a: null, zone: null, block: null };
-  const burst = (x, y, z, col, n, sp) => { for (let i = 0; i < n; i++) G.parts.push({ x, y, z, vx: rnd(-sp, sp), vy: rnd(-sp, sp) * 0.4, vz: rnd(4, 14), life: rnd(0.3, 0.6), col, grav: 1 }); };
   AIM.kick = 1;
   if (pk && pk.it.a) {
     const a = pk.it.a, [x, y, h] = aimPoint(px, py, pk.it.z);
@@ -199,4 +200,24 @@ function aimShot() {
     if (z < FAR * 1.5) { const [x, y] = aimPoint(px, py, z); burst(x, y, 0, isWater(x, y) ? '#a4ccc6' : '#8a7a5c', 5, 14); }
   }
   return r;
+}
+function burst(x, y, z, col, n, sp) { for (let i = 0; i < n; i++) G.parts.push({ x, y, z, vx: rnd(-sp, sp), vy: rnd(-sp, sp) * 0.4, vz: rnd(4, 14), life: rnd(0.3, 0.6), col, grav: 1 }); }
+// Haglskudd i 3D: hvert hagl får sin egen retning i svermen rundt perla og treffer det første faste det møter
+function aimShotgun() {
+  const sp = HST.spread[lv('choke')], by = new Map();
+  let chips = 0, puffs = 0;
+  AIM.kick = 1;
+  for (let i = 0; i < HST.pellets[lv('shell')]; i++) {
+    const px = AIM.sx + gauss() * sp * AIM.f, py = AIM.sy + gauss() * sp * AIM.f, pk = aimPick(px, py);
+    if (pk && pk.it.a) {
+      const a = pk.it.a, [x, y, h] = aimPoint(px, py, pk.it.z);
+      pelletHit(by, a, hyp(a.x - P.x, a.y - P.y), x, y - h);
+      burst(x, y, h, SPEC[a.sp].bird ? '#e4dccc' : '#a8302a', 2, 10);
+    } else if (pk) { const [x, y, h] = aimPoint(px, py, pk.it.z); if (chips++ < 6) burst(x, y, h, CHIP[pk.it.o.k] || '#c8a474', 2, 14); }
+    else if (py > AIM.hy && puffs++ < 8) {
+      const z = AIM.eye * AIM.f / (py - AIM.hy);
+      if (z < FAR) { const [x, y] = aimPoint(px, py, z); burst(x, y, 0, isWater(x, y) ? '#a4ccc6' : '#8a7a5c', 2, 10); }
+    }
+  }
+  return { ang: AIM.camYaw + Math.atan((AIM.sx - AIM.cx) / AIM.f), hits: [...by.values()].filter(e => e.dmg > 0) };
 }

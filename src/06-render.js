@@ -89,6 +89,8 @@ function render(dt) {
   sh.setTransform(1, 0, 0, 1, 0, 0); sh.clearRect(0, 0, bw, bh);
   for (const it of items) {
     if (it.s.nosh || it.o && (it.o.k === 'fern' || it.o.k === 'grassT' || it.o.k === 'reed') || it.hunter && P.deep) continue;
+    // fugl i lufta kaster bare en liten flekk på bakken under seg
+    if (it.a && it.a.z > 1) { sh.setTransform(1, 0, 0, 1, 0, 0); sh.fillStyle = '#0b1a1c'; sh.fillRect(Math.round(it.a.x - ox) - 3, Math.round(it.a.y - oy) - 1, 6, 2); continue; }
     const ent = it.o || it.a || it.peer || P, flip = it.a ? it.a.face < 0 : it.hunter ? P.flip && P.face === 'side' : it.peer ? it.peer.flip && it.peer.face === 'side' : false;
     sh.setTransform(flip ? -1 : 1, 0, -sdx, -sls * 0.5, Math.round(ent.x - ox), Math.round(ent.y - oy) + 1);
     sh.drawImage(it.s.sil, -it.s.ax, -it.s.ay);
@@ -96,7 +98,7 @@ function render(dt) {
   b.globalAlpha = 0.12 + 0.24 * dayl; b.drawImage(shL, 0, 0, bw, bh, 0, 0, bw, bh); b.globalAlpha = 1;
   // objekter, dyr, jeger
   const icons = [], reveal = [[P.x, P.y - 6]];
-  for (const a of G.animals) if (a.state !== 'dead' && hyp(a.x - P.x, a.y - P.y) < 340) reveal.push([a.x, a.y - SPEC[a.sp].leg]);
+  for (const a of G.animals) if (a.state !== 'dead' && hyp(a.x - P.x, a.y - P.y) < 340) reveal.push([a.x, a.y - SPEC[a.sp].leg - (a.z || 0)]);
   for (const it of items) if (it.peer) reveal.push([it.peer.x, it.peer.y - 6]);
   for (const it of items) {
     if (it.o) {
@@ -107,7 +109,7 @@ function render(dt) {
       if (s.sway) drawSway(o, s, X, Y); else b.drawImage(s.c, X - s.ax, Y - s.ay);
       b.globalAlpha = 1;
     } else if (it.a) {
-      const a = it.a, s = it.s, X = Math.round(a.x - ox), Y = Math.round(a.y - oy);
+      const a = it.a, s = it.s, X = Math.round(a.x - ox), Y = Math.round(a.y - (a.z || 0) - oy);
       if (a.face < 0) { b.save(); b.translate(X, Y); b.scale(-1, 1); b.drawImage(s.c, -s.ax, -s.ay); b.restore(); }
       else b.drawImage(s.c, X - s.ax, Y - s.ay);
       if (a.state === 'dead') icons.push([FX.ex, X - 2, Y - 18 - (Math.sin(G.t * 3) > 0 ? 1 : 0)]);
@@ -190,7 +192,16 @@ function drawOverlay() {
   if (G.started && P.aim) {
     // siktene vandrer med pust og uro (rx, ry), mens kikkerten og skyggen rundt står midt i bildet (cx, cy)
     const rx = AIM.sx * ZB, ry = AIM.sy * ZB, cx = AIM.cx * ZB, cy = AIM.cy * ZB;
-    if (l === 0) {
+    if (hagle()) {
+      // hagle: ett løp, eller to side om side, peker inn mot perla; vidt bilde uten forstørrelse
+      const k = u * 3, bx = W / 2, top = ry + k * 0.7, two = lv('hagle') === 2;
+      const barrel = (x0, w0, w1) => { m.beginPath(); m.moveTo(x0 - w0, top); m.lineTo(x0 + w0, top); m.lineTo(bx + (x0 - rx) * 8 + w1, H); m.lineTo(bx + (x0 - rx) * 8 - w1, H); m.closePath(); m.fill(); };
+      m.fillStyle = '#1a1816';
+      if (two) { barrel(rx - k * 0.8, k * 0.8, k * 6); barrel(rx + k * 0.8, k * 0.8, k * 6); } else barrel(rx, k, k * 7);
+      m.fillStyle = '#3a352e'; barrel(rx, k * 0.22, k * 1.4);
+      m.fillStyle = '#f2ead0'; m.beginPath(); m.arc(rx, ry + k * 0.2, k * 0.6, 0, TAU); m.fill();
+      const g = m.createRadialGradient(cx, cy, Math.min(W, H) * 0.45, cx, cy, Math.max(W, H) * 0.8); g.addColorStop(0, 'rgba(8,10,8,0)'); g.addColorStop(1, 'rgba(8,10,8,0.4)'); m.fillStyle = g; m.fillRect(0, 0, W, H);
+    } else if (l === 0) {
       // åpne sikter: pipe som går ned mot skjermkanten, bakre skjæring og korn
       const k = u * 3, bx = W / 2, top = ry + k * 2;
       m.fillStyle = '#1c1814';
@@ -217,7 +228,7 @@ function drawOverlay() {
       if (l >= 2) {
         const a = AIM.pick && AIM.pick.it.a, ty = cy - R + 34 * DPR;
         let line = AIM.range == null ? '– m' : Math.round(AIM.range * M_PER_PX) + ' m';
-        if (l === 3 && a) line = SPEC[a.sp].name + ', ' + SPEC[a.sp].sexn[a.sex] + ' · ca. ' + Math.round(a.kg / 5) * 5 + ' kg · ' + line;
+        if (l === 3 && a) line = SPEC[a.sp].name + ', ' + SPEC[a.sp].sexn[a.sex] + ' · ca. ' + fmtKg(a.kg >= 20 ? Math.round(a.kg / 5) * 5 : a.kg >= 3 ? Math.round(a.kg) : a.kg) + ' · ' + line;
         pxText(line, cx, ty, Math.round(15 * DPR), '#f0b450');
       }
     }
