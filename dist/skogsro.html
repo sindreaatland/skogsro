@@ -26,7 +26,10 @@ img.px, .ico, #hud img { image-rendering: pixelated; }
 button { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
-.hud { position: fixed; pointer-events: none; z-index: 2; }
+.hud { position: fixed; pointer-events: none; z-index: 2; transition: opacity .2s; }
+/* i siktet viker grensesnittet unna; meldingene blir stående */
+body.aiming .hud:not(#log) { opacity: 0; }
+body.aiming #tbtns { pointer-events: none; }
 .box { background: var(--panel); border: 2px solid var(--edge); box-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .lab { font-family: var(--f-lab); font-size: 10px; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
 #tl { top: calc(14px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); padding: 8px 12px; display: grid; gap: 2px; }
@@ -59,7 +62,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 .rnd { width: 7px; height: 22px; background: #3a3426; border: 1px solid #1a1612; }
 .rnd.on { background: linear-gradient(#c8683a 0 30%, #e0aa40 30%); }
 #gunName, #campN { padding-right: 20px; } .rnd.sh { width: 9px; } .rnd.sh.on { background: linear-gradient(#c43a2c 0 72%, #d8a840 72%); }
-#breath { left: 50%; transform: translateX(-50%); bottom: calc(10vh + env(safe-area-inset-bottom, 0px)); width: 240px; padding: 6px 10px; display: grid; gap: 4px; text-align: center; }
+#breath { left: 50%; transform: translateX(-50%); bottom: calc(10vh + env(safe-area-inset-bottom, 0px)); width: 200px; padding: 6px 10px; display: grid; gap: 4px; text-align: center; }
 .meter { height: 8px; background: #1f2a23; border: 1px solid #3a4a3e; }
 .meter i { display: block; height: 100%; background: var(--moss); }
 #breathFill.low { background: var(--rust); }
@@ -340,7 +343,7 @@ class Pix {
 // ===== Sprites: all grafikk tegnes prosedyrisk som pikselkunst ved oppstart =====
 const SPR = {};   // statiske ting i skogen, SPR[type][variant]
 const ANI = {};   // dyr, ANI[art][kjønn][positur][bilde]
-const HUN = {};   // jeger, HUN[retning][sikter][bilde]
+const HUN = {};   // jeger, HUN[retning][0 går, 1 sikter, 2 tar opp børsa][bilde]; HUN.ots[bilde]: tar opp børsa, sett bakfra i 3D; HUN.chop[bilde]: hogger med øks
 const FX = {};    // effekter
 let ICON = {};    // butikk-ikoner
 
@@ -877,43 +880,85 @@ function genBird(sp, sex, pose, f) {
 }
 
 // ---------- Jeger ----------
+// Bilde i: 0 står, 1–4 går. Med r (0–3) tar jegeren børsa opp: 0 griper reima, 1 holder børsa på skrå foran
+// brystet, 2 går ned på kne, 3 kneler med kolben i skulderen og løpet rettet fram. ots: sett over høyre skulder i 3D,
+// der løpet peker inn mot midten av bildet i stedet for rett opp som på kartet
 const HW = 24, HH = 30, HOX = 12, HOY = 27;
-function genHunter(dir, i, aim) {
+// ax (0–3, bare fra siden): hogger med øks. 0 svinger øksa opp bak hodet, 1 på vei ned foran, 2 hogget i stammen, 3 dras løs igjen
+function genHunter(dir, i, r = -1, ots = false, ax = -1) {
   const p = new Pix(HW, HH);
   const hat = C('#3f5c3a'), hatD = C('#2c4430'), hatL = C('#56784a'), band = C('#ee7c2a'), skin = C('#e4b48c'), skinD = C('#c48e68'), beard = C('#6b4a30'),
     jac = C('#586c3e'), jacD = C('#3f502e'), jacL = C('#718648'), pant = C('#4c3f32'), pantD = C('#382e26'), boot = C('#231c18'),
-    pack = C('#80583a'), packD = C('#5c3e28'), packL = C('#a07448'), gun = C('#201a18'), wood = C('#8c5830');
-  const w = i > 0, ph = i - 1, b = w && (ph & 1) ? -1 : 0;
+    pack = C('#80583a'), packD = C('#5c3e28'), packL = C('#a07448'), gun = C('#201a18'), wood = C('#8c5830'), steel = C('#4a4440'),
+    axS = C('#8a8780'), axE = C('#eef0e8');
+  // armer, skaft og økseblad i hvert av de fire hoggebildene
+  const axe = k => {
+    if (k === 0) { p.line(11, 13, 8, 3, jacD, 2); p.rect(7, 1, 2, 2, skin); p.line(6, 2, 2, 7, wood, 1); p.rect(0, 7, 3, 3, axS); p.rect(0, 9, 3, 1, steel); p.rect(0, 10, 2, 1, axE); }
+    else if (k === 2) { p.line(12, 14, 15, 17, jacD, 2); p.rect(16, 17, 2, 2, skin); p.line(18, 18, 21, 18, wood, 1); p.rect(21, 16, 2, 5, axS); p.rect(21, 16, 2, 1, steel); p.rect(23, 17, 1, 3, axE); }
+    else { p.line(12, 13, 15, 9, jacD, 2); p.rect(16, 7, 2, 2, skin); p.line(18, 7, 20, 4, wood, 1); p.rect(19, 1, 3, 3, axS); p.rect(19, 1, 3, 1, steel); p.rect(22, 2, 1, 3, axE); }
+  };
+  // på kne sitter overkroppen tre piksler lavere; med øksa lener jegeren seg bakover i svingen og fram i hogget
+  const w = i > 0, ph = i - 1, kn = r >= 2 ? 3 : 0, b = (w && (ph & 1) ? -1 : 0) + kn, slung = r < 1, hx = ax === 0 ? -1 : ax === 2 ? 1 : 0;
   if (dir === 'side') {
-    const s = w ? [2, 0, -2, 0][ph] : 0, lf = w && ph === 1 ? 1 : 0, lf2 = w && ph === 3 ? 1 : 0;
-    p.line(11, 20, 11 - s, 26 - lf2, pantD, 2); p.rect(11 - s, 26 - lf2, 3, 1, boot);
-    p.line(12, 20, 12 + s, 26 - lf, pant, 2); p.rect(12 + s, 26 - lf, 3, 1, boot);
+    if (kn) {
+      // bakre kne i bakken med leggen flat bakover, fremre fot plantet foran
+      p.rect(10, 23, 2, 3, pantD); p.rect(5, 26, 7, 1, pantD); p.rect(3, 25, 2, 2, boot);
+      p.rect(12, 22, 4, 2, pant); p.rect(15, 22, 2, 4, pant); p.rect(15, 26, 3, 1, boot);
+    } else {
+      const s = w ? [2, 0, -2, 0][ph] : ax >= 0 ? 2 : 0, lf = w && ph === 1 ? 1 : 0, lf2 = w && ph === 3 ? 1 : 0;
+      p.line(11, 20, 11 - s, 26 - lf2, pantD, 2); p.rect(11 - s, 26 - lf2, 3, 1, boot);
+      p.line(12, 20, 12 + s, 26 - lf, pant, 2); p.rect(12 + s, 26 - lf, 3, 1, boot);
+    }
     p.rect(9, 12 + b, 6, 8, jac); p.rect(9, 19 + b, 6, 1, jacD); p.rect(9, 12 + b, 1, 8, jacD); p.rect(14, 12 + b, 1, 6, jacL);
     p.rect(6, 13 + b, 3, 6, pack); p.rect(6, 13 + b, 3, 1, packL); p.rect(6, 18 + b, 3, 1, packD); p.set(6, 15 + b, packD);
-    if (!aim) { p.line(9, 6 + b, 6, 19 + b, gun, 1); p.set(6, 18 + b, wood); p.set(6, 19 + b, wood); p.set(7, 17 + b, wood); }
-    p.rect(10, 7 + b, 4, 4, skin); p.rect(10, 7 + b, 1, 3, beard); p.set(13, 8 + b, C('#1a1412')); p.rect(11, 10 + b, 3, 1, beard); p.set(13, 9 + b, beard); p.rect(10, 11 + b, 4, 1, skinD);
-    p.rect(9, 6 + b, 7, 1, hatD); p.rect(10, 5 + b, 4, 1, band); p.rect(10, 3 + b, 4, 2, hat); p.rect(10, 3 + b, 3, 1, hatL);
-    if (aim) { p.rect(13, 13 + b, 4, 2, jacD); p.set(17, 13 + b, skin); p.set(17, 14 + b, skin); }
-    else { const ao = w ? -s / 2 : 0; p.line(12, 13 + b, 12 + ao, 17 + b, jacD, 2); p.rect(Math.round(12 + ao), 18 + b, 2, 1, skin); }
+    if (slung) { p.line(9, 6 + b, 6, 19 + b, gun, 1); p.set(6, 18 + b, wood); p.set(6, 19 + b, wood); p.set(7, 17 + b, wood); }
+    // armene som løfter øksa bak hodet skjules av hodet
+    if (ax === 0) axe(0);
+    p.rect(10 + hx, 7 + b, 4, 4, skin); p.rect(10 + hx, 7 + b, 1, 3, beard); p.set(13 + hx, 8 + b, C('#1a1412')); p.rect(11 + hx, 10 + b, 3, 1, beard); p.set(13 + hx, 9 + b, beard); p.rect(10 + hx, 11 + b, 4, 1, skinD);
+    p.rect(9 + hx, 6 + b, 7, 1, hatD); p.rect(10 + hx, 5 + b, 4, 1, band); p.rect(10 + hx, 3 + b, 4, 2, hat); p.rect(10 + hx, 3 + b, 3, 1, hatL);
+    if (ax > 0) axe(ax);
+    else if (r === 0) { p.rect(11, 12 + b, 2, 2, jacD); p.rect(9, 11 + b, 2, 2, skin); }
+    else if (r === 1 || r === 2) {
+      // [kolbe x, y, munning x, y, kolbens øvre ende x, y, hånd på grepet x, y, hånd foran x, y]
+      const L = r === 1 ? [10, 19, 17, 8, 11, 17, 12, 16, 14, 13] : [9, 17, 19, 10, 11, 16, 12, 15, 15, 13];
+      p.line(L[0], L[1] + b, L[2], L[3] + b, gun, 1); p.line(L[0], L[1] + b, L[4], L[5] + b, wood, 1);
+      p.line(12, 13 + b, L[6], L[7] - 1 + b, jacD, 2); p.line(13, 14 + b, L[8] - 1, L[9] + 1 + b, jacD, 1);
+      p.set(L[6], L[7] + b, skin); p.set(L[8], L[9] + b, skin);
+    } else if (r === 3) {
+      p.rect(9, 12 + b, 4, 2, wood); p.rect(13, 12 + b, 9, 1, gun); p.set(21, 11 + b, gun); p.set(21, 12 + b, steel);
+      p.rect(13, 13 + b, 4, 2, jacD); p.rect(17, 13 + b, 1, 2, skin); p.set(12, 14 + b, skin);
+    } else if (ax < 0) { const ao = w ? -[2, 0, -2, 0][ph] / 2 : 0; p.line(12, 13 + b, 12 + ao, 17 + b, jacD, 2); p.rect(Math.round(12 + ao), 18 + b, 2, 1, skin); }
   } else {
-    const l1 = w && ph === 0 ? 1 : 0, l2 = w && ph === 2 ? 1 : 0;
-    p.rect(9, 20, 2, 6 - l1, pant); p.rect(9, 26 - l1, 2, 1, boot); p.rect(13, 20, 2, 6 - l2, pantD); p.rect(13, 26 - l2, 2, 1, boot);
+    if (kn) { p.rect(8, 22, 3, 4, pant); p.rect(8, 26, 3, 1, boot); p.rect(13, 23, 3, 3, pantD); p.rect(13, 26, 3, 1, pantD); }
+    else {
+      const l1 = w && ph === 0 ? 1 : 0, l2 = w && ph === 2 ? 1 : 0;
+      p.rect(9, 20, 2, 6 - l1, pant); p.rect(9, 26 - l1, 2, 1, boot); p.rect(13, 20, 2, 6 - l2, pantD); p.rect(13, 26 - l2, 2, 1, boot);
+    }
     p.rect(8, 12 + b, 8, 8, jac); p.rect(8, 19 + b, 8, 1, jacD); p.rect(8, 12 + b, 1, 7, jacL);
     const a1 = w ? [1, 0, -1, 0][ph] : 0;
     if (dir === 'down') {
       p.rect(10, 12 + b, 4, 1, jacD); p.rect(9, 13 + b, 1, 4, packD); p.rect(14, 13 + b, 1, 4, packD);
-      if (aim) { p.rect(6, 13 + b, 2, 3, jacD); p.rect(16, 13 + b, 2, 3, jacD); p.rect(8, 15 + b, 8, 2, jacD); p.rect(11, 16 + b, 2, 1, skin); }
+      if (r === 0) { p.rect(6, 13 + b, 2, 5, jacD); p.rect(6, 18 + b, 2, 1, skin); p.rect(16, 11 + b, 2, 3, jacD); p.rect(15, 10 + b, 2, 1, skin); }
+      else if (r === 1 || r === 2) { p.line(6, 20 + b, 17, 10 + b, gun, 1); p.line(6, 20 + b, 8, 18 + b, wood, 2); p.rect(6, 13 + b, 2, 4, jacD); p.rect(8, 17 + b, 2, 1, skin); p.rect(16, 13 + b, 2, 2, jacD); p.set(14, 13 + b, skin); p.set(15, 12 + b, skin); }
+      // løpet rett mot deg: munningen som en mørk prikk foran brystet
+      else if (r === 3) { p.rect(6, 13 + b, 2, 3, jacD); p.rect(16, 13 + b, 2, 3, jacD); p.rect(8, 15 + b, 8, 2, jacD); p.rect(11, 12 + b, 2, 3, gun); p.set(11, 12 + b, steel); p.rect(11, 16 + b, 2, 1, skin); }
       else { p.rect(6, 13 + b, 2, 5 + a1, jacD); p.rect(6, 18 + b + a1, 2, 1, skin); p.rect(16, 13 + b, 2, 5 - a1, jacD); p.rect(16, 18 + b - a1, 2, 1, skin); }
       p.rect(9, 7 + b, 6, 4, skin); p.set(10, 8 + b, C('#1a1412')); p.set(13, 8 + b, C('#1a1412')); p.rect(9, 10 + b, 6, 1, beard); p.set(9, 9 + b, beard); p.set(14, 9 + b, beard); p.rect(10, 11 + b, 4, 1, beard);
     } else {
-      p.rect(6, 13 + b, 2, 5 + a1, jacD); p.rect(16, 13 + b, 2, 5 - a1, jacD);
+      // bakfra: børsa foran jegeren skjules av kroppen, bare løpet stikker fram ved høyre skulder
+      if (r === 0) { p.rect(6, 13 + b, 2, 5, jacD); p.rect(16, 11 + b, 2, 3, jacD); p.set(16, 10 + b, skin); }
+      else if (r === 1 || r === 2) { p.line(15, 12 + b, 18, 7 + b, gun, 1); p.rect(6, 13 + b, 2, 4, jacD); p.rect(16, 13 + b, 2, 4, jacD); }
+      else if (r === 3) { if (ots) p.line(15, 12 + b, 23, 9 + b, steel, 1); else p.line(16, 11 + b, 16, 2 + b, steel, 1); p.rect(4, 13 + b, 4, 2, jacD); p.rect(16, 12 + b, 4, 2, jacD); }
+      else { p.rect(6, 13 + b, 2, 5 + a1, jacD); p.rect(16, 13 + b, 2, 5 - a1, jacD); }
       p.rect(9, 12 + b, 6, 7, pack); p.rect(9, 12 + b, 6, 1, packL); p.rect(9, 18 + b, 6, 1, packD); p.rect(14, 13 + b, 1, 5, packD); p.set(11, 15 + b, packD); p.set(12, 15 + b, packD);
-      if (!aim) { p.line(8, 9 + b, 15, 19 + b, gun, 1); p.set(15, 19 + b, wood); p.set(14, 18 + b, wood); }
+      if (slung) { p.line(8, 9 + b, 15, 19 + b, gun, 1); p.set(15, 19 + b, wood); p.set(14, 18 + b, wood); }
       p.rect(9, 7 + b, 6, 3, beard); p.rect(10, 10 + b, 4, 1, skinD);
     }
     p.rect(7, 6 + b, 10, 1, hatD); p.rect(9, 5 + b, 6, 1, band); p.rect(9, 3 + b, 6, 2, hat); p.rect(9, 3 + b, 5, 1, hatL);
   }
   p.outlineAuto(0.42);
+  // fartsstripe etter øksebladet i buen over hodet (uten omriss)
+  if (ax === 1) for (const [x, y] of [[1, 5], [2, 3], [4, 1], [6, 0], [9, 0], [12, 0], [15, 0], [17, 0]]) p.set(x, y, C('#d8dcd2'));
   return mkSpr(p, HOX, HOY, {});
 }
 
@@ -968,18 +1013,37 @@ function genFx() {
     p.outlineAuto(0.4, true);
     return mkSpr(p, cx, by + 1, { nosh: 1 });
   });
-  // gapahuk: tak av stokker dekket med granbar, åpen front med granbar på golvet
-  { const p = new Pix(38, 27), wd = T('#3a2618', '#5e3c24', '#84583a', '#a07450'), gr = T('#1d4038', '#295642', '#39704e', '#548c5c'), by = 23;
-    for (let y = 8; y <= by; y++) for (let x = 6; x <= 31; x++) p.set(x, y, y < 11 ? C('#120e0a') : C('#1e1712'));
-    for (const y of [12, 15, 18]) for (let x = 6; x <= 31; x++) p.set(x, y, hash2(x >> 2, y, 3) < 0.5 ? wd[0] : C('#2c2016'));
-    for (let y = by - 3; y <= by; y++) for (let x = 5; x <= 32; x++) p.set(x, y, tone(gr, 0.35 + (y - by + 3) * 0.12 + (hash2(x, y, 5) - 0.5) * 0.5, x, y, 2));
-    p.rect(13, by - 3, 9, 2, C('#b8a488')); p.rect(13, by - 3, 9, 1, C('#d8c8a8'));
-    for (const x of [4, 32]) { p.rect(x, 6, 2, by - 5, wd[1]); p.rect(x, 6, 1, by - 5, wd[2]); }
-    for (let y = 0; y <= 5; y++) for (let x = 1 + (5 - y) * 0.4; x <= 36 - (5 - y) * 0.4; x++) p.set(x, y, tone(gr, 0.85 - y * 0.12 + (hash2(x >> 1, y, 9) - 0.5) * 0.45, x, y, 2));
-    for (let x = 1; x <= 36; x++) { p.set(x, 6, wd[3]); p.set(x, 7, wd[1]); p.set(x, 8, wd[0]); }
-    p.set(0, 7, wd[2]); p.set(37, 7, wd[2]);
+  // gapahuk: stokker reist mot hverandre som et telt (omvendt V) og krysset i mønet, åpen front med granbar på golvet
+  { const p = new Pix(43, 35), by = 33, cx = 21, half = 16, rise = 16, D = 12, LW = 4, s = rise / half, top = by - rise;
+    const bk = T('#231a14', '#3a2c20', '#56432f', '#76603f', '#988060'), gr = T('#182c24', '#22402f', '#2e5238', '#3e6440'), ms = T('#4e6a30', '#6a8a3a');
+    const edge = x => by - (half - Math.abs(x - cx)) * s;   // underkanten av de to framste stokkene
+    // åpningen: mørkt inn under mønet, granbar på golvet og framsida av de framste stokkene langs kanten
+    for (let y = top; y <= by; y++) for (let x = cx - half; x <= cx + half; x++) {
+      const e = y - edge(x); if (e <= 0) continue;
+      p.set(x, y, e < 1.8 ? bk[1] : y > by - 4 ? tone(gr, 0.3 + (y - by + 4) * 0.14 + (hash2(x, y, 5) - 0.5) * 0.5, x, y, 2)
+        : (y - top) / rise + (hash2(x, y, 4) - 0.5) * 0.2 > 0.6 ? C('#1e1712') : C('#120e0a'));
+    }
+    p.rect(cx - 4, by - 3, 8, 2, C('#b8a488')); p.rect(cx - 4, by - 3, 8, 1, C('#d8c8a8'));
+    // takflatene: tre stokker på hver side bakover; ext tegner endene som stikker forbi hverandre i mønet
+    const roof = (side, ext) => {
+      for (let x = 0; x < p.w; x++) {
+        const u = half + side * (cx - x); if (u < 0 || u > half + 4 || (u > half) !== ext) continue;
+        for (let y = 0; y <= by; y++) {
+          const d = by - u * s - y; if (d < 0 || d >= D) continue;
+          const k = Math.floor(d / LW), t = d / LW - k;
+          if (ext && u > half + 2 + ((hash2(k, side, 21) * 3) | 0)) continue;
+          const v = 0.28 + t * 0.5 + (side < 0 ? 0.14 : -0.16) + (hash2(u >> 1, k, 13 + side) - 0.5) * 0.22 + (hash2(k, side, 17) - 0.5) * 0.16;
+          p.set(x, y, k > 0 && t < 0.3 ? bk[0] : hash2(u, k, 31 + side) < 0.05 ? bk[1]
+            : u < 2.5 && hash2(x, y, 41) < 0.4 ? ms[(hash2(x, y, 43) * 2) | 0] : tone(bk, v, x, y, 2));
+        }
+      }
+    };
+    roof(1, false); roof(-1, false); roof(1, true); roof(-1, true);
+    // kappede ender der stokkene står mot bakken, og noen steiner
+    for (let k = 0; k < D / LW; k++) for (const bx of [cx - half - 1, cx + half + 1]) { p.set(bx, by - k * LW - 1, C('#b89a6c')); p.set(bx, by - k * LW - 2, C('#d4b88a')); }
+    for (const [x, y] of [[cx - half - 4, by - 1], [cx + half + 3, by - 4]]) { p.rect(x, y, 2, 2, C('#6e7472')); p.set(x, y, C('#979c94')); }
     p.outlineAuto(0.45);
-    FX.hut = mkSpr(p, 19, by, {}); }
+    FX.hut = mkSpr(p, cx, by, {}); }
   FX.bird = [['101', '010'], ['000', '111']].map(r => { const p = new Pix(3, 2); r.forEach((row, j) => row.split('').forEach((b, i) => { if (b === '1') p.set(i, j, C('#1c2224')); })); return p.canvas(); });
 }
 function genIcons() {
@@ -1039,7 +1103,10 @@ function genAll() {
   }
   DOGSPR.stand = [genAnimal(null, 'm', 'stand', 0, DOG)]; DOGSPR.mark = [genAnimal(null, 'm', 'alert', 0, DOG)];
   DOGSPR.walk = [0, 1, 2, 3].map(f => genAnimal(null, 'm', 'walk', f, DOG)); DOGSPR.run = [0, 1, 2, 3].map(f => genAnimal(null, 'm', 'run', f, DOG));
-  for (const d of ['side', 'down', 'up']) HUN[d] = [0, 1].map(a => [0, 1, 2, 3, 4].map(i => genHunter(d, i, a)));
+  // HUN[retning]: [står/går, sikter (siste løftebilde), de fire bildene der børsa tas opp]
+  for (const d of ['side', 'down', 'up']) { const r = [0, 1, 2, 3].map(k => genHunter(d, 0, k)); HUN[d] = [[0, 1, 2, 3, 4].map(i => genHunter(d, i)), [r[3], r[3], r[3], r[3], r[3]], r]; }
+  HUN.ots = [0, 1, 2, 3].map(k => genHunter('up', 0, k, true));
+  HUN.chop = [0, 1, 2, 3].map(k => genHunter('side', 0, -1, false, k));
   genFx(); ICON = genIcons();
 }
 // ===== Verden: evig skog generert bit for bit fra støyfunksjoner =====
@@ -1351,13 +1418,15 @@ function trunkBlock(x0, y0, x1, y1) {
   return best;
 }
 // ===== Lyd: alt syntetiseres med WebAudio, ingen lydfiler =====
-const AU = { ctx: null, muted: false, pianoT: 2, birdT: 2, padT: 0, ch: -1, mi: 3 };
+// focus: i siktet dempes bakgrunnen (vind, drone, piano og fugler går gjennom AU.amb), så pusten høres
+const AU = { ctx: null, muted: false, pianoT: 2, birdT: 2, padT: 0, ch: -1, mi: 3, focus: false };
 function auInit() {
   if (AU.ctx) { if (AU.ctx.state === 'suspended') AU.ctx.resume(); return; }
   const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
   let c;
   try { c = AU.ctx = new AC(); } catch (e) { return; }
   AU.master = c.createGain(); AU.master.gain.value = 0.75; AU.master.connect(c.destination);
+  AU.amb = c.createGain(); AU.amb.connect(AU.master);
   // ekko gir skogklang
   AU.echoIn = c.createGain(); AU.echoIn.gain.value = 0.5;
   const dl = c.createDelay(1), fb = c.createGain(), lp = c.createBiquadFilter();
@@ -1367,24 +1436,24 @@ function auInit() {
   const ir = c.createBuffer(2, c.sampleRate * 3, c.sampleRate);
   for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 4); }
   AU.verbIn = c.createConvolver(); AU.verbIn.buffer = ir;
-  const vg = c.createGain(); vg.gain.value = 0.35; AU.verbIn.connect(vg); vg.connect(AU.master);
+  const vg = c.createGain(); vg.gain.value = 0.35; AU.verbIn.connect(vg); vg.connect(AU.amb);
   const nb = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), d = nb.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   AU.noise = nb;
   // vindsus
   const ws = c.createBufferSource(); ws.buffer = nb; ws.loop = true;
   const wf = c.createBiquadFilter(); wf.type = 'bandpass'; wf.frequency.value = 360; wf.Q.value = 0.5;
-  AU.windG = c.createGain(); AU.windG.gain.value = 0.03; ws.connect(wf); wf.connect(AU.windG); AU.windG.connect(AU.master); ws.start();
+  AU.windG = c.createGain(); AU.windG.gain.value = 0.03; ws.connect(wf); wf.connect(AU.windG); AU.windG.connect(AU.amb); ws.start();
   AU.windF = wf;
   // lav drone under musikken
-  AU.pad = c.createGain(); AU.pad.gain.value = 0.0001; AU.pad.connect(AU.master);
+  AU.pad = c.createGain(); AU.pad.gain.value = 0.0001; AU.pad.connect(AU.amb);
   for (const f of [73.42, 110, 146.83]) { const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = f; const g = c.createGain(); g.gain.value = f < 100 ? 0.5 : 0.25; o.connect(g); g.connect(AU.pad); o.start(); }
 }
 function auEnv(g, t, att, peak, dur) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + att); g.gain.exponentialRampToValueAtTime(0.0001, t + att + dur); }
 function auOut(node, o) {
   const c = AU.ctx; let out = node;
   if (o && o.pan != null && c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = o.pan; node.connect(p); out = p; }
-  out.connect(AU.master); if (o && o.echo) out.connect(AU.echoIn); if (o && o.verb) out.connect(AU.verbIn);
+  out.connect(o && o.bus || AU.master); if (o && o.echo) out.connect(AU.echoIn); if (o && o.verb) out.connect(AU.verbIn);
 }
 function auTone(type, f0, f1, dur, vol, o) {
   if (!AU.ctx || AU.muted) return; o = o || {};
@@ -1423,6 +1492,13 @@ const sfx = {
   // friluft: øksehogg, tre som faller, knitring fra bålet, steking, fyrstikk og nys
   chop() { auNoise(0.05, 0.3, 'bandpass', 900, 400, 1.5, { echo: true }); auTone('triangle', 220, 140, 0.06, 0.15); },
   fall() { auNoise(0.5, 0.2, 'highpass', 2500, 800, 0.6); auNoise(0.5, 0.4, 'lowpass', 600, 120, 0.7, { delay: 0.45, echo: true }); auTone('sine', 90, 40, 0.3, 0.5, { delay: 0.45 }); },
+  // treet som velter: fibrene knekker, stammen knirker, og kronen suser stadig fortere gjennom lufta (FALL_T lang)
+  creak(k = 1) {
+    for (let i = 0; i < 6; i++) auNoise(0.03, 0.16 * k, 'highpass', 1800 + Math.random() * 1600, 0, 1, { delay: i * 0.09 + Math.random() * 0.05 });
+    auTone('triangle', 150, 95, 0.9, 0.05 * k, { delay: 0.1, att: 0.25 });
+    auNoise(0.25, 0.09 * k, 'bandpass', 500, 1600, 0.7, { delay: 0.6, att: 0.95 });
+  },
+  crash(k = 1) { auNoise(0.7, 0.45 * k, 'lowpass', 700, 110, 0.7, { echo: true }); auTone('sine', 85, 38, 0.35, 0.55 * k); auNoise(0.3, 0.14 * k, 'highpass', 3200, 1200, 0.6); },
   crackle(k = 1) { for (let i = 0; i < 3; i++) auNoise(0.015, 0.12 * k * Math.random(), 'highpass', 2500 + Math.random() * 2000, 0, 1, { delay: Math.random() * 0.3 }); },
   sizzle() { auNoise(1, 0.05, 'highpass', 5000, 3500, 0.5, { att: 0.1 }); },
   strike() { auNoise(0.12, 0.2, 'bandpass', 3000, 1200, 1); auNoise(0.5, 0.06, 'lowpass', 900, 300, 0.5, { delay: 0.1, att: 0.1 }); },
@@ -1436,6 +1512,21 @@ const sfx = {
   buy() { auTone('triangle', 523.3, 0, 0.18, 0.08); auTone('triangle', 784, 0, 0.3, 0.08, { delay: 0.09 }); },
   deny() { auTone('triangle', 196, 150, 0.16, 0.07); },
   scent() { auNoise(0.03, 0.12, 'bandpass', 1300, 0, 3); auNoise(0.25, 0.05, 'highpass', 4200, 0, 0.7, { delay: 0.1, att: 0.05 }); },
+  // sikte: klær som rasler og reima som klirrer når børsa tas opp, kolben som legger seg i skulderen, og når den tas ned
+  shoulder() { auNoise(0.32, 0.045, 'bandpass', 900, 2200, 0.7, { att: 0.08 }); auNoise(0.02, 0.04, 'highpass', 5200, 0, 1, { delay: 0.12 }); },
+  settle() { auTone('sine', 140, 70, 0.07, 0.1); auNoise(0.06, 0.05, 'lowpass', 700, 300, 0.7); },
+  kneel() { auNoise(0.12, 0.06, 'lowpass', 520, 180, 0.7); auNoise(0.18, 0.025, 'bandpass', 2400, 1200, 0.8, { delay: 0.03 }); },
+  lower() { auNoise(0.22, 0.035, 'bandpass', 1800, 800, 0.7, { att: 0.05 }); },
+  // pust: et drag inn (lyst sus som stiger) eller ut (mørkere sus som synker); andpusten blir den høy og kort
+  breath(inn, winded) {
+    const v = winded ? 0.06 : 0.022, d = winded ? 0.38 : inn ? 0.9 : 1.2;
+    if (inn) auNoise(d, v, 'bandpass', 1100, 1900, 1.2, { att: d * 0.5 });
+    else auNoise(d, v * 1.1, 'bandpass', 900, 450, 1, { att: d * 0.25 });
+  },
+  exhale() { auNoise(0.7, 0.05, 'bandpass', 1000, 420, 0.9, { att: 0.05 }); },
+  heart(k = 1) {
+    for (const [dl, v] of [[0, 1], [0.2, 0.65]]) { auTone('sine', 62, 44, 0.09, 0.2 * k * v, { delay: dl, att: 0.008 }); auNoise(0.05, 0.04 * k * v, 'lowpass', 180, 0, 0.7, { delay: dl }); }
+  },
 };
 // Myk filtpiano: noen få deltoner gjennom et lavpass som lukker seg, og en lang hale i romklangen
 function auPiano(f, delay, vol) {
@@ -1449,7 +1540,7 @@ function auPiano(f, delay, vol) {
     const o = c.createOscillator(), og = c.createGain(); o.frequency.value = f * r; o.detune.value = cents; og.gain.value = a;
     o.connect(og); og.connect(lp); o.start(t); o.stop(t + 0.4 + dur);
   }
-  lp.connect(g); auOut(g, { pan: clamp((f - 260) / 600, -0.35, 0.35), verb: true });
+  lp.connect(g); auOut(g, { pan: clamp((f - 260) / 600, -0.35, 0.35), verb: true, bus: AU.amb });
 }
 // Rolig bakgrunn: piano over sakte akkorder i d-moll, fugler om dagen
 const PIANO_CH = [[146.83, 220, 349.23], [116.54, 174.61, 293.66], [87.31, 130.81, 220], [130.81, 196, 293.66]]; // Dm, B♭, F, C
@@ -1471,6 +1562,7 @@ function auAmbient(dt, dayl, windS) {
   const c = AU.ctx; if (!c) return;
   AU.windG.gain.setTargetAtTime(AU.muted ? 0 : 0.014 + 0.03 * windS, c.currentTime, 0.8);
   AU.pad.gain.setTargetAtTime(AU.muted ? 0.0001 : 0.022 + 0.012 * Math.sin(c.currentTime * 0.07), c.currentTime, 1.5);
+  AU.amb.gain.setTargetAtTime(AU.focus ? 0.4 : 1, c.currentTime, 0.25);
   if (AU.muted) return;
   AU.pianoT -= dt;
   if (AU.pianoT <= 0) { const bar = rnd(8, 11); pianoBar(bar); AU.pianoT = bar; }
@@ -1478,7 +1570,7 @@ function auAmbient(dt, dayl, windS) {
   AU.birdT -= dt;
   if (AU.birdT <= 0) {
     AU.birdT = rnd(2, 8);
-    if (dayl > 0.4) { const f = rnd(3200, 5600), n = 3 + ((Math.random() * 5) | 0), pan = rnd(-0.9, 0.9), gap = rnd(0.06, 0.1); for (let k = 0; k < n; k++) auTone('sine', f * rnd(0.9, 1.1), f * rnd(0.75, 1.35), rnd(0.025, 0.06), 0.016, { delay: k * gap, pan, att: 0.008 }); }
+    if (dayl > 0.4) { const f = rnd(3200, 5600), n = 3 + ((Math.random() * 5) | 0), pan = rnd(-0.9, 0.9), gap = rnd(0.06, 0.1); for (let k = 0; k < n; k++) auTone('sine', f * rnd(0.9, 1.1), f * rnd(0.75, 1.35), rnd(0.025, 0.06), 0.016, { delay: k * gap, pan, att: 0.008, bus: AU.amb }); }
   }
 }
 function auMute(m) { AU.muted = m; if (AU.ctx) AU.master.gain.setTargetAtTime(m ? 0 : 0.75, AU.ctx.currentTime, 0.05); }
@@ -1541,7 +1633,7 @@ const ZONES = { head: ['Hodeskudd', 2.2, 0.95], vital: ['Hjerte/lunge', 1.6, 1],
 const fmtKg = kg => String(kg).replace('.', ',') + ' kg';
 
 const G = {
-  t: 0, hour: 6.6, day: 1, money: 0, scents: 2, treats: TREAT_START, wood: 0, matches: 0, meat: 0, fires: [], huts: [], cut: new Set(), crackT: 0, journal: [], up: {}, started: false, paused: false, panel: null, gun: 'rifle',
+  t: 0, hour: 6.6, day: 1, money: 0, scents: 2, treats: TREAT_START, wood: 0, matches: 0, meat: 0, fires: [], huts: [], falls: [], cut: new Set(), crackT: 0, journal: [], up: {}, started: false, paused: false, panel: null, gun: 'rifle',
   wind: { a: 0, s: 0.5, x: 1, y: 0 }, animals: [], scentObjs: [], blood: [], parts: [], msgs: [], spawnT: 0, quiet: [], dayl: 1, hunters: [], saveT: 15, pauseT: 0,
 };
 for (const u of UPG) G.up[u.id] = 0;
@@ -2000,12 +2092,13 @@ function dogSprite(d) {
 
 // ---------- friluft: øks, ved, bål, gapahuk og helse ----------
 // Arbeid (hogge, bygge, steke) tar litt tid og avbrytes hvis du går eller sikter
-function startWork(kind, dur, done) { if (!P.work) P.work = { kind, t: 0, dur, done, beat: 0 }; }
+function startWork(kind, dur, done, o) { if (!P.work) P.work = Object.assign({ kind, t: 0, dur, done, beat: 0 }, o); }
 function workUpdate(dt) {
   const w = P.work; if (!w) return;
-  if (P.moving || P.aim || G.panel) { P.work = null; return; }
+  if (P.moving || P.aim || G.panel || w.tree && !CHOP[w.tree.k]) { P.work = null; return; }
   w.t += dt; w.beat -= dt;
-  if (w.beat <= 0) {
+  if (w.tree) chopStep(w, dt);
+  else if (w.beat <= 0) {
     w.beat = w.kind === 'cook' ? 1.1 : 0.55;
     if (w.kind === 'cook') sfx.sizzle();
     else { sfx.chop(); for (let i = 0; i < 3; i++) G.parts.push({ x: P.x + (P.flip ? -6 : 6), y: P.y - 1, z: rnd(4, 9), vx: rnd(-18, 18), vy: rnd(-5, 5), vz: rnd(6, 16), life: rnd(0.3, 0.6), col: '#d8c090', grav: 1 }); }
@@ -2026,14 +2119,57 @@ function scare(x, y, r) {
     if (d < r * 0.5) { a.aware = 1.5; startFlee(a, x, y); } else if (d < r) a.aware = Math.max(a.aware, 0.6);
   }
 }
+// Jegeren stiller seg et skaftlengde fra stammen (side: hvilken side av stammen hakket er på) og hogger.
+// Det siste hogget kommer idet arbeidet er ferdig, og treet velter vekk fra jegeren
 function chop(o) {
   P.face = 'side'; P.flip = o.x < P.x;
+  const side = P.flip ? 1 : -1, gx = o.x + side * 10, gy = o.y + 2;
   startWork('chop', 3.2, () => {
     const n = CHOP[o.k]; if (!n) return; // en annen rakk å felle det
-    for (let i = 0; i < 12; i++) G.parts.push({ x: o.x + rnd(-6, 6), y: o.y, z: rnd(8, 40), vx: rnd(-20, 20), vy: rnd(-6, 6), vz: rnd(0, 10), life: rnd(0.6, 1.4), col: i & 1 ? '#c8a474' : o.k === 'birch' ? '#e6bd52' : '#3d6a44', grav: 1 });
-    cutTree(o.x, o.y); netSend({ t: 'cut', x: o.x, y: o.y }); if (isAuth()) scare(o.x, o.y, 420);
-    G.wood += n; sfx.fall(); msg('Treet falt. +' + n + ' ved (' + G.wood + ' i alt).', 'good'); save();
-  });
+    fellTree(o.x, o.y, -side); netSend({ t: 'cut', x: o.x, y: o.y, d: -side }); if (isAuth()) scare(o.x, o.y, 420);
+    G.wood += n; msg('Treet faller! +' + n + ' ved (' + G.wood + ' i alt).', 'good'); save();
+  }, Object.assign({ tree: o, side, hits: 0, beat: 0.4 }, isWater(gx, gy) ? {} : { gx, gy }));
+}
+// Hoggebildet ut fra tida til neste hogg: øksa sitter i stammen, dras løs, svinges opp bak hodet og kommer ned
+const chopFrame = w => w.beat > 0.43 ? 2 : w.beat > 0.36 ? 3 : w.beat > 0.08 ? 0 : 1;
+const LEAF_C = { spruce: '#39704e', pine: '#558847', birch: '#e2b03a', rowan: '#cc7a38' };
+// Hvert hogg sprøyter flis ut av hakket, rister kronen så nåler og blader drysser ned, og gjør hakket dypere
+function chopStep(w, dt) {
+  const o = w.tree;
+  if (w.gx !== undefined) { const k = Math.min(1, dt * 12), c = collide(lerp(P.x, w.gx, k), lerp(P.y, w.gy, k), 3); P.x = c.x; P.y = c.y; }
+  if (w.beat > 0) return;
+  w.beat = 0.55; w.hits++; o.hit = G.t; o.hitD = -w.side; sfx.chop();
+  for (let i = 0; i < 6; i++) G.parts.push({ x: o.x + w.side * 2, y: o.y + 0.5, z: rnd(5, 7), vx: w.side * rnd(10, 36), vy: rnd(-6, 6), vz: rnd(8, 24), life: rnd(0.6, 1.2), col: ['#f0dcac', '#d8c090', '#c8a474', '#5a4030'][i & 3], grav: 1 });
+  const s = SPR[o.k][o.v], lc = LEAF_C[o.k];
+  if (lc) for (let i = 0; i < 3; i++) G.parts.push({ x: o.x + rnd(-10, 10), y: o.y + rnd(0, 2), z: s.ay * rnd(0.5, 0.85), vx: 0, vy: 0, vz: -rnd(14, 24), life: rnd(3, 4.5), col: lc, leaf: Math.random() * TAU, grav: 0 });
+}
+// Treet velter (dir: 1 mot høyre, -1 mot venstre): sakte først mens det knaker, så fortere og fortere,
+// et brak når det slår i bakken og en liten sprett før det blir liggende. Det fjernes først når det er utenfor skjermen
+const FALL_T = 1.6;
+const nearK = (x, y) => clamp(1 - hyp(x - P.x, y - P.y) / 700, 0, 1);
+function fellTree(x, y, dir) {
+  const ch = chunks.get(Math.floor(x / CS) + ',' + Math.floor(y / CS)), o = ch && ch.objs.find(o => o.x === x && o.y === y && CHOP[o.k]);
+  if (o) { G.falls.push({ x, y, s: SPR[o.k][o.v], lc: LEAF_C[o.k], dir: dir < 0 ? -1 : 1, t: 0 }); const k = nearK(x, y); if (k > 0) sfx.creak(k); }
+  cutTree(x, y);
+}
+function fallAng(f) {
+  if (f.t < FALL_T) return Math.PI / 2 * Math.pow(f.t / FALL_T, 2.6);
+  const v = f.t - FALL_T; return Math.PI / 2 - 0.1 * Math.abs(Math.sin(v * 12)) * Math.exp(-v * 5);
+}
+function fallUpdate(dt) {
+  for (const f of G.falls) {
+    f.t += dt;
+    if (f.t < FALL_T || f.hit) continue;
+    // nedslaget: jord og støv langs stammen, og nåler eller blader som spruter fra kronen
+    f.hit = 1; const k = nearK(f.x, f.y); if (k > 0) sfx.crash(k);
+    const L = f.s.ay - 6;
+    for (let i = 0; i < 30; i++) {
+      const a = rnd(0.15, 1) * L, crown = a > L * 0.55;
+      G.parts.push({ x: f.x + f.dir * a, y: f.y + rnd(-3, 3), z: rnd(0, 3), vx: rnd(-14, 14), vy: rnd(-5, 5), vz: rnd(8, crown ? 30 : 18), life: rnd(0.5, 1.2), col: crown && f.lc && i & 1 ? f.lc : ['#8a7a5c', '#6a5a44', '#c8a474'][i % 3], grav: 1 });
+    }
+    for (let i = 0; i < 10; i++) G.parts.push({ x: f.x + f.dir * rnd(0.3, 1) * L, y: f.y + rnd(-2, 2), z: rnd(1, 5), vx: rnd(-8, 8), vy: rnd(-3, 3), vz: rnd(2, 6), life: rnd(1, 2), col: '#b8ae96', smoke: 1 });
+  }
+  G.falls = G.falls.filter(f => f.t < FALL_T + 1 || Math.abs(f.x - CAM.x) < CAM.w / 2 + 120 && Math.abs(f.y - CAM.y) < CAM.h / 2 + 40);
 }
 const fireSpr = f => FX.fire[((G.t * 8 + f.id * 7) | 0) % 3];
 const nearFire = (x, y, r) => G.fires.find(f => f.t > 0 && hyp(f.x - x, f.y - y) < r);
@@ -2121,8 +2257,10 @@ const KEYS = {}, MOUSE = { x: 0, y: 0, wx: 0, wy: 0, locked: false };
 function playerUpdate(dt) {
   P.cycle = Math.max(0, P.cycle - dt); P.callCd = Math.max(0, P.callCd - dt);
   if (P.reload > 0) { P.reload -= dt; if (P.reload <= 0) { P.reload = 0; P.ammo = gunCap(); } }
+  aimUpdate(dt);
+  // du står i ro mens du tar børsa opp og sikter
   let mx = 0, my = 0;
-  if (G.started && !G.paused && !P.aim) {
+  if (G.started && !G.paused && !P.aim && !AIM.want) {
     if (KEYS.KeyA || KEYS.ArrowLeft) mx -= 1; if (KEYS.KeyD || KEYS.ArrowRight) mx += 1;
     if (KEYS.KeyW || KEYS.ArrowUp) my -= 1; if (KEYS.KeyS || KEYS.ArrowDown) my += 1;
   }
@@ -2193,6 +2331,7 @@ function update(dt) {
   G.hunters = hunters();
   playerUpdate(dt);
   workUpdate(dt);
+  fallUpdate(dt);
   healthUpdate(dt);
   dogUpdate(dt);
   netUpdate(dt);
@@ -2267,13 +2406,32 @@ function toScreen(wx, wy) { return [(wx - CAM.ox) * CAM.S + CAM.dx, (wy - CAM.oy
 function toWorld(sx, sy) { return [(sx - CAM.dx) / CAM.S + CAM.ox, (sy - CAM.dy) / CAM.S + CAM.oy]; }
 
 function drawSway(o, s, X, Y) {
-  const sw = (Math.sin(G.t * 1.3 + o.ph) * 0.8 + G.wind.x * 0.6) * G.wind.s * 2.2;
+  let sw = (Math.sin(G.t * 1.3 + o.ph) * 0.8 + G.wind.x * 0.6) * G.wind.s * 2.2;
+  // kronen rister når øksa går inn i stammen
+  if (o.hit) { const u = G.t - o.hit; if (u < 0.5) sw += o.hitD * Math.sin(u * 32) * (1 - u * 2) * 2.5; }
   if (Math.abs(sw) < 0.5) { b.drawImage(s.c, X - s.ax, Y - s.ay); return; }
   const bh = 6;
   for (let y0 = 0; y0 < s.h; y0 += bh) {
     const k = 1 - y0 / s.h, off = Math.round(sw * k * k), hh = Math.min(bh, s.h - y0);
     b.drawImage(s.c, 0, y0, s.w, hh, X - s.ax + off, Y - s.ay + y0, s.w, hh);
   }
+}
+// Hakket i stammen på siden mot jegeren blir dypere for hvert hogg; skjult under greiner tegnes det ikke
+function drawNotch(s, X, Y, w) {
+  const ry = s.ay - 6, d = Math.min(3, (w.hits + 1) >> 1);
+  let x = s.ax; while (Math.abs(x - s.ax) < 5 && s.pix.get(x + w.side, ry)) x += w.side;
+  if (Math.abs(x - s.ax) >= 5) return;
+  const px = (i, dy, c) => { b.fillStyle = c; b.fillRect(X - s.ax + x - w.side * i, Y - s.ay + ry + dy, 1, 1); };
+  for (let i = 0; i < d; i++) { px(i, 0, i === d - 1 ? '#2a1c12' : '#c8a474'); if (i < d - 1) { px(i, -1, '#e8d0a0'); px(i, 1, '#8a6a48'); } }
+}
+// Felt tre: dreies rundt hakket, glir ned på bakken og flates litt ut når det ligger
+function drawFall(f, ox, oy) {
+  const s = f.s, a = fallAng(f), e = Math.sin(a), cut = 6, hs = s.ay - cut;
+  b.save();
+  b.translate(Math.round(f.x - ox), Math.round(f.y - oy) - cut + Math.round((cut - 2) * e));
+  b.scale(1, 1 - 0.45 * e); b.rotate(a * f.dir);
+  b.drawImage(s.c, 0, 0, s.w, hs, -s.ax, -hs, s.w, hs);
+  b.restore();
 }
 // Jeger; ute på djupt vann synker kroppen så bare overkroppen stikker opp
 function drawHunter(s, X, Y, flip, deep) {
@@ -2285,14 +2443,20 @@ let genBudgetT = 0;
 // Tåke og dis over døgnet: tett om morgenen, litt om kvelden
 const mist = h => 0.6 * smooth(3, 5.5, h) * (1 - smooth(7.5, 10.5, h)) + 0.1 + 0.3 * smooth(18.5, 21, h) * (1 - smooth(23, 24, h));
 function render(dt) {
-  if (G.started && P.aim) { render3D(dt); return; }
+  // bytter vi mellom kart og 3D, løses det forrige bildet opp i rutemønster over det nye
+  const v3 = G.started && (P.aim || aimThird());
+  if (v3 !== AIM.v3) { AIM.v3 = v3; if (!G.paused) snapStart(); }
+  if (v3) { render3D(dt); snapDraw(dt); return; }
   // kamera
   let tx, ty, tz = 1;
   if (!G.started) { tx = P.x + Math.sin(G.t * 0.05) * 70; ty = P.y - 30 + Math.cos(G.t * 0.04) * 30; }
   else { tx = P.x; ty = P.y - 10; }
-  CAM.z = lerp(CAM.z, tz, Math.min(1, dt * 9));
+  // når børsa tas opp, går kameraet inn mot jegeren
+  const re = smooth(0, 1, AIM.raise);
+  if (re > 0) { ty -= 7 * re; tz = 1 + 1.2 * re; }
+  CAM.z = re > 0 ? tz : lerp(CAM.z, tz, Math.min(1, dt * 9));
   if (Math.abs(CAM.z - tz) < 0.01) CAM.z = tz;
-  const fk = P.aim ? Math.min(1, dt * 14) : Math.min(1, dt * 5);
+  const fk = re > 0 ? Math.min(1, dt * 14) : Math.min(1, dt * 5);
   CAM.x = lerp(CAM.x, tx, fk); CAM.y = lerp(CAM.y, ty, fk);
   const S = CAM.S = ZB * CAM.z, vw = W / S, vh = H / S;
   CAM.w = vw; CAM.h = vh;
@@ -2319,7 +2483,9 @@ function render(dt) {
     }
   }
   for (const a of G.animals) { const s = animalSprite(a); if (a.x + 50 < ox || a.x - 50 > ox + bw || a.y - 70 > oy + bh || a.y + 20 < oy) continue; items.push({ y: a.y - (a.state === 'dead' ? 2 : 0), a, s }); }
-  const hs = HUN[P.face][P.aim ? 1 : 0][P.moving ? 1 + ((P.walkT * 7.5) | 0) % 4 : 0];
+  // på vei inn i 3D griper jegeren reima; når børsa senkes, går løftebildene baklengs
+  const rk = AIM.raise > 0 && !P.moving ? AIM.want ? 0 : Math.min(3, (AIM.raise * 4) | 0) : -1;
+  const hs = P.work && P.work.tree ? HUN.chop[chopFrame(P.work)] : rk >= 0 ? HUN[P.face][2][rk] : HUN[P.face][P.aim ? 1 : 0][P.moving ? 1 + ((P.walkT * 7.5) | 0) % 4 : 0];
   items.push({ y: P.y, hunter: 1, s: hs });
   for (const r of NET.peers.values()) {
     if (!r.started || r.in || r.x + 20 < ox || r.x - 20 > ox + bw || r.y - 40 > oy + bh || r.y + 10 < oy) continue;
@@ -2332,14 +2498,15 @@ function render(dt) {
   // ting som står stille på bakken: luktflasker, bål og gapahuker
   for (const so of G.scentObjs) items.push({ y: so.y, at: so, s: FX.bottle });
   for (const f of G.fires) items.push({ y: f.y, at: f, s: fireSpr(f) });
-  for (const h of G.huts) if (h.x + 24 > ox && h.x - 24 < ox + bw && h.y - 30 < oy + bh && h.y + 6 > oy) items.push({ y: h.y, at: h, s: FX.hut });
+  for (const f of G.falls) if (Math.abs(f.x - ox - bw / 2) < bw / 2 + 110 && f.y > oy - 10 && f.y < oy + bh + 110) items.push({ y: f.y, fall: f, s: f.s });
+  for (const h of G.huts) if (h.x + 24 > ox && h.x - 24 < ox + bw && h.y - 36 < oy + bh && h.y + 6 > oy) items.push({ y: h.y, at: h, s: FX.hut });
   items.sort((p, q) => p.y - q.y);
   // skygger (silhuetter skjøvet bort fra sola)
   const h = G.hour, sunT = clamp((h - 6) / 13, 0, 1), dayl = G.dayl;
   const sdx = dayl > 0.05 ? lerp(-1.0, 1.0, sunT) : 0.35, sls = dayl > 0.05 ? 0.3 + 0.4 * (1 - Math.sin(Math.PI * sunT)) : 0.4;
   sh.setTransform(1, 0, 0, 1, 0, 0); sh.clearRect(0, 0, bw, bh);
   for (const it of items) {
-    if (it.s.nosh || it.o && (it.o.k === 'fern' || it.o.k === 'grassT' || it.o.k === 'reed') || it.hunter && P.deep) continue;
+    if (it.s.nosh || it.fall || it.o && (it.o.k === 'fern' || it.o.k === 'grassT' || it.o.k === 'reed') || it.hunter && P.deep) continue;
     // fugl i lufta kaster bare en liten flekk på bakken under seg
     if (it.a && it.a.z > 1) { sh.setTransform(1, 0, 0, 1, 0, 0); sh.fillStyle = '#0b1a1c'; sh.fillRect(Math.round(it.a.x - ox) - 3, Math.round(it.a.y - oy) - 1, 6, 2); continue; }
     const ent = it.o || it.a || it.peer || it.dog || it.at || P, flip = it.a || it.dog ? ent.face < 0 : it.hunter ? P.flip && P.face === 'side' : it.peer ? it.peer.flip && it.peer.face === 'side' : false;
@@ -2373,6 +2540,7 @@ function render(dt) {
       if (s.tall || s.tallC) for (const r of reveal) if (o.y > r[1] + 7 && o.y - s.ay * 0.92 < r[1] && Math.abs(o.x - r[0]) < s.w * 0.42) { ta = 0.42; break; }
       o.a = lerp(o.a, ta, Math.min(1, dt * 6)); b.globalAlpha = o.a;
       if (s.sway) drawSway(o, s, X, Y); else b.drawImage(s.c, X - s.ax, Y - s.ay);
+      if (P.work && P.work.tree === o && P.work.hits && CHOP[o.k]) drawNotch(s, X, Y, P.work);
       b.globalAlpha = 1;
     } else if (it.a) {
       const a = it.a, s = it.s, X = Math.round(a.x - ox), Y = Math.round(a.y - (a.z || 0) - oy);
@@ -2393,7 +2561,8 @@ function render(dt) {
       else b.drawImage(s.c, X - s.ax, Y - s.ay);
       // står hunden for vilt, hopper en oransje nål over den
       if (d.st === 'mark') icons.push([FX.mark, X - 5, Y - 34 - Math.round(Math.abs(Math.sin(G.t * 5)) * 3)]);
-    } else if (it.at) b.drawImage(it.s.c, Math.round(it.at.x - ox) - it.s.ax, Math.round(it.at.y - oy) - it.s.ay);
+    } else if (it.fall) drawFall(it.fall, ox, oy);
+    else if (it.at) b.drawImage(it.s.c, Math.round(it.at.x - ox) - it.s.ax, Math.round(it.at.y - oy) - it.s.ay);
   }
   // partikler
   for (const p of G.parts) {
@@ -2445,7 +2614,7 @@ function render(dt) {
   m.setTransform(1, 0, 0, 1, 0, 0); m.imageSmoothingEnabled = false;
   m.fillStyle = '#121a16'; m.fillRect(0, 0, W, H);
   m.drawImage(buf, 0, 0, bw, bh, CAM.dx, CAM.dy, bw * S, bh * S);
-  drawOverlay();
+  drawOverlay(); snapDraw(dt);
   // forhåndsgenerer bakke rundt synsfeltet
   const t0 = performance.now();
   outer: for (let cy = r0 - 1; cy <= r1 + 1; cy++) for (let cx = c0 - 1; cx <= c1 + 1; cx++) { const ch = getChunk(cx, cy); if (!ch.ground) { genGround(ch); if (performance.now() - t0 > 4) break outer; } }
@@ -2469,53 +2638,12 @@ function pxText(t, x, y, size, col, align) {
   m.fillStyle = 'rgba(10,14,12,0.85)'; m.fillText(t, x + DPR * 1.5, y + DPR * 1.5); m.fillStyle = col; m.fillText(t, x, y);
 }
 function drawOverlay() {
-  const u = Math.max(2, Math.round(2 * DPR)), l = lv('scope');
-  if (G.started && P.aim) {
-    // siktene vandrer med pust og uro (rx, ry), mens kikkerten og skyggen rundt står midt i bildet (cx, cy)
-    const rx = AIM.sx * ZB, ry = AIM.sy * ZB, cx = AIM.cx * ZB, cy = AIM.cy * ZB;
-    if (hagle()) {
-      // hagle: ett løp, eller to side om side, peker inn mot perla; vidt bilde uten forstørrelse
-      const k = u * 3, bx = W / 2, top = ry + k * 0.7, two = lv('hagle') === 2;
-      const barrel = (x0, w0, w1) => { m.beginPath(); m.moveTo(x0 - w0, top); m.lineTo(x0 + w0, top); m.lineTo(bx + (x0 - rx) * 8 + w1, H); m.lineTo(bx + (x0 - rx) * 8 - w1, H); m.closePath(); m.fill(); };
-      m.fillStyle = '#1a1816';
-      if (two) { barrel(rx - k * 0.8, k * 0.8, k * 6); barrel(rx + k * 0.8, k * 0.8, k * 6); } else barrel(rx, k, k * 7);
-      m.fillStyle = '#3a352e'; barrel(rx, k * 0.22, k * 1.4);
-      m.fillStyle = '#f2ead0'; m.beginPath(); m.arc(rx, ry + k * 0.2, k * 0.6, 0, TAU); m.fill();
-      const g = m.createRadialGradient(cx, cy, Math.min(W, H) * 0.45, cx, cy, Math.max(W, H) * 0.8); g.addColorStop(0, 'rgba(8,10,8,0)'); g.addColorStop(1, 'rgba(8,10,8,0.4)'); m.fillStyle = g; m.fillRect(0, 0, W, H);
-    } else if (l === 0) {
-      // åpne sikter: pipe som går ned mot skjermkanten, bakre skjæring og korn
-      const k = u * 3, bx = W / 2, top = ry + k * 2;
-      m.fillStyle = '#1c1814';
-      m.beginPath(); m.moveTo(rx - k * 1.2, top); m.lineTo(rx + k * 1.2, top); m.lineTo(bx + k * 9, H); m.lineTo(bx - k * 9, H); m.closePath(); m.fill();
-      m.fillStyle = '#2e2822'; m.beginPath(); m.moveTo(rx - k * 0.4, top); m.lineTo(rx + 0.1 * k, top); m.lineTo(bx - k * 2, H); m.lineTo(bx - k * 5, H); m.closePath(); m.fill();
-      m.fillStyle = '#0e0c0a'; m.fillRect(rx - k * 0.5, ry, k, k * 2.2); m.fillStyle = '#e8b030'; m.fillRect(rx - k * 0.5, ry, k, k * 0.8);
-      const py = ry + k * 1.6, ph = k * 3.4;
-      m.fillStyle = '#16120e'; m.fillRect(rx - k * 13, py, k * 11.6, ph); m.fillRect(rx + k * 1.4, py, k * 11.6, ph); m.fillRect(rx - k * 13, py + k * 1.6, k * 26, ph - k * 1.6);
-      m.fillStyle = '#3a3026'; m.fillRect(rx - k * 13, py, k * 11.6, u); m.fillRect(rx + k * 1.4, py, k * 11.6, u);
-      m.fillStyle = '#e8e0c8'; m.fillRect(rx - k * 2.4, py + k * 0.6, u, u); m.fillRect(rx + k * 2.4 - u, py + k * 0.6, u, u);
-      const g = m.createRadialGradient(cx, cy, Math.min(W, H) * 0.35, cx, cy, Math.max(W, H) * 0.75); g.addColorStop(0, 'rgba(8,10,8,0)'); g.addColorStop(1, 'rgba(8,10,8,0.6)'); m.fillStyle = g; m.fillRect(0, 0, W, H);
-    } else {
-      const R = Math.min(W, H) * 0.44;
-      m.fillStyle = '#070a08'; m.beginPath(); m.rect(0, 0, W, H); m.arc(cx, cy, R, 0, TAU); m.fill('evenodd');
-      const g = m.createRadialGradient(cx, cy, R * 0.75, cx, cy, R); g.addColorStop(0, 'rgba(7,10,8,0)'); g.addColorStop(1, 'rgba(7,10,8,0.85)'); m.fillStyle = g; m.beginPath(); m.arc(cx, cy, R, 0, TAU); m.fill();
-      m.strokeStyle = '#26302a'; m.lineWidth = u * 2; m.beginPath(); m.arc(cx, cy, R, 0, TAU); m.stroke();
-      m.save(); m.beginPath(); m.arc(cx, cy, R, 0, TAU); m.clip();
-      m.fillStyle = '#0c0e0c'; const th = u * 2, tn = Math.max(1, Math.round(DPR)), g0 = R * 0.28;
-      m.fillRect(rx - R * 2, ry - th / 2, R * 2 - g0, th); m.fillRect(rx + g0, ry - th / 2, R * 2, th); m.fillRect(rx - th / 2, ry + g0, th, R * 2);
-      if (l < 3) m.fillRect(rx - th / 2, ry - R * 2, th, R * 2 - g0);
-      m.fillRect(rx - g0, ry - tn / 2, g0 * 2, tn); m.fillRect(rx - tn / 2, ry - g0, tn, g0 * 2);
-      if (l === 3) { for (let i = 1; i <= 4; i++) { m.fillRect(rx + i * g0 / 5 - u / 2, ry - u / 2, u, u); m.fillRect(rx - i * g0 / 5 - u / 2, ry - u / 2, u, u); m.fillRect(rx - u / 2, ry + i * g0 / 5 - u / 2, u, u); } m.fillStyle = '#e8402c'; m.fillRect(rx - u / 2, ry - u / 2, u, u); }
-      m.restore();
-      if (l >= 2) {
-        const a = AIM.pick && AIM.pick.it.a, ty = cy - R + 34 * DPR;
-        let line = AIM.range == null ? '– m' : Math.round(AIM.range * M_PER_PX) + ' m';
-        if (l === 3 && a) line = SPEC[a.sp].name + ', ' + SPEC[a.sp].sexn[a.sex] + ' · ca. ' + fmtKg(a.kg >= 20 ? Math.round(a.kg / 5) * 5 : a.kg >= 3 ? Math.round(a.kg) : a.kg) + ' · ' + line;
-        pxText(line, cx, ty, Math.round(15 * DPR), '#f0b450');
-      }
-    }
-  }
-  // pil mot nærmeste bu, egne felte dyr og de andre jegerne når de er utenfor skjermen, ellers navn over hodet
-  if (G.started && !P.aim) {
+  const u = Math.max(2, Math.round(2 * DPR));
+  // sikter og kikkert tegnes i pikselbufferen (09-aim3d.js); her bare avstandsmåleren
+  if (G.started && P.aim) aimHud();
+  // pil mot nærmeste bu, egne felte dyr og de andre jegerne når de er utenfor skjermen, ellers navn over hodet;
+  // ikke mens børsa tas opp eller senkes
+  if (G.started && !P.aim && !AIM.raise) {
     const c = nearestCabin(P.x, P.y);
     edgeMark(c.x, c.y - 30, 'Bua ' + Math.round(c.d * M_PER_PX) + ' m', FX.house);
     if (D.st !== 'heel') {
@@ -2529,7 +2657,7 @@ function drawOverlay() {
     }
   }
   // eget pikselkors som musepeker
-  if (G.started && !P.aim && !G.paused) {
+  if (G.started && !P.aim && !AIM.raise && !G.paused) {
     const x = Math.round(MOUSE.x), y = Math.round(MOUSE.y), k = u;
     const arms = (o, c) => { m.fillStyle = c; m.fillRect(x - k * 4 + o, y - k / 2 + o, k * 3, k); m.fillRect(x + k + o, y - k / 2 + o, k * 3, k); m.fillRect(x - k / 2 + o, y - k * 4 + o, k, k * 3); m.fillRect(x - k / 2 + o, y + k + o, k, k * 3); };
     arms(k / 2, 'rgba(10,14,12,0.7)'); arms(0, '#ece4cf');
@@ -2576,10 +2704,12 @@ function hudUpdate(dt) {
   setText('dogTxt', { heel: 'Send ut hunden', search: 'Kall inn hunden', mark: 'Kall inn hunden', back: 'Hunden kommer' }[D.st]);
   $('cold').hidden = !(G.started && P.cold > 0);
   if (P.cold > 0) { setText('coldTxt', P.wet ? 'I vannet · fryser' : 'Våt og kald · tørker'); $('coldFill').style.width = (P.cold * 100) + '%'; }
-  // pustemåleren vises i siktet, og ellers så lenge du springer eller henter deg inn etterpå
-  $('breath').hidden = !(G.started && (P.aim || P.breath < 1)); $('breathFill').style.width = (P.breath * 100) + '%';
+  // i siktet, og mens børsa tas opp, viker alt grensesnitt unna bortsett fra meldingene
+  document.body.classList.toggle('aiming', G.started && (P.aim || AIM.want));
+  // pustemåleren vises så lenge du springer eller henter deg inn etterpå; i siktet er den en strek nederst i bildet
+  $('breath').hidden = !(G.started && !P.aim && P.breath < 1); $('breathFill').style.width = (P.breath * 100) + '%';
   $('breathFill').classList.toggle('low', P.breath < 0.25 || P.winded);
-  setText('breathTxt', P.winded ? 'Andpusten · hent deg inn' : P.aim ? 'Pust · hold Space for å holde pusten' : 'Pust · hold Space for å springe');
+  setText('breathTxt', P.winded ? 'Andpusten · hent deg inn' : 'Pust · hold Space for å springe');
   // helse, leirutstyr og arbeid som pågår
   $('hp').hidden = !G.started;
   setText('hpTxt', 'Helse ' + Math.ceil(P.hp) + (P.sick ? ' · forkjølet' : P.warm ? ' · varmer deg' : ''));
@@ -2663,14 +2793,14 @@ function buy(u) {
   save(); renderShop();
 }
 function openShop() {
-  G.paused = true; G.panel = 'shop'; P.aim = false; try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
+  G.paused = true; G.panel = 'shop'; aimReset(); try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
   // ovnen og maten i bua gjør deg tørr, varm og frisk
   refill(); if (P.sick) msg('Du varmet deg ved ovnen i bua og er frisk igjen.', 'good'); healFull();
   $('sleepBtn').hidden = mp();
   renderShop(); $('shop').hidden = false; sfx.ui();
 }
 function openBook() {
-  G.paused = true; G.panel = 'book'; P.aim = false; try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
+  G.paused = true; G.panel = 'book'; aimReset(); try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
   const sum = $('bookSpecies'); sum.innerHTML = '';
   for (const sp of SPECIES) {
     const k = G.journal.filter(j => j.sp === sp), best = k.reduce((a, j) => Math.max(a, j.kg), 0);
@@ -2692,7 +2822,7 @@ function openBook() {
 // Alene fryser verden; med andre på nettet står jegeren stille mens tida går videre
 function openPause() {
   if (!G.started || G.panel) return;
-  G.paused = true; G.panel = 'pause'; G.pauseT = performance.now(); P.aim = false; P.hold = false;
+  G.paused = true; G.panel = 'pause'; G.pauseT = performance.now(); aimReset();
   try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
   save(); $('pauseNote').hidden = !mp(); $('pause').hidden = false; sfx.ui();
 }
@@ -2746,20 +2876,21 @@ function bindInput() {
     }
   });
   addEventListener('keyup', e => { KEYS[e.code] = false; if (e.code === 'Space') P.hold = false; });
-  addEventListener('blur', () => { for (const k in KEYS) KEYS[k] = false; P.aim = false; P.hold = false; });
+  addEventListener('blur', () => { for (const k in KEYS) KEYS[k] = false; aimReset(); });
   cv.addEventListener('contextmenu', e => e.preventDefault());
   cv.addEventListener('mousedown', e => {
     e.preventDefault(); auInit();
     if (!G.started || G.paused) return;
     if (!MOUSE.locked) lockPointer();
-    if (e.button === 2) { P.aim = true; P.sway = [0, 0]; P.unrest = Math.max(P.unrest, 0.35); aimStart(MOUSE.wx, MOUSE.wy); }
-    else if (e.button === 0) shoot();
+    if (e.button === 2) aimPress();
+    // mens børsa er på vei opp, går det ikke an å skyte
+    else if (e.button === 0 && (P.aim || !AIM.want)) shoot();
   });
-  addEventListener('mouseup', e => { if (e.button === 2) { P.aim = false; P.hold = false; } });
+  addEventListener('mouseup', e => { if (e.button === 2) aimRelease(); });
   addEventListener('mousemove', e => {
     if (MOUSE.locked) { MOUSE.x = clamp(MOUSE.x + e.movementX * DPR, 0, W); MOUSE.y = clamp(MOUSE.y + e.movementY * DPR, 0, H); }
     else { MOUSE.x = e.clientX * DPR; MOUSE.y = e.clientY * DPR; }
-    if (P.aim) aimLook(e.movementX * DPR, e.movementY * DPR);
+    if (P.aim || AIM.want) aimLook(e.movementX * DPR, e.movementY * DPR);
   });
   document.addEventListener('pointerlockchange', () => {
     MOUSE.locked = document.pointerLockElement === cv; document.body.classList.toggle('locked', MOUSE.locked);
@@ -2941,7 +3072,7 @@ function netMsg(m) {
     case 'scent': if (isAuth()) addScent(m); break;
     case 'fire': if (isAuth()) addFire(m); break;
     case 'hut': if (isAuth()) addHut(m); break;
-    case 'cut': cutTree(m.x | 0, m.y | 0); if (isAuth()) scare(+m.x, +m.y, 420); break;
+    case 'cut': fellTree(m.x | 0, m.y | 0, +m.d || 1); if (isAuth()) scare(+m.x, +m.y, 420); break;
     case 'bay': { const a = isAuth() && G.animals.find(x => x.id === m.id); if (a) holdAnimal(a, +m.x || a.x); break; }
     case 'collect': {
       if (!isAuth()) break;
@@ -3013,12 +3144,27 @@ function netSetName() {
   NET.name = ($('nameIn').value.trim() || 'Jeger').slice(0, 16);
   try { localStorage.setItem(NAME_KEY, NET.name); } catch (e) { }
 }
-// ===== Siktet i 3D: skogen sett fra jegerens øyne når du sikter =====
+// ===== Siktet i 3D: jegeren sett bakfra mens han tar børsa opp, så skogen sett fra øynene hans =====
 // Bakken projiseres rad for rad fra de samme bakkebitene som kartet bruker (gulvcasting), og trær,
 // stein, busker, dyr og andre jegere er de vanlige spritene skalert etter avstand og tegnet bakerst
 // først. Kula følger trådkorset: det første faste du ser der, er det den treffer.
-const AIM = { yaw: 0, pitch: 0, ry: 0, rp: 0, camYaw: 0, f: 300, eye: 15, cx: 0, cy: 0, sx: 0, sy: 0, hy: 0, t: 0, kick: 0, range: null, pick: null, list: [], im: null, px: null };
+// want: høyre musknapp holdes; raise: kartet går inn mot jegeren (0–1) og ut igjen når børsa senkes; tp: jegeren tar
+// børsa opp, sett bakfra i 3D (0–1); tpF: bildet han er på; open: kikkerten foran øyet (0–1); in: vi gikk selv inn i siktet;
+// ex, ey: øyets avstand fra midten av kikkerten; ringX, ringY, ringR: linsa i okularet (bufferpiksler); list2: det som er
+// tegnet i synsfeltet rundt kikkerten; v3, snap, snapT: bildet som løses opp når vi bytter mellom kart og 3D
+const AIM = { yaw: 0, pitch: 0, ry: 0, rp: 0, camYaw: 0, f: 300, eye: 15, far: 900, cx: 0, cy: 0, sx: 0, sy: 0, hy: 0, kick: 0, range: null, pick: null, list: [], list2: [], im: null, px: null,
+  want: false, raise: 0, tp: 0, tpF: -1, open: 0, in: false, ex: 0, ey: 0, ringX: 0, ringY: 0, ringR: 0, lc: null, lensX: 0, lensY: 0, upB: 0, brT: 0, brIn: true, hbT: 0, held: false,
+  v3: false, snap: null, snapTmp: null, snapT: 0, pat: {}, masks: new Map() };
 const EYE = 15, NEAR = 14, FAR = 900, SWAY_K = 0.005, PITCH_MAX = 0.35;
+// Høyreklikk: kartet går inn mot jegeren (IN_T), så ser du ham bakfra i 3D ta børsa opp (TP_T, synsvidde TP_FOV grader),
+// og kikkerten kommer opp foran øyet (OPEN_T). Slipper du, tas kikkerten ned (CLOSE_T) og kartet kommer tilbake (LOWER_T).
+// Bytte mellom kart og 3D løses opp i rutemønster over DISS_T sekunder. Rundt kikkerten ser du skogen med synsvidde
+// SURR_FOV grader, og linsa har radius LENS_K av skjermhøyden.
+// Gress og bregner nærmere enn SOFT_NEAR tegnes ikke; de ville bare blitt store, uskarpe klosser rett foran deg
+const IN_T = 0.12, TP_T = 0.55, TP_FOV = 60, OPEN_T = 0.22, CLOSE_T = 0.14, LOWER_T = 0.3, DISS_T = 0.15, SURR_FOV = 50, LENS_K = 0.28, SOFT_NEAR = 72, MASK = '#070a08';
+// Bildet jegeren er på i 3D: griper reima, børsa foran brystet, ned på kne, kolben i skulderen
+const tpFrame = () => Math.min(3, (AIM.tp / 0.19) | 0);
+const aimThird = () => !P.aim && AIM.want && AIM.raise >= 1;
 const FOG_HEX = '#a9b6a2', FOG = C(FOG_HEX), SKY_HEX = '#c6d4d2', GROUND0 = C('#3d5334'), CSB = Math.log2(CS);
 // Gress, bregner, siv og lyng stopper ikke kula; alt annet du ser, gjør det
 const SOFT = { fern: 1, grassT: 1, reed: 1, heather: 1 };
@@ -3027,11 +3173,65 @@ const CHIP = { rock: '#b4b8ac', juniper: '#4e8270', shrub: '#6a8a3a' };
 
 // Brennvidde i bufferpiksler; synsfeltet blir smalere jo bedre kikkert, og hagla ser vidt uten forstørrelse
 const aimFocal = () => Math.ceil(H / ZB) / 2 / Math.tan((hagle() ? HST.fov : ST.fov[lv('scope')]) * Math.PI / 360);
+const tpFocal = () => Math.ceil(H / ZB) / 2 / Math.tan(TP_FOV * Math.PI / 360);
+const surrFocal = () => Math.ceil(H / ZB) / 2 / Math.tan(SURR_FOV * Math.PI / 360);
 // Med hagla kan du se høyt opp etter fugl i lufta
 const pitchMax = () => hagle() ? 0.8 : PITCH_MAX;
 // Jegeren kneler når han sikter; ute på djupt vann er øynene nærmere vannflata
 const aimEye = () => P.deep ? EYE - 5 : EYE;
 const fogSil = s => s._fog || (s._fog = s.pix.sil(FOG).canvas());
+
+// ---------- å legge an ----------
+// Høyreklikk: kartet går inn mot jegeren, du ser ham bakfra i 3D ta børsa opp, og så går bildet over i siktet (P.aim).
+// Slipper du, tas kikkerten ned og kartet kommer tilbake mens jegeren senker børsa
+function aimPress() {
+  if (AIM.want) return;
+  AIM.want = true;
+  if (P.aim) return; // kikkerten var på vei ned og kommer opp igjen
+  aimStart(MOUSE.wx, MOUSE.wy); P.sway = [0, 0];
+  sfx.shoulder();
+}
+function aimRelease() { AIM.want = false; P.hold = false; }
+// Rett ut av siktet uten animasjon (bua, jaktboka, pause, vinduet mister fokus)
+function aimReset() { P.aim = false; P.hold = false; AIM.want = AIM.in = false; AIM.raise = AIM.tp = AIM.open = 0; AIM.tpF = -1; AU.focus = false; }
+function aimUpdate(dt) {
+  // tatt ut av siktet av noe annet (f.eks. båret til bua): senk børsa derfra
+  if (AIM.in && !P.aim) { AIM.in = AIM.want = false; AIM.open = 0; }
+  if (P.aim) {
+    AIM.open = clamp(AIM.open + (AIM.want ? dt / OPEN_T : -dt / CLOSE_T), 0, 1);
+    if (!AIM.want && AIM.open <= 0) { P.aim = AIM.in = false; P.hold = false; sfx.lower(); }
+  } else if (AIM.want) {
+    // jegeren snur seg mot målet mens kartet går inn mot ham
+    const dx = Math.cos(AIM.yaw), dy = Math.sin(AIM.yaw);
+    if (Math.abs(dx) > Math.abs(dy) * 0.8) { P.face = 'side'; P.flip = dx < 0; } else P.face = dy > 0 ? 'down' : 'up';
+    if (AIM.raise < 1) AIM.raise = Math.min(1, AIM.raise + dt / IN_T);
+    else {
+      // i 3D; ute på djupt vann går det ikke an å knele, så da går du rett i siktet
+      AIM.tp = P.deep ? 1 : Math.min(1, AIM.tp + dt / TP_T);
+      const fr = tpFrame();
+      if (fr !== AIM.tpF) { if (fr === 2) sfx.kneel(); if (fr === 3) sfx.settle(); AIM.tpF = fr; }
+      // kolben er nettopp lagt i skulderen, så siktet er urolig det første sekundet
+      if (AIM.tp >= 1) { P.aim = AIM.in = true; AIM.open = AIM.tp = 0; AIM.tpF = -1; P.unrest = Math.max(P.unrest, 0.35); }
+    }
+  } else { AIM.tp = 0; AIM.tpF = -1; AIM.raise = Math.max(0, AIM.raise - dt / LOWER_T); }
+  AU.focus = P.aim || AIM.want;
+  aimAudio(dt);
+}
+// Pusten i siktet: rolige drag inn og ut, tunge og raske når du er andpusten, stille mens du holder den, og et
+// langt pust ut når du slipper. Hjertet banker når lufta tar slutt og når du er andpusten
+function aimAudio(dt) {
+  if (!P.aim) { AIM.brT = 0.5; AIM.brIn = true; AIM.held = false; return; }
+  if ((P.hold && P.breath < 0.6 || P.winded) && (AIM.hbT -= dt) <= 0) {
+    const k = P.winded ? 0.8 : 1 - P.breath / 0.6;
+    AIM.hbT = lerp(1, 0.5, k); sfx.heart(0.35 + 0.65 * k);
+  }
+  if (P.hold) { AIM.held = true; return; }
+  if (AIM.held) { AIM.held = false; sfx.exhale(); AIM.brT = 1.2; AIM.brIn = true; return; }
+  if ((AIM.brT -= dt) <= 0) {
+    const w = P.winded; sfx.breath(AIM.brIn, w);
+    AIM.brT = AIM.brIn ? (w ? 0.45 : 1.3) : (w ? 0.55 : 1.9); AIM.brIn = !AIM.brIn;
+  }
+}
 
 // Høyreklikk: se dit musa pekte på kartet, og rett på dyret hvis du pekte på et
 function aimStart(tx, ty) {
@@ -3046,91 +3246,165 @@ function aimStart(tx, ty) {
   AIM.yaw = AIM.camYaw = d > 8 ? Math.atan2(ty - P.y, tx - P.x) : P.face === 'side' ? (P.flip ? Math.PI : 0) : P.face === 'up' ? -Math.PI / 2 : Math.PI / 2;
   AIM.pitch = clamp(Math.atan((h - aimEye()) / Math.max(d, 30)), -pitchMax(), pitchMax());
   AIM.ry = AIM.yaw; AIM.rp = AIM.pitch;
-  AIM.f = aimFocal(); AIM.t = 0; AIM.kick = 0; AIM.list.length = 0; AIM.pick = null; AIM.range = null;
+  AIM.f = aimFocal(); AIM.kick = 0; AIM.ex = AIM.ey = 0; AIM.list.length = 0; AIM.pick = null; AIM.range = null;
 }
-// Musa flytter bildet like mange skjermpiksler som den beveger seg, uansett forstørrelse
+// Musa flytter bildet like mange skjermpiksler som den beveger seg, uansett forstørrelse. Mens børsa tas opp,
+// følger jegeren musa; i siktet henger kikkerten litt etter når du svinger fort
 function aimLook(dx, dy) {
   const k = 0.9 / (ZB * AIM.f);
   AIM.yaw += dx * k; AIM.pitch = clamp(AIM.pitch - dy * k, -pitchMax(), pitchMax());
+  if (P.aim) { AIM.ex -= dx / ZB * 0.15; AIM.ey -= dy / ZB * 0.15; }
 }
 
+// Ett 3D-bilde. Bak jegeren mens han tar børsa opp; ellers fra øynene hans: med kikkert tegnes først det forstørrede
+// bildet i linsa, så synsfeltet rundt, og kikkert, børse og hender i forgrunnen. Det bildet kula følger (linsa, ellers
+// hele bildet) lagres i AIM for skudd og avstandsmåling
 function render3D(dt) {
-  AIM.t += dt; AIM.kick = Math.max(0, AIM.kick - dt * 4);
-  const bw = Math.ceil(W / ZB), bh = Math.ceil(H / ZB), f = AIM.f = aimFocal(), eye = AIM.eye = aimEye();
-  // kamera: bare siktelinja fra musa, så bildet står helt stille når du ikke flytter den
-  const yaw = AIM.camYaw = AIM.yaw, pitch = AIM.pitch;
-  const vx = Math.cos(yaw), vy = Math.sin(yaw), rx = -vy, ry = vx;
-  const cx = AIM.cx = (bw >> 1) + 0.5, cy = AIM.cy = (bh >> 1) + 0.5, hy = AIM.hy = cy + Math.tan(pitch) * f;
+  AIM.kick = Math.max(0, AIM.kick - dt * 4); AIM.upB = performance.now() + 4;
+  const third = aimThird(), bw = Math.ceil(W / ZB), bh = Math.ceil(H / ZB), ix = bw >> 1, need = new Map();
+  const e = smooth(0, 1, AIM.open), scope = !third && !hagle() && lv('scope') > 0;
+  let yaw, pitch, eye, camX = P.x, camY = P.y, fWide, fade = 0;
+  if (third) {
+    // bak og til høyre for jegeren, litt over hodet hans, mens han tar børsa opp; kameraet glir sakte nærmere,
+    // og til slutt inn i hodet hans mens han tones bort
+    const push = smooth(0, 0.7, AIM.tp), dive = smooth(0.72, 1, AIM.tp), back = lerp(60, 50, push) * (1 - 0.8 * dive), side = 12 * (1 - 0.8 * dive);
+    yaw = AIM.yaw; pitch = AIM.pitch - 0.07 * (1 - dive); eye = lerp(24, aimEye(), dive); fWide = tpFocal(); fade = smooth(0.72, 0.95, AIM.tp);
+    camX = P.x - Math.cos(yaw) * back - Math.sin(yaw) * side; camY = P.y - Math.sin(yaw) * back + Math.cos(yaw) * side;
+  } else {
+    // fra øynene: siktelinja fra musa, pluss pust, skjelving og rekyl. Kikkerten og siktene står fast foran øyet, og
+    // det er skogen som duver. Mens børsa kommer opp, snevres synsfeltet inn fra det vide bildet bak skulderen
+    const [swx, swy] = aimSway();
+    yaw = AIM.yaw + swx * SWAY_K; pitch = AIM.pitch - swy * SWAY_K + AIM.kick * AIM.kick * 0.06; eye = aimEye();
+    fWide = lerp(tpFocal(), scope ? surrFocal() : aimFocal(), e);
+  }
+  const cam = { x: camX, y: camY, yaw, pitch, eye }, iy = (bh >> 1) + Math.round((1 - e) * bh * 0.55), R = Math.round(bh * LENS_K);
+  // kikkert: det forstørrede bildet tegnes først i et utsnitt rundt linsa, lyssettes og klippes ut som en rund linse.
+  // Øyet finner tilbake til midten av kikkerten etter et raskt sving
+  let lens = null;
+  if (scope) {
+    const sp = Math.exp(-dt * 7), om = Math.round(R * 0.2); AIM.ex *= sp; AIM.ey *= sp;
+    const eo = hyp(AIM.ex, AIM.ey); if (eo > om) { AIM.ex *= om / eo; AIM.ey *= om / eo; }
+    AIM.ringX = ix + Math.round(AIM.ex); AIM.ringY = iy + Math.round(AIM.ey + AIM.kick * AIM.kick * bh * 0.04); AIM.ringR = R;
+    const pad = R + om + 2, x0 = Math.max(0, ix - pad), y0 = Math.max(0, iy - pad), x1 = Math.min(bw, ix + pad + 1), y1 = Math.min(bh, iy + pad + 1);
+    if (x1 > x0 && y1 > y0) {
+      shotView(world({ ...cam, f: aimFocal(), cy: iy + 0.5, clip: [x0, y0, x1, y1] }, bw, bh, need, AIM.list));
+      reticle(ix, iy, R, lv('scope'));
+      b.globalCompositeOperation = 'multiply'; b.fillStyle = lightAt(G.hour); b.fillRect(x0, y0, x1 - x0, y1 - y0); b.globalCompositeOperation = 'source-over';
+      lens = cutLens(x0, y0, x1 - x0, y1 - y0, ix, iy, R, om);
+    }
+  }
+  // synsfeltet over hele skjermen; rundt kikkerten litt dempet, som det andre øyet ser det
+  const wv = world({ ...cam, f: fWide, third, fade, nmax: lens ? 6 : 16, hole: lens && [AIM.ringX + 0.5, AIM.ringY + 0.5, R + Math.round(bh * 0.07)] }, bw, bh, need, lens ? AIM.list2 : AIM.list);
+  if (!lens) shotView(wv);
+  if (scope) { b.globalAlpha = 0.25; b.fillStyle = MASK; b.fillRect(0, 0, bw, bh); b.globalAlpha = 1; scopeBody(AIM.ringX, AIM.ringY, R, bh); }
+  else if (!third) drawSights(bw, bh, iy);
+  // døgnlys over skog, kikkert og børse; linsa er alt lyssatt, så munningsglimtet til slutt
+  b.globalCompositeOperation = 'multiply'; b.fillStyle = lightAt(G.hour); b.fillRect(0, 0, bw, bh);
+  b.globalCompositeOperation = 'source-over';
+  if (lens) b.drawImage(lens, AIM.lensX, AIM.lensY);
+  if (AIM.kick > 0.7) { b.globalCompositeOperation = 'lighter'; b.globalAlpha = (AIM.kick - 0.7) * 0.8; b.fillStyle = '#ffd890'; b.fillRect(0, 0, bw, bh); b.globalAlpha = 1; b.globalCompositeOperation = 'source-over'; }
+  if (!third) breathBar(bw, bh);
+
+  m.setTransform(1, 0, 0, 1, 0, 0); m.imageSmoothingEnabled = false;
+  m.drawImage(buf, 0, 0, bw, bh, 0, 0, bw * ZB, bh * ZB);
+  // avstandsmåleren leser det som ligger i trådkorset, ellers bakken
+  const pk = AIM.pick = aimPick(AIM.sx, AIM.sy), zg = AIM.sy > AIM.hy ? AIM.eye * AIM.f / (AIM.sy - AIM.hy) : Infinity;
+  AIM.range = pk ? pk.it.z : zg < AIM.far ? zg : null;
+  drawOverlay();
+  // tegn bakken for biter vi ser ut over men ikke har tegnet ennå, nærmeste først
+  const t0 = performance.now();
+  for (const [kx, ky] of [...need.values()].sort((p, q) => p[2] - q[2])) { genGround(getChunk(kx, ky)); if (performance.now() - t0 > 6) break; }
+}
+// Bildet kula følger: midten er trådkorset
+function shotView(v) { Object.assign(AIM, { cx: v.cx, cy: v.cy, hy: v.hy, f: v.f, eye: v.eye, far: v.far, camYaw: v.yaw, sx: v.cx, sy: v.cy }); }
+// Skogen sett fra (o.x, o.y) i øyehøyde o.eye, i retning o.yaw/o.pitch med brennvidde o.f, tegnet inn i bufferen. Midten av
+// bildet er (bw/2, o.cy). Med o.clip ([x0, y0, x1, y1]) tegnes bare det utsnittet. Bakken innenfor o.hole ([x, y, r],
+// der okularet dekker) tegnes ikke, og o.nmax begrenser hvor mange delrader en bakkerad snittes av (færre i det dempede
+// synsfeltet rundt kikkerten). Med o.third står jegeren i bildet, tonet bort med o.fade. Det som tegnes, havner i L, nærmest sist
+function world(o, bw, bh, need, L) {
+  const camX = o.x, camY = o.y, f = o.f, eye = o.eye, [x0, y0, x1, y1] = o.clip || [0, 0, bw, bh];
+  const vx = Math.cos(o.yaw), vy = Math.sin(o.yaw), rx = -vy, ry = vx;
+  const cx = (bw >> 1) + 0.5, cy = o.cy || (bh >> 1) + 0.5, hy = cy + Math.tan(o.pitch) * f;
   const far = FAR * (1 - 0.45 * mist(G.hour)), fog = z => smooth(40, far, z);
-  // pust, skjelving og rekyl flytter trådkorset over bildet i stedet, og aldri ut av kikkerten
-  const [swx, swy] = aimSway();
-  let ox = Math.tan(swx * SWAY_K) * f, oy = hy - Math.tan(pitch - swy * SWAY_K + AIM.kick * AIM.kick * 0.06) * f - cy;
-  const om = 0.35 * Math.min(bw, bh), ol = hyp(ox, oy); if (ol > om) { ox *= om / ol; oy *= om / ol; }
-  AIM.sx = cx + ox; AIM.sy = cy + oy;
 
   // bakke: hver rad under horisonten ligger på én avstand; dis legges på mot horisonten.
   // Langt unna dekker én pikselrad mange bakkepiksler i dybden, så raden blir snittet av flere delrader
   if (!AIM.im || AIM.im.width !== bw || AIM.im.height !== bh) { AIM.im = b.createImageData(bw, bh); AIM.px = new Uint32Array(AIM.im.data.buffer); AIM.acc = new Uint32Array(bw * 3); }
-  const px = AIM.px, acc = AIM.acc, need = new Map(), M = CS - 1, fr = FOG & 255, fg = (FOG >>> 8) & 255, fb = (FOG >>> 16) & 255;
+  const px = AIM.px, acc = AIM.acc, M = CS - 1, fr = FOG & 255, fg = (FOG >>> 8) & 255, fb = (FOG >>> 16) & 255;
   px.fill(0);
-  for (let y = Math.max(0, Math.floor(hy)); y < bh; y++) {
+  for (let y = Math.max(y0, Math.floor(hy)); y < y1; y++) {
     const dy = y + 0.5 - hy; if (dy <= 0) continue;
     const z = eye * f / dy, fo = Math.round(fog(z) * 256), row = y * bw;
-    if (fo >= 256) { px.fill(FOG, row, row + bw); continue; }
-    const n = Math.min(16, Math.ceil(z / dy));
+    if (fo >= 256) { px.fill(FOG, row + x0, row + x1); continue; }
+    const n = Math.min(o.nmax || 16, Math.ceil(z / dy));
+    // kolonnene som skal tegnes: hele raden, eller to biter på hver side av okularet
+    let spans = [x0, x1];
+    if (o.hole) { const hd = y + 0.5 - o.hole[1], hr = o.hole[2] - 1; if (Math.abs(hd) < hr) { const hh = Math.sqrt(hr * hr - hd * hd), sa = Math.max(x0, Math.ceil(o.hole[0] - hh)), sb = Math.min(x1, Math.floor(o.hole[0] + hh)); if (sb > sa) spans = [x0, sa, sb, x1]; } }
     acc.fill(0);
     for (let j = 0; j < n; j++) {
       const zj = eye * f / Math.max(0.05, dy - 0.5 + (j + 0.5) / n), st = zj / f, sx = rx * st, sy = ry * st;
-      let wx = P.x + vx * zj + rx * (0.5 - cx) * st, wy = P.y + vy * zj + ry * (0.5 - cx) * st, lkx = NaN, lky = NaN, d = null;
-      for (let i = 0, e = bw * 3; i < e; i += 3, wx += sx, wy += sy) {
-        const ix = Math.floor(wx), iy = Math.floor(wy), kx = ix >> CSB, ky = iy >> CSB;
-        if (kx !== lkx || ky !== lky) { lkx = kx; lky = ky; const key = kx + ',' + ky, ch = chunks.get(key); d = ch && ch.gpix; if (!d) need.set(key, [kx, ky, zj]); }
-        const c = d ? d[(iy & M) << CSB | ix & M] : GROUND0;
-        acc[i] += c & 255; acc[i + 1] += (c >>> 8) & 255; acc[i + 2] += (c >>> 16) & 255;
+      const wx0 = camX + vx * zj + rx * (0.5 - cx) * st, wy0 = camY + vy * zj + ry * (0.5 - cx) * st;
+      let lkx = NaN, lky = NaN, d = null;
+      for (let q = 0; q < spans.length; q += 2) {
+        let wx = wx0 + sx * spans[q], wy = wy0 + sy * spans[q];
+        for (let i = spans[q] * 3, e = spans[q + 1] * 3; i < e; i += 3, wx += sx, wy += sy) {
+          const ix = Math.floor(wx), iy = Math.floor(wy), kx = ix >> CSB, ky = iy >> CSB;
+          if (kx !== lkx || ky !== lky) { lkx = kx; lky = ky; const key = kx + ',' + ky, ch = chunks.get(key); d = ch && ch.gpix; if (!d) need.set(key, [kx, ky, zj]); }
+          const c = d ? d[(iy & M) << CSB | ix & M] : GROUND0;
+          acc[i] += c & 255; acc[i + 1] += (c >>> 8) & 255; acc[i + 2] += (c >>> 16) & 255;
+        }
       }
     }
-    for (let i = 0, p = row, e = row + bw; p < e; i += 3, p++) {
-      const r = acc[i] / n | 0, g = acc[i + 1] / n | 0, bl = acc[i + 2] / n | 0;
-      px[p] = 0xff000000 | (bl + ((fb - bl) * fo >> 8)) << 16 | (g + ((fg - g) * fo >> 8)) << 8 | (r + ((fr - r) * fo >> 8));
-    }
+    for (let q = 0; q < spans.length; q += 2)
+      for (let i = spans[q] * 3, p = row + spans[q], e = row + spans[q + 1]; p < e; i += 3, p++) {
+        const r = acc[i] / n | 0, g = acc[i + 1] / n | 0, bl = acc[i + 2] / n | 0;
+        px[p] = 0xff000000 | (bl + ((fb - bl) * fo >> 8)) << 16 | (g + ((fg - g) * fo >> 8)) << 8 | (r + ((fr - r) * fo >> 8));
+      }
   }
-  b.putImageData(AIM.im, 0, 0);
+  b.putImageData(AIM.im, 0, 0, x0, y0, x1 - x0, y1 - y0);
 
   // alt som står i synsfeltet, som sprites skalert etter avstand
-  const L = AIM.list; L.length = 0;
+  L.length = 0;
   const add = (wx, wy, s, flip, it) => {
-    const dx = wx - P.x, dy = wy - P.y, z = dx * vx + dy * vy;
-    if (z < NEAR || z > far) return;
+    const dx = wx - camX, dy = wy - camY, z = dx * vx + dy * vy;
+    if (z < NEAR || z > far || z < SOFT_NEAR && it.o && SOFT[it.o.k]) return;
     const k = f / z, X = Math.round(cx + (dx * rx + dy * ry) * k - (flip ? s.w - s.ax : s.ax) * k), Y = Math.round(hy + (eye - (it.hz || 0) - s.ay) * k);
     const Wd = Math.max(1, Math.round(s.w * k)), Hd = Math.max(1, Math.round(s.h * k));
-    if (X > bw || X + Wd < 0 || Y > bh || Y + Hd < 0) return;
+    if (X > x1 || X + Wd < x0 || Y > y1 || Y + Hd < y0) return;
+    // helt bak okularet
+    if (o.hole) { const hx = o.hole[0], hy2 = o.hole[1], r2 = o.hole[2] * o.hole[2], fx = Math.max(Math.abs(X - hx), Math.abs(X + Wd - hx)), fy = Math.max(Math.abs(Y - hy2), Math.abs(Y + Hd - hy2)); if (fx * fx + fy * fy < r2) return; }
     Object.assign(it, { z, k, X, Y, W: Wd, H: Hd, s, flip, fo: fog(z) });
     if (it.sw && Math.abs(it.sw * k) < 0.5) it.sw = 0;
-    if (it.fo < 0.99) L.push(it);
+    if (it.fo < 0.99) { L.push(it); return it; }
   };
-  const ex = (cx + 8) / f * far, xs = [P.x, P.x + vx * far + rx * ex, P.x + vx * far - rx * ex], ys = [P.y, P.y + vy * far + ry * ex, P.y + vy * far - ry * ex];
+  const ex = (cx + 8) / f * far, xs = [camX, camX + vx * far + rx * ex, camX + vx * far - rx * ex], ys = [camY, camY + vy * far + ry * ex, camY + vy * far - ry * ex];
   // bare trærne rører seg, og bare når det blåser mer enn flau vind
   const wl = (G.wind.x * rx + G.wind.y * ry) * 0.6, wa = Math.max(0, G.wind.s - 0.25) * 2.9;
   for (let ky = Math.floor((Math.min(...ys) - 40) / CS); ky <= Math.floor((Math.max(...ys) + 40) / CS); ky++)
     for (let kx = Math.floor((Math.min(...xs) - 40) / CS); kx <= Math.floor((Math.max(...xs) + 40) / CS); kx++)
-      for (const o of getChunk(kx, ky).objs) {
-        const s = SPR[o.k][o.v];
-        add(o.x, o.y, s, false, { o, solid: !SOFT[o.k], sw: s.sway ? (Math.sin(G.t * 1.3 + o.ph) * 0.8 + wl) * wa : 0 });
+      for (const ob of getChunk(kx, ky).objs) {
+        const s = SPR[ob.k][ob.v];
+        add(ob.x, ob.y, s, false, { o: ob, solid: !SOFT[ob.k], sw: s.sway ? (Math.sin(G.t * 1.3 + ob.ph) * 0.8 + wl) * wa : 0 });
       }
   // dyra vises i profil og snus etter hvilken vei de går sett herfra; fugl i lufta tegnes i sin høyde.
   // Andre jegere vises bare på kartet, aldri i siktet.
   for (const a of G.animals) add(a.x, a.y, animalSprite(a), Math.cos(a.head) * rx + Math.sin(a.head) * ry < 0, { a, solid: a.state !== 'dead', hz: a.z || 0 });
   for (const so of G.scentObjs) add(so.x, so.y, FX.bottle, false, {});
-  for (const f of G.fires) add(f.x, f.y, fireSpr(f), false, {});
+  for (const fi of G.fires) add(fi.x, fi.y, fireSpr(fi), false, {});
   for (const h of G.huts) add(h.x, h.y, FX.hut, false, {});
+  // sett bakfra: jegeren som tar børsa opp, og hunden ved siden av ham
+  const hu = o.third && add(P.x, P.y, HUN.ots[tpFrame()], false, { hunter: 1, al: 1 - o.fade });
+  if (o.third) add(D.x, D.y, dogSprite(D), D.face * rx < 0, { al: 1 - o.fade });
   // bare det skuddet virvler opp; fallende løv, ildfluer og lukt driver ikke forbi i siktet
   for (const p of G.parts) {
     if (p.fly || p.faint || p.glow || p.leaf !== undefined) continue;
-    const dx = p.x - P.x, dy = p.y - P.y, z = dx * vx + dy * vy;
+    const dx = p.x - camX, dy = p.y - camY, z = dx * vx + dy * vy;
     if (z < NEAR || z > far) continue;
     const k = f / z; L.push({ p, z, k, X: cx + (dx * rx + dy * ry) * k, Y: hy + (eye - p.z) * k, fo: fog(z) });
   }
   L.sort((p, q) => q.z - p.z);
+  // trær, stein og busker mellom kameraet og jegeren som dekker ham, blir halvgjennomsiktige, som trærne på kartet
+  if (hu) for (const it of L) if (it.o && it.z < hu.z && it.X < hu.X + hu.W && it.X + it.W > hu.X && it.Y < hu.Y + hu.H && it.Y + it.H > hu.Y) it.al = 0.3;
   b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1; b.globalCompositeOperation = 'source-over';
   for (const it of L) {
     if (it.p) {
@@ -3139,38 +3413,274 @@ function render3D(dt) {
       b.fillStyle = p.col; b.fillRect(Math.round(it.X - sz / 2), Math.round(it.Y - sz / 2), sz, sz); b.globalAlpha = 1;
       continue;
     }
+    const al = it.al == null ? 1 : it.al; if (al < 0.02) continue;
     if (it.flip) b.setTransform(-1, 0, 0, 1, it.X + it.W, it.Y); else b.setTransform(1, 0, 0, 1, it.X, it.Y);
-    drawBill(it.s.c, it);
-    if (it.fo > 0.01) { b.globalAlpha = it.fo; drawBill(fogSil(it.s), it); b.globalAlpha = 1; }
+    b.globalAlpha = al; drawBill(it, false);
+    if (it.fo > 0.01) { b.globalAlpha = it.fo * al; drawBill(it, true); }
+    b.globalAlpha = 1;
   }
   b.setTransform(1, 0, 0, 1, 0, 0);
-  // himmel bak alt, så døgnlys og munningsglimt
+  // himmel bak alt
   b.globalCompositeOperation = 'destination-over';
   const g = b.createLinearGradient(0, hy - f * 0.5, 0, hy); g.addColorStop(0, SKY_HEX); g.addColorStop(1, FOG_HEX);
-  b.fillStyle = g; b.fillRect(0, 0, bw, bh);
-  b.globalCompositeOperation = 'multiply'; b.fillStyle = lightAt(G.hour); b.fillRect(0, 0, bw, bh);
-  if (AIM.kick > 0.7) { b.globalCompositeOperation = 'lighter'; b.globalAlpha = (AIM.kick - 0.7) * 0.8; b.fillStyle = '#ffd890'; b.fillRect(0, 0, bw, bh); b.globalAlpha = 1; }
+  b.fillStyle = g; b.fillRect(x0, y0, x1 - x0, y1 - y0);
   b.globalCompositeOperation = 'source-over';
-
-  m.setTransform(1, 0, 0, 1, 0, 0); m.imageSmoothingEnabled = false;
-  m.drawImage(buf, 0, 0, bw, bh, 0, 0, bw * ZB, bh * ZB);
-  // avstandsmåleren leser det som ligger i trådkorset, ellers bakken
-  const pk = AIM.pick = aimPick(AIM.sx, AIM.sy), zg = AIM.sy > hy ? eye * f / (AIM.sy - hy) : Infinity;
-  AIM.range = pk ? pk.it.z : zg < far ? zg : null;
-  drawOverlay();
-  if (AIM.t < 0.2) { m.globalAlpha = 1 - AIM.t / 0.2; m.fillStyle = '#070a08'; m.fillRect(0, 0, W, H); m.globalAlpha = 1; }
-  // tegn bakken for biter vi ser ut over men ikke har tegnet ennå, nærmeste først
-  const t0 = performance.now();
-  for (const [kx, ky] of [...need.values()].sort((p, q) => p[2] - q[2])) { genGround(getChunk(kx, ky)); if (performance.now() - t0 > 6) break; }
+  return { cx, cy, hy, f, eye, far, yaw: o.yaw };
 }
-// Sprite skalert inn i ruta it.W × it.H; trær som svaier tegnes i striper som i 2D, én bufferpiksel om gangen
-function drawBill(img, it) {
-  const s = it.s;
-  if (!it.sw) { b.drawImage(img, 0, 0, it.W, it.H); return; }
-  for (let y0 = 0; y0 < s.h; y0 += 6) {
-    const q = 1 - y0 / s.h, off = Math.round(it.sw * q * q * it.k), ya = Math.round(y0 * it.k), yb = Math.round(Math.min(s.h, y0 + 6) * it.k);
-    if (yb > ya) b.drawImage(img, 0, y0, s.w, Math.min(6, s.h - y0), off, ya, it.W, yb - ya);
+// Sprite (eller dis-silhuetten) skalert inn i ruta it.W × it.H; trær som svaier tegnes i striper som i 2D
+function drawBill(it, fog) {
+  const s = it.s, e = it.k >= 2.2 ? upSprite(s, upLevel(it.k)) : null;
+  const img = e ? (fog ? e.fog : e.c) : fog ? fogSil(s) : s.c, u = e ? e.n : 1;
+  const [bx, by, bw, bh] = e ? e.bb : [0, 0, s.w, s.h], kx = it.W / s.w, ky = it.H / s.h, X0 = Math.round(bx * kx), Wd = Math.round((bx + bw) * kx) - X0;
+  if (!it.sw) { const Y0 = Math.round(by * ky); b.drawImage(img, 0, 0, bw * u, bh * u, X0, Y0, Wd, Math.round((by + bh) * ky) - Y0); return; }
+  for (let y0 = by - by % 6; y0 < by + bh; y0 += 6) {
+    const ya0 = Math.max(y0, by), yb0 = Math.min(y0 + 6, by + bh), q = 1 - y0 / s.h, off = Math.round(it.sw * q * q * it.k), ya = Math.round(ya0 * ky), yb = Math.round(yb0 * ky);
+    if (yb > ya) b.drawImage(img, 0, (ya0 - by) * u, bw * u, (yb0 - ya0) * u, X0 + off, ya, Wd, yb - ya);
   }
+}
+
+// ---------- skarpe piksler på nært hold ----------
+// Nært og i kikkerten blir hver sprite-piksel mange bufferpiksler. Da tegnes en oppskalert utgave (Scale2x: runder av
+// trappetrinn uten å finne på nye farger), så pikslene blir omtrent like store som i resten av bildet. Utgavene lages
+// ved behov, noen få millisekunder per bilde, og de som har ligget ubrukt lengst, kastes når de tar for mye plass
+const UPS = new Map(), UPS_MAX = 2e7;
+let upsPx = 0;
+const upLevel = k => k >= 10 ? 8 : k >= 5 ? 4 : 2;
+function scale2x(p) {
+  const w = p.w, h = p.h, d = p.d, q = new Pix(w * 2, h * 2), o = q.d, w2 = w * 2;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x, P0 = d[i], A = y > 0 ? d[i - w] : 0, Bx = x < w - 1 ? d[i + 1] : 0, Cx = x > 0 ? d[i - 1] : 0, D = y < h - 1 ? d[i + w] : 0;
+    let e0 = P0, e1 = P0, e2 = P0, e3 = P0;
+    if (A !== D && Cx !== Bx) { if (Cx === A) e0 = A; if (A === Bx) e1 = Bx; if (D === Cx) e2 = Cx; if (Bx === D) e3 = D; }
+    const j = 2 * y * w2 + 2 * x; o[j] = e0; o[j + 1] = e1; o[j + w2] = e2; o[j + w2 + 1] = e3;
+  }
+  return q;
+}
+// Utgaven av s forstørret n ganger (2, 4 eller 8), beskåret til det som faktisk er tegnet. Er tidsbudsjettet for
+// dette bildet brukt opp, fås den største som alt finnes (eller null)
+function upSprite(s, n) {
+  let e = UPS.get(s);
+  if (e) { UPS.delete(s); UPS.set(s, e); } else UPS.set(s, e = { px: 0 });
+  for (let k = 2; k <= n; k *= 2) {
+    if (e[k]) continue;
+    const bb = s.bb || (s.bb = s.pix.bbox());
+    if (performance.now() > AIM.upB || bb[2] < 1) return e[k >> 1] || null;
+    let src = e[k >> 1] && e[k >> 1].pix;
+    if (k === 2) { src = new Pix(bb[2], bb[3]); for (let y = 0; y < bb[3]; y++) { const i = (bb[1] + y) * s.w + bb[0]; src.d.set(s.pix.d.subarray(i, i + bb[2]), y * bb[2]); } }
+    const pix = scale2x(src), sz = pix.w * pix.h * 3;
+    e[k] = { pix, n: k, bb, c: pix.canvas(), fog: pix.sil(FOG).canvas() };
+    e.px += sz; upsPx += sz;
+    while (upsPx > UPS_MAX && UPS.size > 1) { const [ks, old] = UPS.entries().next().value; UPS.delete(ks); upsPx -= old.px; }
+  }
+  return e[n];
+}
+
+// ---------- sikter, kikkert og børse ----------
+// Tegnes i de samme bufferpikslene som skogen, så alt i bildet har samme pikselstørrelse. Kikkerten eller børsa glir
+// opp fra underkanten når du legger an (AIM.open), og ned igjen når du slipper.
+// Åpne sikter og hagle: mørkere hjørner, og børsa med siktene midt i bildet
+function drawSights(bw, bh, iy) {
+  const hg = hagle();
+  b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1;
+  b.drawImage(hg ? vigMask(bw, bh, 0.78, 0.35) : vigMask(bw, bh, 0.7, 0.5), 0, 0);
+  gunSights(bw >> 1, iy, bh, hg);
+}
+// Trådkorset i kikkerten: tykke stolper inn mot midten og tynne tråder (det beste siktet har merker og rød midtprikk,
+// men ingen stolpe ovenfra). Står fast der kula går
+function reticle(ix, iy, R, l) {
+  const g0 = Math.round(R * 0.28), far = R * 2;
+  b.setTransform(1, 0, 0, 1, 0, 0); b.fillStyle = '#0c0e0c';
+  b.fillRect(ix - far, iy - 1, far - g0, 3); b.fillRect(ix + g0 + 1, iy - 1, far, 3); b.fillRect(ix - 1, iy + g0 + 1, 3, far);
+  if (l < 3) b.fillRect(ix - 1, iy - far, 3, far - g0);
+  b.fillRect(ix - g0, iy, g0 * 2 + 1, 1); b.fillRect(ix, iy - g0, 1, g0 * 2 + 1);
+  if (l === 3) {
+    for (let i = 1; i <= 4; i++) { const d = Math.round(i * g0 / 5); b.fillRect(ix + d, iy - 1, 1, 3); b.fillRect(ix - d, iy - 1, 1, 3); b.fillRect(ix - 1, iy + d, 3, 1); b.fillRect(ix - 1, iy - d, 3, 1); }
+    b.fillStyle = '#e8402c'; b.fillRect(ix, iy, 1, 1);
+  }
+}
+// Klipper det forstørrede bildet (utsnittet x0, y0, w, h av bufferen) ut som en rund linse der okularet står (AIM.ringX/Y),
+// med mørkere kant rundt den optiske aksen (ix, iy). Står øyet skjevt, blir kanten en halvmåneformet skygge
+function cutLens(x0, y0, w, h, ix, iy, R, om) {
+  const c = AIM.lc || (AIM.lc = document.createElement('canvas'));
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  const g = c.getContext('2d'), d = disc(R), dx = AIM.ringX - R - x0, dy = AIM.ringY - R - y0, v = lensVig(R, Math.round(R * 0.2), om + 2), o = v.width >> 1;
+  g.imageSmoothingEnabled = false;
+  g.globalCompositeOperation = 'copy'; g.drawImage(buf, x0, y0, w, h, 0, 0, w, h);
+  g.globalCompositeOperation = 'destination-in'; g.drawImage(d, dx, dy);
+  g.clearRect(0, 0, w, dy); g.clearRect(0, dy + d.height, w, h); g.clearRect(0, dy, dx, d.height); g.clearRect(dx + d.width, dy, w, d.height);
+  g.globalCompositeOperation = 'source-atop'; g.drawImage(v, ix - o - x0, iy - o - y0);
+  g.globalCompositeOperation = 'source-over';
+  AIM.lensX = x0; AIM.lensY = y0; return c;
+}
+// Kikkerten sett med øyet inntil: okularet rundt linsa, toppen av tårnene bak det, låskassa og kolben under, og begge
+// hendene i hansker med jakkeermene inn fra kantene. (wx, wy) er midt i linsa og R radien
+function scopeBody(wx, wy, R, bh) {
+  const U = bh / 100, th = Math.round(bh * 0.07), O = R + th, ys = bh - Math.round(9 * U);
+  b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1;
+  // venstre hånd på forskjeftet, delvis bak okularet, med ermet ned mot hjørnet til venstre
+  trap(wy + O * 0.7, bh + 2, wx - O * 1.05, wx - O * 0.7, wx - O * 1.9, wx - O * 1.1, '#3f502e');
+  trap(wy + O * 0.7, bh + 2, wx - O * 1.0, wx - O * 0.76, wx - O * 1.8, wx - O * 1.18, '#586c3e');
+  glove(wx - O * 0.82, wy + O * 0.72, 5 * U, 4 * U);
+  // låskasse og feste rett under kikkerten, knotten på sluttstykket til høyre, kolben nederst mot kinnet
+  trap(wy + O - 6, bh + 2, wx - R * 0.42, wx + R * 0.42, wx - R * 0.9, wx + R * 0.9, '#1c1a18');
+  trap(wy + O - 6, bh + 2, wx - R * 0.4, wx - R * 0.3, wx - R * 0.86, wx - R * 0.62, '#34302a');
+  ell(wx + R * 0.98, wy + O + 4 * U, 2.4 * U, 2.2 * U, '#141210'); ell(wx + R * 0.95, wy + O + 3.6 * U, 1.6 * U, 1.4 * U, '#3a3630');
+  trap(ys, bh + 2, wx - R * 0.75, wx + R * 0.75, wx - R * 1.15, wx + R * 1.15, '#6e4a2c');
+  trap(ys, bh + 2, wx - R * 0.75, wx - R * 0.55, wx - R * 1.15, wx - R * 0.85, '#8c6038');
+  trap(ys, ys + 1, wx - R * 0.75, wx + R * 0.75, wx - R * 0.75, wx + R * 0.75, '#3e2818');
+  // høyre hånd på grepet nederst til høyre, ermet ut mot kanten
+  trap(bh - 6 * U, bh + 2, wx + R * 0.95, wx + R * 1.6, wx + R * 1.3, wx + R * 2.4, '#3f502e');
+  trap(bh - 6 * U, bh + 2, wx + R * 1.0, wx + R * 1.5, wx + R * 1.38, wx + R * 2.25, '#586c3e');
+  glove(wx + R * 1.0, bh - 5 * U, 7 * U, 5 * U);
+  // høyde- og sidetårnet stikker så vidt fram bak okularet
+  knurl(wx - R * 0.26, wy - O - R * 0.14, Math.round(R * 0.52), Math.round(R * 0.14 + th * 0.6), true);
+  knurl(wx + O - th * 0.6, wy - R * 0.24, Math.round(R * 0.14 + th * 0.6), Math.round(R * 0.48), false);
+  b.drawImage(eyepiece(R, th), wx - O, wy - O);
+}
+// Hanske: håndbak med lys kant og knoker
+function glove(x, y, rx, ry) {
+  ell(x, y + 1, rx, ry, '#3a2c1e'); ell(x - 1, y, rx - 1, ry - 1, '#5a4632');
+  b.fillStyle = '#76603f'; b.fillRect(Math.round(x - rx * 0.6), Math.round(y - ry * 0.6), Math.round(rx * 0.9), 1);
+  b.fillStyle = '#3a2c1e'; for (let i = -1; i <= 1; i++) b.fillRect(Math.round(x + i * rx * 0.4), Math.round(y - ry * 0.1), 1, Math.round(ry * 0.8));
+}
+// Tårnhette med riller: loddrette på toppen, vannrette på siden
+function knurl(x, y, w, h, vert) {
+  x = Math.round(x); y = Math.round(y);
+  b.fillStyle = '#070807'; b.fillRect(x - 1, y - 1, w + 2, h + 2);
+  b.fillStyle = '#1e211e'; b.fillRect(x, y, w, h);
+  b.fillStyle = '#121412';
+  if (vert) for (let i = 1; i < w; i += 2) b.fillRect(x + i, y + 1, 1, h - 1); else for (let j = 1; j < h; j += 2) b.fillRect(x + 1, y + j, w - 1, 1);
+  b.fillStyle = '#3e433e'; if (vert) b.fillRect(x, y, w, 1); else b.fillRect(x, y, 1, h);
+}
+// Åpne sikter og hagle: løpet går ned mot skjermkanten over forskjeftet, som ligger i venstre hånd. Rifla har bakre
+// skjæring med hakk og to hvite prikker og korn med gul perle; hagla har ett eller to løp med skinne og hvit perle
+function gunSights(ix, iy, bh, hg) {
+  const U = bh / 100, bot = bh + iy - (bh >> 1), y0 = iy + (hg ? 2 : 4), yw = Math.round(iy + (bot - iy) * 0.42);
+  trap(yw, bot, ix - 3 * U, ix + 3 * U, ix - 17 * U, ix + 17 * U, '#6e4a2c');
+  trap(yw, bot, ix - 3 * U, ix - 2 * U, ix - 17 * U, ix - 12 * U, '#8c6038');
+  trap(yw, bot, ix + 2 * U, ix + 3 * U, ix + 13 * U, ix + 17 * U, '#3e2818');
+  if (hg && lv('hagle') === 2) {
+    trap(y0, bot, ix - 3, ix, ix - 13 * U, ix, '#1a1816'); trap(y0, bot, ix + 1, ix + 4, ix + 1, ix + 13 * U + 1, '#1a1816');
+    trap(y0, bot, ix - 2, ix - 1, ix - 11 * U, ix - 8 * U, '#33302c'); trap(y0, bot, ix + 2, ix + 3, ix + 3 * U, ix + 5 * U, '#33302c');
+    trap(y0, bot, ix, ix + 1, ix - 1, ix + 2, '#3a352e');
+  } else {
+    trap(y0, bot, ix - 2, ix + 3, ix - 8 * U, ix + 8 * U + 1, hg ? '#1a1816' : '#1c1814');
+    trap(y0, bot, ix - 1, ix, ix - 6 * U, ix - 4 * U, hg ? '#33302c' : '#3a3026');
+    trap(y0, bot, ix, ix + 1, ix - 1, ix + 2, hg ? '#3a352e' : '#2a241e');
+  }
+  hand(ix - 11 * U, bot - 16 * U, U);
+  if (hg) { b.fillStyle = '#f2ead0'; b.fillRect(ix - 1, iy, 3, 2); b.fillStyle = '#ffffff'; b.fillRect(ix - 1, iy, 1, 1); return; }
+  // korn med perle: toppen av perla er der kula går
+  b.fillStyle = '#0e0c0a'; b.fillRect(ix - 1, iy + 2, 3, 6);
+  b.fillStyle = '#e8b030'; b.fillRect(ix - 1, iy, 3, 2); b.fillStyle = '#ffd860'; b.fillRect(ix - 1, iy, 1, 1);
+  // bakre skjæring: plate med hakk midt på, kornet står i hakket
+  const hw = Math.round(9 * U), top = iy + 2, ph = Math.max(5, Math.round(2.2 * U)), nw = 4, nd = 4;
+  b.fillStyle = '#16120e'; b.fillRect(ix - hw, top, hw - nw, ph); b.fillRect(ix + nw + 1, top, hw - nw, ph); b.fillRect(ix - nw, top + nd, nw * 2 + 1, ph - nd);
+  b.fillStyle = '#3a3026'; b.fillRect(ix - hw, top, hw - nw, 1); b.fillRect(ix + nw + 1, top, hw - nw, 1);
+  b.fillStyle = '#e8e0c8'; b.fillRect(ix - nw - 3, top + 2, 2, 2); b.fillRect(ix + nw + 2, top + 2, 2, 2);
+}
+// Venstre hånd i hanske rundt forskjeftet: håndflaten under til venstre, fire fingre lagt over treverket,
+// og jakkeermet ned mot hjørnet. (x, y) er midt på hånden
+function hand(x, y, U) {
+  trap(y + 2 * U, y + 34 * U, x - 4 * U, x + 3 * U, x - 20 * U, x - 6 * U, '#3f502e');
+  trap(y + 2 * U, y + 34 * U, x - 3 * U, x + 2 * U, x - 18 * U, x - 8 * U, '#586c3e');
+  ell(x - 2 * U, y + 0.5 * U, 4 * U, 4 * U, '#3a2c1e'); ell(x - 2.4 * U, y, 3.4 * U, 3.4 * U, '#5a4632');
+  for (let i = 0; i < 4; i++) {
+    const fy = Math.round(y - 3.2 * U + i * 1.7 * U), fh = Math.max(2, Math.round(1.4 * U)), fx = Math.round(x - U), fw = Math.round((i === 0 || i === 3 ? 4.5 : 6) * U);
+    b.fillStyle = '#3a2c1e'; b.fillRect(fx, fy, fw + 1, fh + 1);
+    b.fillStyle = '#5a4632'; b.fillRect(fx, fy, fw, fh);
+    b.fillStyle = '#76603f'; b.fillRect(fx, fy, fw - 1, 1);
+  }
+}
+// Fyll rad for rad mellom to kanter som går rett fra (xa0, xb0) på rad y0 til (xa1, xb1) på siste rad før y1
+function trap(y0, y1, xa0, xb0, xa1, xb1, col) {
+  b.fillStyle = col; y0 = Math.round(y0); y1 = Math.round(y1);
+  for (let y = Math.max(0, y0); y < y1; y++) { const t = (y - y0) / Math.max(1, y1 - 1 - y0), xa = Math.round(lerp(xa0, xa1, t)), xb = Math.round(lerp(xb0, xb1, t)); if (xb > xa) b.fillRect(xa, y, xb - xa, 1); }
+}
+function ell(cx, cy, rx, ry, col) {
+  b.fillStyle = col;
+  for (let y = Math.ceil(cy - ry); y <= cy + ry; y++) { const t = (y + 0.5 - cy) / ry, hw = rx * Math.sqrt(Math.max(0, 1 - t * t)), xa = Math.round(cx - hw), xb = Math.round(cx + hw); if (xb > xa) b.fillRect(xa, y, xb - xa, 1); }
+}
+// Okularet: gummiring med riller ytterst, metallring innenfor og en mørk kant inn mot linsa, lys fra oppe til venstre.
+// Hullet i midten er linsa; midten av ruta er midt i piksel O
+function eyepiece(R, th) {
+  const key = 'e' + R + '|' + th, c = AIM.masks.get(key); if (c) return c;
+  const O = R + th, n = O * 2 + 1, p = new Pix(n, n), met = T('#121412', '#1e211e', '#2c302c', '#3e433e'), rub = T('#0c0d0c', '#161816', '#222522');
+  const lip = C('#050605'), edge = C('#070807'), mid = R + Math.round(th * 0.4);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const dx = x - O, dy = y - O, d = Math.sqrt(dx * dx + dy * dy); if (d < R || d >= O + 0.5) continue;
+    const l = -(dx * 0.6 + dy * 0.8) / Math.max(1, d);
+    p.d[y * n + x] = d < R + 2 ? lip : d >= O - 0.5 ? edge : d < mid ? tone(met, 0.45 + 0.4 * l, x, y) : d < mid + 1 ? (l > 0 ? met[3] : met[0])
+      : tone(rub, 0.5 + 0.35 * l - ((Math.atan2(dy, dx) * O / 2.5 | 0) & 1) * 0.3, x, y);
+  }
+  return cacheMask(key, p.canvas());
+}
+// Rund maske for linsa: hel inne i radius R, midt i piksel R
+function disc(R) {
+  const key = 'd' + R, c = AIM.masks.get(key); if (c) return c;
+  const n = R * 2 + 1, p = new Pix(n, n), w = C('#ffffff');
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if ((x - R) * (x - R) + (y - R) * (y - R) < R * R) p.d[y * n + x] = w;
+  return cacheMask(key, p.canvas());
+}
+// Mørk kant i linsa med ordnet dithering, svart utenfor R; ruta strekker seg ext forbi kanten, så den dekker linsa
+// også når øyet står skjevt
+function lensVig(R, vw, ext) {
+  const key = 'l' + R + '|' + vw + '|' + ext, c = AIM.masks.get(key); if (c) return c;
+  const Hh = R + ext, n = Hh * 2 + 1, p = new Pix(n, n), black = C(MASK);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const d = Math.sqrt((x - Hh) * (x - Hh) + (y - Hh) * (y - Hh)); if (d >= R || smooth(R - vw, R, d) > dith(x, y)) p.d[y * n + x] = black; }
+  return cacheMask(key, p.canvas());
+}
+// Mørkere hjørner med dithering rundt åpne sikter og hagle
+function vigMask(w, h, inner, dmax) {
+  const key = 'v' + w + 'x' + h + '|' + inner + '|' + dmax;
+  const c = AIM.masks.get(key); if (c) return c;
+  const p = new Pix(w, h), cx = w / 2, cy = h / 2, rr = Math.sqrt(cx * cx + cy * cy), black = C(MASK);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const dx = x + 0.5 - cx, dy = y + 0.5 - cy; if (smooth(inner, 1, Math.sqrt(dx * dx + dy * dy) / rr) * dmax > dith(x, y)) p.d[y * w + x] = black; }
+  return cacheMask(key, p.canvas());
+}
+function cacheMask(key, c) { const ca = AIM.masks; if (ca.size > 8) ca.delete(ca.keys().next().value); ca.set(key, c); return c; }
+
+// ---------- overgang mellom kart og 3D ----------
+// Det forrige bildet ligger over det nye og løses opp i rutemønster, med ruter like store som pikslene i spillet
+function snapStart() {
+  const c = AIM.snap || (AIM.snap = document.createElement('canvas'));
+  if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+  c.getContext('2d').drawImage(cv, 0, 0); AIM.snapT = DISS_T;
+}
+function snapDraw(dt) {
+  if (AIM.snapT <= 0) return;
+  const v = AIM.snapT / DISS_T, t = AIM.snapTmp || (AIM.snapTmp = document.createElement('canvas'));
+  AIM.snapT -= dt;
+  if (t.width !== W || t.height !== H) { t.width = W; t.height = H; }
+  const g = t.getContext('2d');
+  g.globalCompositeOperation = 'copy'; g.drawImage(AIM.snap, 0, 0);
+  g.globalCompositeOperation = 'destination-in'; g.fillStyle = spat(g, v > 0.66 ? 3 : v > 0.33 ? 2 : 1); g.fillRect(0, 0, W, H);
+  g.globalCompositeOperation = 'source-over';
+  m.setTransform(1, 0, 0, 1, 0, 0); m.drawImage(t, 0, 0);
+}
+// Rutemønster med én, to eller tre av fire ruter fylt; hver rute er ZB skjermpiksler
+function spat(g, k) {
+  const key = k + '|' + ZB; if (AIM.pat[key]) return AIM.pat[key];
+  const c = document.createElement('canvas'); c.width = c.height = 2 * ZB;
+  const cg = c.getContext('2d'); cg.fillStyle = '#fff'; cg.fillRect(0, 0, ZB, ZB); if (k > 1) cg.fillRect(ZB, ZB, ZB, ZB); if (k > 2) cg.fillRect(ZB, 0, ZB, ZB);
+  return AIM.pat[key] = g.createPattern(c, 'repeat');
+}
+// Pusten som en tynn strek nederst i bildet, bare mens du holder den eller henter deg inn
+function breathBar(bw, bh) {
+  if (P.breath >= 1 && !P.hold) return;
+  const w = Math.round(bw * 0.12), x = (bw - w) >> 1, y = bh - 7;
+  b.fillStyle = MASK; b.fillRect(x - 1, y - 1, w + 2, 4);
+  b.fillStyle = '#26302a'; b.fillRect(x, y, w, 2);
+  b.fillStyle = P.breath < 0.25 || P.winded ? '#d07a3c' : '#7f9c55'; b.fillRect(x, y, Math.round(w * P.breath), 2);
+}
+// Avstandsmåleren i kikkerten (nivå 2–3) lyser øverst i synsfeltet
+function aimHud() {
+  const l = lv('scope');
+  if (hagle() || l < 2 || AIM.open < 0.8) return;
+  const a = AIM.pick && AIM.pick.it.a;
+  let line = AIM.range == null ? '– m' : Math.round(AIM.range * M_PER_PX) + ' m';
+  if (l === 3 && a) line = SPEC[a.sp].name + ', ' + SPEC[a.sp].sexn[a.sex] + ' · ca. ' + fmtKg(a.kg >= 20 ? Math.round(a.kg / 5) * 5 : a.kg >= 3 ? Math.round(a.kg) : a.kg) + ' · ' + line;
+  pxText(line, (AIM.ringX + 0.5) * ZB, (AIM.ringY - AIM.ringR) * ZB + 34 * DPR, Math.round(15 * DPR), '#f0b450');
 }
 // Første faste ting under et punkt i bufferen, nærmest først: { it, lx, ly } med pikselen i spriten
 function aimPick(px, py) {

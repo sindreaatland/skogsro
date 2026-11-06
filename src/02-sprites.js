@@ -1,7 +1,7 @@
 // ===== Sprites: all grafikk tegnes prosedyrisk som pikselkunst ved oppstart =====
 const SPR = {};   // statiske ting i skogen, SPR[type][variant]
 const ANI = {};   // dyr, ANI[art][kjønn][positur][bilde]
-const HUN = {};   // jeger, HUN[retning][sikter][bilde]
+const HUN = {};   // jeger, HUN[retning][0 går, 1 sikter, 2 tar opp børsa][bilde]; HUN.ots[bilde]: tar opp børsa, sett bakfra i 3D; HUN.chop[bilde]: hogger med øks
 const FX = {};    // effekter
 let ICON = {};    // butikk-ikoner
 
@@ -538,43 +538,85 @@ function genBird(sp, sex, pose, f) {
 }
 
 // ---------- Jeger ----------
+// Bilde i: 0 står, 1–4 går. Med r (0–3) tar jegeren børsa opp: 0 griper reima, 1 holder børsa på skrå foran
+// brystet, 2 går ned på kne, 3 kneler med kolben i skulderen og løpet rettet fram. ots: sett over høyre skulder i 3D,
+// der løpet peker inn mot midten av bildet i stedet for rett opp som på kartet
 const HW = 24, HH = 30, HOX = 12, HOY = 27;
-function genHunter(dir, i, aim) {
+// ax (0–3, bare fra siden): hogger med øks. 0 svinger øksa opp bak hodet, 1 på vei ned foran, 2 hogget i stammen, 3 dras løs igjen
+function genHunter(dir, i, r = -1, ots = false, ax = -1) {
   const p = new Pix(HW, HH);
   const hat = C('#3f5c3a'), hatD = C('#2c4430'), hatL = C('#56784a'), band = C('#ee7c2a'), skin = C('#e4b48c'), skinD = C('#c48e68'), beard = C('#6b4a30'),
     jac = C('#586c3e'), jacD = C('#3f502e'), jacL = C('#718648'), pant = C('#4c3f32'), pantD = C('#382e26'), boot = C('#231c18'),
-    pack = C('#80583a'), packD = C('#5c3e28'), packL = C('#a07448'), gun = C('#201a18'), wood = C('#8c5830');
-  const w = i > 0, ph = i - 1, b = w && (ph & 1) ? -1 : 0;
+    pack = C('#80583a'), packD = C('#5c3e28'), packL = C('#a07448'), gun = C('#201a18'), wood = C('#8c5830'), steel = C('#4a4440'),
+    axS = C('#8a8780'), axE = C('#eef0e8');
+  // armer, skaft og økseblad i hvert av de fire hoggebildene
+  const axe = k => {
+    if (k === 0) { p.line(11, 13, 8, 3, jacD, 2); p.rect(7, 1, 2, 2, skin); p.line(6, 2, 2, 7, wood, 1); p.rect(0, 7, 3, 3, axS); p.rect(0, 9, 3, 1, steel); p.rect(0, 10, 2, 1, axE); }
+    else if (k === 2) { p.line(12, 14, 15, 17, jacD, 2); p.rect(16, 17, 2, 2, skin); p.line(18, 18, 21, 18, wood, 1); p.rect(21, 16, 2, 5, axS); p.rect(21, 16, 2, 1, steel); p.rect(23, 17, 1, 3, axE); }
+    else { p.line(12, 13, 15, 9, jacD, 2); p.rect(16, 7, 2, 2, skin); p.line(18, 7, 20, 4, wood, 1); p.rect(19, 1, 3, 3, axS); p.rect(19, 1, 3, 1, steel); p.rect(22, 2, 1, 3, axE); }
+  };
+  // på kne sitter overkroppen tre piksler lavere; med øksa lener jegeren seg bakover i svingen og fram i hogget
+  const w = i > 0, ph = i - 1, kn = r >= 2 ? 3 : 0, b = (w && (ph & 1) ? -1 : 0) + kn, slung = r < 1, hx = ax === 0 ? -1 : ax === 2 ? 1 : 0;
   if (dir === 'side') {
-    const s = w ? [2, 0, -2, 0][ph] : 0, lf = w && ph === 1 ? 1 : 0, lf2 = w && ph === 3 ? 1 : 0;
-    p.line(11, 20, 11 - s, 26 - lf2, pantD, 2); p.rect(11 - s, 26 - lf2, 3, 1, boot);
-    p.line(12, 20, 12 + s, 26 - lf, pant, 2); p.rect(12 + s, 26 - lf, 3, 1, boot);
+    if (kn) {
+      // bakre kne i bakken med leggen flat bakover, fremre fot plantet foran
+      p.rect(10, 23, 2, 3, pantD); p.rect(5, 26, 7, 1, pantD); p.rect(3, 25, 2, 2, boot);
+      p.rect(12, 22, 4, 2, pant); p.rect(15, 22, 2, 4, pant); p.rect(15, 26, 3, 1, boot);
+    } else {
+      const s = w ? [2, 0, -2, 0][ph] : ax >= 0 ? 2 : 0, lf = w && ph === 1 ? 1 : 0, lf2 = w && ph === 3 ? 1 : 0;
+      p.line(11, 20, 11 - s, 26 - lf2, pantD, 2); p.rect(11 - s, 26 - lf2, 3, 1, boot);
+      p.line(12, 20, 12 + s, 26 - lf, pant, 2); p.rect(12 + s, 26 - lf, 3, 1, boot);
+    }
     p.rect(9, 12 + b, 6, 8, jac); p.rect(9, 19 + b, 6, 1, jacD); p.rect(9, 12 + b, 1, 8, jacD); p.rect(14, 12 + b, 1, 6, jacL);
     p.rect(6, 13 + b, 3, 6, pack); p.rect(6, 13 + b, 3, 1, packL); p.rect(6, 18 + b, 3, 1, packD); p.set(6, 15 + b, packD);
-    if (!aim) { p.line(9, 6 + b, 6, 19 + b, gun, 1); p.set(6, 18 + b, wood); p.set(6, 19 + b, wood); p.set(7, 17 + b, wood); }
-    p.rect(10, 7 + b, 4, 4, skin); p.rect(10, 7 + b, 1, 3, beard); p.set(13, 8 + b, C('#1a1412')); p.rect(11, 10 + b, 3, 1, beard); p.set(13, 9 + b, beard); p.rect(10, 11 + b, 4, 1, skinD);
-    p.rect(9, 6 + b, 7, 1, hatD); p.rect(10, 5 + b, 4, 1, band); p.rect(10, 3 + b, 4, 2, hat); p.rect(10, 3 + b, 3, 1, hatL);
-    if (aim) { p.rect(13, 13 + b, 4, 2, jacD); p.set(17, 13 + b, skin); p.set(17, 14 + b, skin); }
-    else { const ao = w ? -s / 2 : 0; p.line(12, 13 + b, 12 + ao, 17 + b, jacD, 2); p.rect(Math.round(12 + ao), 18 + b, 2, 1, skin); }
+    if (slung) { p.line(9, 6 + b, 6, 19 + b, gun, 1); p.set(6, 18 + b, wood); p.set(6, 19 + b, wood); p.set(7, 17 + b, wood); }
+    // armene som løfter øksa bak hodet skjules av hodet
+    if (ax === 0) axe(0);
+    p.rect(10 + hx, 7 + b, 4, 4, skin); p.rect(10 + hx, 7 + b, 1, 3, beard); p.set(13 + hx, 8 + b, C('#1a1412')); p.rect(11 + hx, 10 + b, 3, 1, beard); p.set(13 + hx, 9 + b, beard); p.rect(10 + hx, 11 + b, 4, 1, skinD);
+    p.rect(9 + hx, 6 + b, 7, 1, hatD); p.rect(10 + hx, 5 + b, 4, 1, band); p.rect(10 + hx, 3 + b, 4, 2, hat); p.rect(10 + hx, 3 + b, 3, 1, hatL);
+    if (ax > 0) axe(ax);
+    else if (r === 0) { p.rect(11, 12 + b, 2, 2, jacD); p.rect(9, 11 + b, 2, 2, skin); }
+    else if (r === 1 || r === 2) {
+      // [kolbe x, y, munning x, y, kolbens øvre ende x, y, hånd på grepet x, y, hånd foran x, y]
+      const L = r === 1 ? [10, 19, 17, 8, 11, 17, 12, 16, 14, 13] : [9, 17, 19, 10, 11, 16, 12, 15, 15, 13];
+      p.line(L[0], L[1] + b, L[2], L[3] + b, gun, 1); p.line(L[0], L[1] + b, L[4], L[5] + b, wood, 1);
+      p.line(12, 13 + b, L[6], L[7] - 1 + b, jacD, 2); p.line(13, 14 + b, L[8] - 1, L[9] + 1 + b, jacD, 1);
+      p.set(L[6], L[7] + b, skin); p.set(L[8], L[9] + b, skin);
+    } else if (r === 3) {
+      p.rect(9, 12 + b, 4, 2, wood); p.rect(13, 12 + b, 9, 1, gun); p.set(21, 11 + b, gun); p.set(21, 12 + b, steel);
+      p.rect(13, 13 + b, 4, 2, jacD); p.rect(17, 13 + b, 1, 2, skin); p.set(12, 14 + b, skin);
+    } else if (ax < 0) { const ao = w ? -[2, 0, -2, 0][ph] / 2 : 0; p.line(12, 13 + b, 12 + ao, 17 + b, jacD, 2); p.rect(Math.round(12 + ao), 18 + b, 2, 1, skin); }
   } else {
-    const l1 = w && ph === 0 ? 1 : 0, l2 = w && ph === 2 ? 1 : 0;
-    p.rect(9, 20, 2, 6 - l1, pant); p.rect(9, 26 - l1, 2, 1, boot); p.rect(13, 20, 2, 6 - l2, pantD); p.rect(13, 26 - l2, 2, 1, boot);
+    if (kn) { p.rect(8, 22, 3, 4, pant); p.rect(8, 26, 3, 1, boot); p.rect(13, 23, 3, 3, pantD); p.rect(13, 26, 3, 1, pantD); }
+    else {
+      const l1 = w && ph === 0 ? 1 : 0, l2 = w && ph === 2 ? 1 : 0;
+      p.rect(9, 20, 2, 6 - l1, pant); p.rect(9, 26 - l1, 2, 1, boot); p.rect(13, 20, 2, 6 - l2, pantD); p.rect(13, 26 - l2, 2, 1, boot);
+    }
     p.rect(8, 12 + b, 8, 8, jac); p.rect(8, 19 + b, 8, 1, jacD); p.rect(8, 12 + b, 1, 7, jacL);
     const a1 = w ? [1, 0, -1, 0][ph] : 0;
     if (dir === 'down') {
       p.rect(10, 12 + b, 4, 1, jacD); p.rect(9, 13 + b, 1, 4, packD); p.rect(14, 13 + b, 1, 4, packD);
-      if (aim) { p.rect(6, 13 + b, 2, 3, jacD); p.rect(16, 13 + b, 2, 3, jacD); p.rect(8, 15 + b, 8, 2, jacD); p.rect(11, 16 + b, 2, 1, skin); }
+      if (r === 0) { p.rect(6, 13 + b, 2, 5, jacD); p.rect(6, 18 + b, 2, 1, skin); p.rect(16, 11 + b, 2, 3, jacD); p.rect(15, 10 + b, 2, 1, skin); }
+      else if (r === 1 || r === 2) { p.line(6, 20 + b, 17, 10 + b, gun, 1); p.line(6, 20 + b, 8, 18 + b, wood, 2); p.rect(6, 13 + b, 2, 4, jacD); p.rect(8, 17 + b, 2, 1, skin); p.rect(16, 13 + b, 2, 2, jacD); p.set(14, 13 + b, skin); p.set(15, 12 + b, skin); }
+      // løpet rett mot deg: munningen som en mørk prikk foran brystet
+      else if (r === 3) { p.rect(6, 13 + b, 2, 3, jacD); p.rect(16, 13 + b, 2, 3, jacD); p.rect(8, 15 + b, 8, 2, jacD); p.rect(11, 12 + b, 2, 3, gun); p.set(11, 12 + b, steel); p.rect(11, 16 + b, 2, 1, skin); }
       else { p.rect(6, 13 + b, 2, 5 + a1, jacD); p.rect(6, 18 + b + a1, 2, 1, skin); p.rect(16, 13 + b, 2, 5 - a1, jacD); p.rect(16, 18 + b - a1, 2, 1, skin); }
       p.rect(9, 7 + b, 6, 4, skin); p.set(10, 8 + b, C('#1a1412')); p.set(13, 8 + b, C('#1a1412')); p.rect(9, 10 + b, 6, 1, beard); p.set(9, 9 + b, beard); p.set(14, 9 + b, beard); p.rect(10, 11 + b, 4, 1, beard);
     } else {
-      p.rect(6, 13 + b, 2, 5 + a1, jacD); p.rect(16, 13 + b, 2, 5 - a1, jacD);
+      // bakfra: børsa foran jegeren skjules av kroppen, bare løpet stikker fram ved høyre skulder
+      if (r === 0) { p.rect(6, 13 + b, 2, 5, jacD); p.rect(16, 11 + b, 2, 3, jacD); p.set(16, 10 + b, skin); }
+      else if (r === 1 || r === 2) { p.line(15, 12 + b, 18, 7 + b, gun, 1); p.rect(6, 13 + b, 2, 4, jacD); p.rect(16, 13 + b, 2, 4, jacD); }
+      else if (r === 3) { if (ots) p.line(15, 12 + b, 23, 9 + b, steel, 1); else p.line(16, 11 + b, 16, 2 + b, steel, 1); p.rect(4, 13 + b, 4, 2, jacD); p.rect(16, 12 + b, 4, 2, jacD); }
+      else { p.rect(6, 13 + b, 2, 5 + a1, jacD); p.rect(16, 13 + b, 2, 5 - a1, jacD); }
       p.rect(9, 12 + b, 6, 7, pack); p.rect(9, 12 + b, 6, 1, packL); p.rect(9, 18 + b, 6, 1, packD); p.rect(14, 13 + b, 1, 5, packD); p.set(11, 15 + b, packD); p.set(12, 15 + b, packD);
-      if (!aim) { p.line(8, 9 + b, 15, 19 + b, gun, 1); p.set(15, 19 + b, wood); p.set(14, 18 + b, wood); }
+      if (slung) { p.line(8, 9 + b, 15, 19 + b, gun, 1); p.set(15, 19 + b, wood); p.set(14, 18 + b, wood); }
       p.rect(9, 7 + b, 6, 3, beard); p.rect(10, 10 + b, 4, 1, skinD);
     }
     p.rect(7, 6 + b, 10, 1, hatD); p.rect(9, 5 + b, 6, 1, band); p.rect(9, 3 + b, 6, 2, hat); p.rect(9, 3 + b, 5, 1, hatL);
   }
   p.outlineAuto(0.42);
+  // fartsstripe etter øksebladet i buen over hodet (uten omriss)
+  if (ax === 1) for (const [x, y] of [[1, 5], [2, 3], [4, 1], [6, 0], [9, 0], [12, 0], [15, 0], [17, 0]]) p.set(x, y, C('#d8dcd2'));
   return mkSpr(p, HOX, HOY, {});
 }
 
@@ -629,18 +671,37 @@ function genFx() {
     p.outlineAuto(0.4, true);
     return mkSpr(p, cx, by + 1, { nosh: 1 });
   });
-  // gapahuk: tak av stokker dekket med granbar, åpen front med granbar på golvet
-  { const p = new Pix(38, 27), wd = T('#3a2618', '#5e3c24', '#84583a', '#a07450'), gr = T('#1d4038', '#295642', '#39704e', '#548c5c'), by = 23;
-    for (let y = 8; y <= by; y++) for (let x = 6; x <= 31; x++) p.set(x, y, y < 11 ? C('#120e0a') : C('#1e1712'));
-    for (const y of [12, 15, 18]) for (let x = 6; x <= 31; x++) p.set(x, y, hash2(x >> 2, y, 3) < 0.5 ? wd[0] : C('#2c2016'));
-    for (let y = by - 3; y <= by; y++) for (let x = 5; x <= 32; x++) p.set(x, y, tone(gr, 0.35 + (y - by + 3) * 0.12 + (hash2(x, y, 5) - 0.5) * 0.5, x, y, 2));
-    p.rect(13, by - 3, 9, 2, C('#b8a488')); p.rect(13, by - 3, 9, 1, C('#d8c8a8'));
-    for (const x of [4, 32]) { p.rect(x, 6, 2, by - 5, wd[1]); p.rect(x, 6, 1, by - 5, wd[2]); }
-    for (let y = 0; y <= 5; y++) for (let x = 1 + (5 - y) * 0.4; x <= 36 - (5 - y) * 0.4; x++) p.set(x, y, tone(gr, 0.85 - y * 0.12 + (hash2(x >> 1, y, 9) - 0.5) * 0.45, x, y, 2));
-    for (let x = 1; x <= 36; x++) { p.set(x, 6, wd[3]); p.set(x, 7, wd[1]); p.set(x, 8, wd[0]); }
-    p.set(0, 7, wd[2]); p.set(37, 7, wd[2]);
+  // gapahuk: stokker reist mot hverandre som et telt (omvendt V) og krysset i mønet, åpen front med granbar på golvet
+  { const p = new Pix(43, 35), by = 33, cx = 21, half = 16, rise = 16, D = 12, LW = 4, s = rise / half, top = by - rise;
+    const bk = T('#231a14', '#3a2c20', '#56432f', '#76603f', '#988060'), gr = T('#182c24', '#22402f', '#2e5238', '#3e6440'), ms = T('#4e6a30', '#6a8a3a');
+    const edge = x => by - (half - Math.abs(x - cx)) * s;   // underkanten av de to framste stokkene
+    // åpningen: mørkt inn under mønet, granbar på golvet og framsida av de framste stokkene langs kanten
+    for (let y = top; y <= by; y++) for (let x = cx - half; x <= cx + half; x++) {
+      const e = y - edge(x); if (e <= 0) continue;
+      p.set(x, y, e < 1.8 ? bk[1] : y > by - 4 ? tone(gr, 0.3 + (y - by + 4) * 0.14 + (hash2(x, y, 5) - 0.5) * 0.5, x, y, 2)
+        : (y - top) / rise + (hash2(x, y, 4) - 0.5) * 0.2 > 0.6 ? C('#1e1712') : C('#120e0a'));
+    }
+    p.rect(cx - 4, by - 3, 8, 2, C('#b8a488')); p.rect(cx - 4, by - 3, 8, 1, C('#d8c8a8'));
+    // takflatene: tre stokker på hver side bakover; ext tegner endene som stikker forbi hverandre i mønet
+    const roof = (side, ext) => {
+      for (let x = 0; x < p.w; x++) {
+        const u = half + side * (cx - x); if (u < 0 || u > half + 4 || (u > half) !== ext) continue;
+        for (let y = 0; y <= by; y++) {
+          const d = by - u * s - y; if (d < 0 || d >= D) continue;
+          const k = Math.floor(d / LW), t = d / LW - k;
+          if (ext && u > half + 2 + ((hash2(k, side, 21) * 3) | 0)) continue;
+          const v = 0.28 + t * 0.5 + (side < 0 ? 0.14 : -0.16) + (hash2(u >> 1, k, 13 + side) - 0.5) * 0.22 + (hash2(k, side, 17) - 0.5) * 0.16;
+          p.set(x, y, k > 0 && t < 0.3 ? bk[0] : hash2(u, k, 31 + side) < 0.05 ? bk[1]
+            : u < 2.5 && hash2(x, y, 41) < 0.4 ? ms[(hash2(x, y, 43) * 2) | 0] : tone(bk, v, x, y, 2));
+        }
+      }
+    };
+    roof(1, false); roof(-1, false); roof(1, true); roof(-1, true);
+    // kappede ender der stokkene står mot bakken, og noen steiner
+    for (let k = 0; k < D / LW; k++) for (const bx of [cx - half - 1, cx + half + 1]) { p.set(bx, by - k * LW - 1, C('#b89a6c')); p.set(bx, by - k * LW - 2, C('#d4b88a')); }
+    for (const [x, y] of [[cx - half - 4, by - 1], [cx + half + 3, by - 4]]) { p.rect(x, y, 2, 2, C('#6e7472')); p.set(x, y, C('#979c94')); }
     p.outlineAuto(0.45);
-    FX.hut = mkSpr(p, 19, by, {}); }
+    FX.hut = mkSpr(p, cx, by, {}); }
   FX.bird = [['101', '010'], ['000', '111']].map(r => { const p = new Pix(3, 2); r.forEach((row, j) => row.split('').forEach((b, i) => { if (b === '1') p.set(i, j, C('#1c2224')); })); return p.canvas(); });
 }
 function genIcons() {
@@ -700,6 +761,9 @@ function genAll() {
   }
   DOGSPR.stand = [genAnimal(null, 'm', 'stand', 0, DOG)]; DOGSPR.mark = [genAnimal(null, 'm', 'alert', 0, DOG)];
   DOGSPR.walk = [0, 1, 2, 3].map(f => genAnimal(null, 'm', 'walk', f, DOG)); DOGSPR.run = [0, 1, 2, 3].map(f => genAnimal(null, 'm', 'run', f, DOG));
-  for (const d of ['side', 'down', 'up']) HUN[d] = [0, 1].map(a => [0, 1, 2, 3, 4].map(i => genHunter(d, i, a)));
+  // HUN[retning]: [står/går, sikter (siste løftebilde), de fire bildene der børsa tas opp]
+  for (const d of ['side', 'down', 'up']) { const r = [0, 1, 2, 3].map(k => genHunter(d, 0, k)); HUN[d] = [[0, 1, 2, 3, 4].map(i => genHunter(d, i)), [r[3], r[3], r[3], r[3], r[3]], r]; }
+  HUN.ots = [0, 1, 2, 3].map(k => genHunter('up', 0, k, true));
+  HUN.chop = [0, 1, 2, 3].map(k => genHunter('side', 0, -1, false, k));
   genFx(); ICON = genIcons();
 }

@@ -26,7 +26,10 @@ img.px, .ico, #hud img { image-rendering: pixelated; }
 button { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
-.hud { position: fixed; pointer-events: none; z-index: 2; }
+.hud { position: fixed; pointer-events: none; z-index: 2; transition: opacity .2s; }
+/* i siktet viker grensesnittet unna; meldingene blir stående */
+body.aiming .hud:not(#log) { opacity: 0; }
+body.aiming #tbtns { pointer-events: none; }
 .box { background: var(--panel); border: 2px solid var(--edge); box-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .lab { font-family: var(--f-lab); font-size: 10px; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
 #tl { top: calc(14px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); padding: 8px 12px; display: grid; gap: 2px; }
@@ -59,7 +62,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 .rnd { width: 7px; height: 22px; background: #3a3426; border: 1px solid #1a1612; }
 .rnd.on { background: linear-gradient(#c8683a 0 30%, #e0aa40 30%); }
 #gunName, #campN { padding-right: 20px; } .rnd.sh { width: 9px; } .rnd.sh.on { background: linear-gradient(#c43a2c 0 72%, #d8a840 72%); }
-#breath { left: 50%; transform: translateX(-50%); bottom: calc(10vh + env(safe-area-inset-bottom, 0px)); width: 240px; padding: 6px 10px; display: grid; gap: 4px; text-align: center; }
+#breath { left: 50%; transform: translateX(-50%); bottom: calc(10vh + env(safe-area-inset-bottom, 0px)); width: 200px; padding: 6px 10px; display: grid; gap: 4px; text-align: center; }
 .meter { height: 8px; background: #1f2a23; border: 1px solid #3a4a3e; }
 .meter i { display: block; height: 100%; background: var(--moss); }
 #breathFill.low { background: var(--rust); }

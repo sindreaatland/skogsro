@@ -57,7 +57,7 @@ const ZONES = { head: ['Hodeskudd', 2.2, 0.95], vital: ['Hjerte/lunge', 1.6, 1],
 const fmtKg = kg => String(kg).replace('.', ',') + ' kg';
 
 const G = {
-  t: 0, hour: 6.6, day: 1, money: 0, scents: 2, treats: TREAT_START, wood: 0, matches: 0, meat: 0, fires: [], huts: [], cut: new Set(), crackT: 0, journal: [], up: {}, started: false, paused: false, panel: null, gun: 'rifle',
+  t: 0, hour: 6.6, day: 1, money: 0, scents: 2, treats: TREAT_START, wood: 0, matches: 0, meat: 0, fires: [], huts: [], falls: [], cut: new Set(), crackT: 0, journal: [], up: {}, started: false, paused: false, panel: null, gun: 'rifle',
   wind: { a: 0, s: 0.5, x: 1, y: 0 }, animals: [], scentObjs: [], blood: [], parts: [], msgs: [], spawnT: 0, quiet: [], dayl: 1, hunters: [], saveT: 15, pauseT: 0,
 };
 for (const u of UPG) G.up[u.id] = 0;
@@ -516,12 +516,13 @@ function dogSprite(d) {
 
 // ---------- friluft: øks, ved, bål, gapahuk og helse ----------
 // Arbeid (hogge, bygge, steke) tar litt tid og avbrytes hvis du går eller sikter
-function startWork(kind, dur, done) { if (!P.work) P.work = { kind, t: 0, dur, done, beat: 0 }; }
+function startWork(kind, dur, done, o) { if (!P.work) P.work = Object.assign({ kind, t: 0, dur, done, beat: 0 }, o); }
 function workUpdate(dt) {
   const w = P.work; if (!w) return;
-  if (P.moving || P.aim || G.panel) { P.work = null; return; }
+  if (P.moving || P.aim || G.panel || w.tree && !CHOP[w.tree.k]) { P.work = null; return; }
   w.t += dt; w.beat -= dt;
-  if (w.beat <= 0) {
+  if (w.tree) chopStep(w, dt);
+  else if (w.beat <= 0) {
     w.beat = w.kind === 'cook' ? 1.1 : 0.55;
     if (w.kind === 'cook') sfx.sizzle();
     else { sfx.chop(); for (let i = 0; i < 3; i++) G.parts.push({ x: P.x + (P.flip ? -6 : 6), y: P.y - 1, z: rnd(4, 9), vx: rnd(-18, 18), vy: rnd(-5, 5), vz: rnd(6, 16), life: rnd(0.3, 0.6), col: '#d8c090', grav: 1 }); }
@@ -542,14 +543,57 @@ function scare(x, y, r) {
     if (d < r * 0.5) { a.aware = 1.5; startFlee(a, x, y); } else if (d < r) a.aware = Math.max(a.aware, 0.6);
   }
 }
+// Jegeren stiller seg et skaftlengde fra stammen (side: hvilken side av stammen hakket er på) og hogger.
+// Det siste hogget kommer idet arbeidet er ferdig, og treet velter vekk fra jegeren
 function chop(o) {
   P.face = 'side'; P.flip = o.x < P.x;
+  const side = P.flip ? 1 : -1, gx = o.x + side * 10, gy = o.y + 2;
   startWork('chop', 3.2, () => {
     const n = CHOP[o.k]; if (!n) return; // en annen rakk å felle det
-    for (let i = 0; i < 12; i++) G.parts.push({ x: o.x + rnd(-6, 6), y: o.y, z: rnd(8, 40), vx: rnd(-20, 20), vy: rnd(-6, 6), vz: rnd(0, 10), life: rnd(0.6, 1.4), col: i & 1 ? '#c8a474' : o.k === 'birch' ? '#e6bd52' : '#3d6a44', grav: 1 });
-    cutTree(o.x, o.y); netSend({ t: 'cut', x: o.x, y: o.y }); if (isAuth()) scare(o.x, o.y, 420);
-    G.wood += n; sfx.fall(); msg('Treet falt. +' + n + ' ved (' + G.wood + ' i alt).', 'good'); save();
-  });
+    fellTree(o.x, o.y, -side); netSend({ t: 'cut', x: o.x, y: o.y, d: -side }); if (isAuth()) scare(o.x, o.y, 420);
+    G.wood += n; msg('Treet faller! +' + n + ' ved (' + G.wood + ' i alt).', 'good'); save();
+  }, Object.assign({ tree: o, side, hits: 0, beat: 0.4 }, isWater(gx, gy) ? {} : { gx, gy }));
+}
+// Hoggebildet ut fra tida til neste hogg: øksa sitter i stammen, dras løs, svinges opp bak hodet og kommer ned
+const chopFrame = w => w.beat > 0.43 ? 2 : w.beat > 0.36 ? 3 : w.beat > 0.08 ? 0 : 1;
+const LEAF_C = { spruce: '#39704e', pine: '#558847', birch: '#e2b03a', rowan: '#cc7a38' };
+// Hvert hogg sprøyter flis ut av hakket, rister kronen så nåler og blader drysser ned, og gjør hakket dypere
+function chopStep(w, dt) {
+  const o = w.tree;
+  if (w.gx !== undefined) { const k = Math.min(1, dt * 12), c = collide(lerp(P.x, w.gx, k), lerp(P.y, w.gy, k), 3); P.x = c.x; P.y = c.y; }
+  if (w.beat > 0) return;
+  w.beat = 0.55; w.hits++; o.hit = G.t; o.hitD = -w.side; sfx.chop();
+  for (let i = 0; i < 6; i++) G.parts.push({ x: o.x + w.side * 2, y: o.y + 0.5, z: rnd(5, 7), vx: w.side * rnd(10, 36), vy: rnd(-6, 6), vz: rnd(8, 24), life: rnd(0.6, 1.2), col: ['#f0dcac', '#d8c090', '#c8a474', '#5a4030'][i & 3], grav: 1 });
+  const s = SPR[o.k][o.v], lc = LEAF_C[o.k];
+  if (lc) for (let i = 0; i < 3; i++) G.parts.push({ x: o.x + rnd(-10, 10), y: o.y + rnd(0, 2), z: s.ay * rnd(0.5, 0.85), vx: 0, vy: 0, vz: -rnd(14, 24), life: rnd(3, 4.5), col: lc, leaf: Math.random() * TAU, grav: 0 });
+}
+// Treet velter (dir: 1 mot høyre, -1 mot venstre): sakte først mens det knaker, så fortere og fortere,
+// et brak når det slår i bakken og en liten sprett før det blir liggende. Det fjernes først når det er utenfor skjermen
+const FALL_T = 1.6;
+const nearK = (x, y) => clamp(1 - hyp(x - P.x, y - P.y) / 700, 0, 1);
+function fellTree(x, y, dir) {
+  const ch = chunks.get(Math.floor(x / CS) + ',' + Math.floor(y / CS)), o = ch && ch.objs.find(o => o.x === x && o.y === y && CHOP[o.k]);
+  if (o) { G.falls.push({ x, y, s: SPR[o.k][o.v], lc: LEAF_C[o.k], dir: dir < 0 ? -1 : 1, t: 0 }); const k = nearK(x, y); if (k > 0) sfx.creak(k); }
+  cutTree(x, y);
+}
+function fallAng(f) {
+  if (f.t < FALL_T) return Math.PI / 2 * Math.pow(f.t / FALL_T, 2.6);
+  const v = f.t - FALL_T; return Math.PI / 2 - 0.1 * Math.abs(Math.sin(v * 12)) * Math.exp(-v * 5);
+}
+function fallUpdate(dt) {
+  for (const f of G.falls) {
+    f.t += dt;
+    if (f.t < FALL_T || f.hit) continue;
+    // nedslaget: jord og støv langs stammen, og nåler eller blader som spruter fra kronen
+    f.hit = 1; const k = nearK(f.x, f.y); if (k > 0) sfx.crash(k);
+    const L = f.s.ay - 6;
+    for (let i = 0; i < 30; i++) {
+      const a = rnd(0.15, 1) * L, crown = a > L * 0.55;
+      G.parts.push({ x: f.x + f.dir * a, y: f.y + rnd(-3, 3), z: rnd(0, 3), vx: rnd(-14, 14), vy: rnd(-5, 5), vz: rnd(8, crown ? 30 : 18), life: rnd(0.5, 1.2), col: crown && f.lc && i & 1 ? f.lc : ['#8a7a5c', '#6a5a44', '#c8a474'][i % 3], grav: 1 });
+    }
+    for (let i = 0; i < 10; i++) G.parts.push({ x: f.x + f.dir * rnd(0.3, 1) * L, y: f.y + rnd(-2, 2), z: rnd(1, 5), vx: rnd(-8, 8), vy: rnd(-3, 3), vz: rnd(2, 6), life: rnd(1, 2), col: '#b8ae96', smoke: 1 });
+  }
+  G.falls = G.falls.filter(f => f.t < FALL_T + 1 || Math.abs(f.x - CAM.x) < CAM.w / 2 + 120 && Math.abs(f.y - CAM.y) < CAM.h / 2 + 40);
 }
 const fireSpr = f => FX.fire[((G.t * 8 + f.id * 7) | 0) % 3];
 const nearFire = (x, y, r) => G.fires.find(f => f.t > 0 && hyp(f.x - x, f.y - y) < r);
@@ -637,8 +681,10 @@ const KEYS = {}, MOUSE = { x: 0, y: 0, wx: 0, wy: 0, locked: false };
 function playerUpdate(dt) {
   P.cycle = Math.max(0, P.cycle - dt); P.callCd = Math.max(0, P.callCd - dt);
   if (P.reload > 0) { P.reload -= dt; if (P.reload <= 0) { P.reload = 0; P.ammo = gunCap(); } }
+  aimUpdate(dt);
+  // du står i ro mens du tar børsa opp og sikter
   let mx = 0, my = 0;
-  if (G.started && !G.paused && !P.aim) {
+  if (G.started && !G.paused && !P.aim && !AIM.want) {
     if (KEYS.KeyA || KEYS.ArrowLeft) mx -= 1; if (KEYS.KeyD || KEYS.ArrowRight) mx += 1;
     if (KEYS.KeyW || KEYS.ArrowUp) my -= 1; if (KEYS.KeyS || KEYS.ArrowDown) my += 1;
   }
@@ -709,6 +755,7 @@ function update(dt) {
   G.hunters = hunters();
   playerUpdate(dt);
   workUpdate(dt);
+  fallUpdate(dt);
   healthUpdate(dt);
   dogUpdate(dt);
   netUpdate(dt);

@@ -130,7 +130,7 @@ function netMsg(m) {
     case 'scent': if (isAuth()) addScent(m); break;
     case 'fire': if (isAuth()) addFire(m); break;
     case 'hut': if (isAuth()) addHut(m); break;
-    case 'cut': cutTree(m.x | 0, m.y | 0); if (isAuth()) scare(+m.x, +m.y, 420); break;
+    case 'cut': fellTree(m.x | 0, m.y | 0, +m.d || 1); if (isAuth()) scare(+m.x, +m.y, 420); break;
     case 'bay': { const a = isAuth() && G.animals.find(x => x.id === m.id); if (a) holdAnimal(a, +m.x || a.x); break; }
     case 'collect': {
       if (!isAuth()) break;

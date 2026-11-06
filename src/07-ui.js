@@ -39,10 +39,12 @@ function hudUpdate(dt) {
   setText('dogTxt', { heel: 'Send ut hunden', search: 'Kall inn hunden', mark: 'Kall inn hunden', back: 'Hunden kommer' }[D.st]);
   $('cold').hidden = !(G.started && P.cold > 0);
   if (P.cold > 0) { setText('coldTxt', P.wet ? 'I vannet · fryser' : 'Våt og kald · tørker'); $('coldFill').style.width = (P.cold * 100) + '%'; }
-  // pustemåleren vises i siktet, og ellers så lenge du springer eller henter deg inn etterpå
-  $('breath').hidden = !(G.started && (P.aim || P.breath < 1)); $('breathFill').style.width = (P.breath * 100) + '%';
+  // i siktet, og mens børsa tas opp, viker alt grensesnitt unna bortsett fra meldingene
+  document.body.classList.toggle('aiming', G.started && (P.aim || AIM.want));
+  // pustemåleren vises så lenge du springer eller henter deg inn etterpå; i siktet er den en strek nederst i bildet
+  $('breath').hidden = !(G.started && !P.aim && P.breath < 1); $('breathFill').style.width = (P.breath * 100) + '%';
   $('breathFill').classList.toggle('low', P.breath < 0.25 || P.winded);
-  setText('breathTxt', P.winded ? 'Andpusten · hent deg inn' : P.aim ? 'Pust · hold Space for å holde pusten' : 'Pust · hold Space for å springe');
+  setText('breathTxt', P.winded ? 'Andpusten · hent deg inn' : 'Pust · hold Space for å springe');
   // helse, leirutstyr og arbeid som pågår
   $('hp').hidden = !G.started;
   setText('hpTxt', 'Helse ' + Math.ceil(P.hp) + (P.sick ? ' · forkjølet' : P.warm ? ' · varmer deg' : ''));
@@ -126,14 +128,14 @@ function buy(u) {
   save(); renderShop();
 }
 function openShop() {
-  G.paused = true; G.panel = 'shop'; P.aim = false; try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
+  G.paused = true; G.panel = 'shop'; aimReset(); try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
   // ovnen og maten i bua gjør deg tørr, varm og frisk
   refill(); if (P.sick) msg('Du varmet deg ved ovnen i bua og er frisk igjen.', 'good'); healFull();
   $('sleepBtn').hidden = mp();
   renderShop(); $('shop').hidden = false; sfx.ui();
 }
 function openBook() {
-  G.paused = true; G.panel = 'book'; P.aim = false; try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
+  G.paused = true; G.panel = 'book'; aimReset(); try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
   const sum = $('bookSpecies'); sum.innerHTML = '';
   for (const sp of SPECIES) {
     const k = G.journal.filter(j => j.sp === sp), best = k.reduce((a, j) => Math.max(a, j.kg), 0);
@@ -155,7 +157,7 @@ function openBook() {
 // Alene fryser verden; med andre på nettet står jegeren stille mens tida går videre
 function openPause() {
   if (!G.started || G.panel) return;
-  G.paused = true; G.panel = 'pause'; G.pauseT = performance.now(); P.aim = false; P.hold = false;
+  G.paused = true; G.panel = 'pause'; G.pauseT = performance.now(); aimReset();
   try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
   save(); $('pauseNote').hidden = !mp(); $('pause').hidden = false; sfx.ui();
 }
@@ -209,20 +211,21 @@ function bindInput() {
     }
   });
   addEventListener('keyup', e => { KEYS[e.code] = false; if (e.code === 'Space') P.hold = false; });
-  addEventListener('blur', () => { for (const k in KEYS) KEYS[k] = false; P.aim = false; P.hold = false; });
+  addEventListener('blur', () => { for (const k in KEYS) KEYS[k] = false; aimReset(); });
   cv.addEventListener('contextmenu', e => e.preventDefault());
   cv.addEventListener('mousedown', e => {
     e.preventDefault(); auInit();
     if (!G.started || G.paused) return;
     if (!MOUSE.locked) lockPointer();
-    if (e.button === 2) { P.aim = true; P.sway = [0, 0]; P.unrest = Math.max(P.unrest, 0.35); aimStart(MOUSE.wx, MOUSE.wy); }
-    else if (e.button === 0) shoot();
+    if (e.button === 2) aimPress();
+    // mens børsa er på vei opp, går det ikke an å skyte
+    else if (e.button === 0 && (P.aim || !AIM.want)) shoot();
   });
-  addEventListener('mouseup', e => { if (e.button === 2) { P.aim = false; P.hold = false; } });
+  addEventListener('mouseup', e => { if (e.button === 2) aimRelease(); });
   addEventListener('mousemove', e => {
     if (MOUSE.locked) { MOUSE.x = clamp(MOUSE.x + e.movementX * DPR, 0, W); MOUSE.y = clamp(MOUSE.y + e.movementY * DPR, 0, H); }
     else { MOUSE.x = e.clientX * DPR; MOUSE.y = e.clientY * DPR; }
-    if (P.aim) aimLook(e.movementX * DPR, e.movementY * DPR);
+    if (P.aim || AIM.want) aimLook(e.movementX * DPR, e.movementY * DPR);
   });
   document.addEventListener('pointerlockchange', () => {
     MOUSE.locked = document.pointerLockElement === cv; document.body.classList.toggle('locked', MOUSE.locked);

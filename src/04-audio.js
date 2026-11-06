@@ -1,11 +1,13 @@
 // ===== Lyd: alt syntetiseres med WebAudio, ingen lydfiler =====
-const AU = { ctx: null, muted: false, pianoT: 2, birdT: 2, padT: 0, ch: -1, mi: 3 };
+// focus: i siktet dempes bakgrunnen (vind, drone, piano og fugler går gjennom AU.amb), så pusten høres
+const AU = { ctx: null, muted: false, pianoT: 2, birdT: 2, padT: 0, ch: -1, mi: 3, focus: false };
 function auInit() {
   if (AU.ctx) { if (AU.ctx.state === 'suspended') AU.ctx.resume(); return; }
   const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
   let c;
   try { c = AU.ctx = new AC(); } catch (e) { return; }
   AU.master = c.createGain(); AU.master.gain.value = 0.75; AU.master.connect(c.destination);
+  AU.amb = c.createGain(); AU.amb.connect(AU.master);
   // ekko gir skogklang
   AU.echoIn = c.createGain(); AU.echoIn.gain.value = 0.5;
   const dl = c.createDelay(1), fb = c.createGain(), lp = c.createBiquadFilter();
@@ -15,24 +17,24 @@ function auInit() {
   const ir = c.createBuffer(2, c.sampleRate * 3, c.sampleRate);
   for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 4); }
   AU.verbIn = c.createConvolver(); AU.verbIn.buffer = ir;
-  const vg = c.createGain(); vg.gain.value = 0.35; AU.verbIn.connect(vg); vg.connect(AU.master);
+  const vg = c.createGain(); vg.gain.value = 0.35; AU.verbIn.connect(vg); vg.connect(AU.amb);
   const nb = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), d = nb.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   AU.noise = nb;
   // vindsus
   const ws = c.createBufferSource(); ws.buffer = nb; ws.loop = true;
   const wf = c.createBiquadFilter(); wf.type = 'bandpass'; wf.frequency.value = 360; wf.Q.value = 0.5;
-  AU.windG = c.createGain(); AU.windG.gain.value = 0.03; ws.connect(wf); wf.connect(AU.windG); AU.windG.connect(AU.master); ws.start();
+  AU.windG = c.createGain(); AU.windG.gain.value = 0.03; ws.connect(wf); wf.connect(AU.windG); AU.windG.connect(AU.amb); ws.start();
   AU.windF = wf;
   // lav drone under musikken
-  AU.pad = c.createGain(); AU.pad.gain.value = 0.0001; AU.pad.connect(AU.master);
+  AU.pad = c.createGain(); AU.pad.gain.value = 0.0001; AU.pad.connect(AU.amb);
   for (const f of [73.42, 110, 146.83]) { const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = f; const g = c.createGain(); g.gain.value = f < 100 ? 0.5 : 0.25; o.connect(g); g.connect(AU.pad); o.start(); }
 }
 function auEnv(g, t, att, peak, dur) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + att); g.gain.exponentialRampToValueAtTime(0.0001, t + att + dur); }
 function auOut(node, o) {
   const c = AU.ctx; let out = node;
   if (o && o.pan != null && c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = o.pan; node.connect(p); out = p; }
-  out.connect(AU.master); if (o && o.echo) out.connect(AU.echoIn); if (o && o.verb) out.connect(AU.verbIn);
+  out.connect(o && o.bus || AU.master); if (o && o.echo) out.connect(AU.echoIn); if (o && o.verb) out.connect(AU.verbIn);
 }
 function auTone(type, f0, f1, dur, vol, o) {
   if (!AU.ctx || AU.muted) return; o = o || {};
@@ -71,6 +73,13 @@ const sfx = {
   // friluft: øksehogg, tre som faller, knitring fra bålet, steking, fyrstikk og nys
   chop() { auNoise(0.05, 0.3, 'bandpass', 900, 400, 1.5, { echo: true }); auTone('triangle', 220, 140, 0.06, 0.15); },
   fall() { auNoise(0.5, 0.2, 'highpass', 2500, 800, 0.6); auNoise(0.5, 0.4, 'lowpass', 600, 120, 0.7, { delay: 0.45, echo: true }); auTone('sine', 90, 40, 0.3, 0.5, { delay: 0.45 }); },
+  // treet som velter: fibrene knekker, stammen knirker, og kronen suser stadig fortere gjennom lufta (FALL_T lang)
+  creak(k = 1) {
+    for (let i = 0; i < 6; i++) auNoise(0.03, 0.16 * k, 'highpass', 1800 + Math.random() * 1600, 0, 1, { delay: i * 0.09 + Math.random() * 0.05 });
+    auTone('triangle', 150, 95, 0.9, 0.05 * k, { delay: 0.1, att: 0.25 });
+    auNoise(0.25, 0.09 * k, 'bandpass', 500, 1600, 0.7, { delay: 0.6, att: 0.95 });
+  },
+  crash(k = 1) { auNoise(0.7, 0.45 * k, 'lowpass', 700, 110, 0.7, { echo: true }); auTone('sine', 85, 38, 0.35, 0.55 * k); auNoise(0.3, 0.14 * k, 'highpass', 3200, 1200, 0.6); },
   crackle(k = 1) { for (let i = 0; i < 3; i++) auNoise(0.015, 0.12 * k * Math.random(), 'highpass', 2500 + Math.random() * 2000, 0, 1, { delay: Math.random() * 0.3 }); },
   sizzle() { auNoise(1, 0.05, 'highpass', 5000, 3500, 0.5, { att: 0.1 }); },
   strike() { auNoise(0.12, 0.2, 'bandpass', 3000, 1200, 1); auNoise(0.5, 0.06, 'lowpass', 900, 300, 0.5, { delay: 0.1, att: 0.1 }); },
@@ -84,6 +93,21 @@ const sfx = {
   buy() { auTone('triangle', 523.3, 0, 0.18, 0.08); auTone('triangle', 784, 0, 0.3, 0.08, { delay: 0.09 }); },
   deny() { auTone('triangle', 196, 150, 0.16, 0.07); },
   scent() { auNoise(0.03, 0.12, 'bandpass', 1300, 0, 3); auNoise(0.25, 0.05, 'highpass', 4200, 0, 0.7, { delay: 0.1, att: 0.05 }); },
+  // sikte: klær som rasler og reima som klirrer når børsa tas opp, kolben som legger seg i skulderen, og når den tas ned
+  shoulder() { auNoise(0.32, 0.045, 'bandpass', 900, 2200, 0.7, { att: 0.08 }); auNoise(0.02, 0.04, 'highpass', 5200, 0, 1, { delay: 0.12 }); },
+  settle() { auTone('sine', 140, 70, 0.07, 0.1); auNoise(0.06, 0.05, 'lowpass', 700, 300, 0.7); },
+  kneel() { auNoise(0.12, 0.06, 'lowpass', 520, 180, 0.7); auNoise(0.18, 0.025, 'bandpass', 2400, 1200, 0.8, { delay: 0.03 }); },
+  lower() { auNoise(0.22, 0.035, 'bandpass', 1800, 800, 0.7, { att: 0.05 }); },
+  // pust: et drag inn (lyst sus som stiger) eller ut (mørkere sus som synker); andpusten blir den høy og kort
+  breath(inn, winded) {
+    const v = winded ? 0.06 : 0.022, d = winded ? 0.38 : inn ? 0.9 : 1.2;
+    if (inn) auNoise(d, v, 'bandpass', 1100, 1900, 1.2, { att: d * 0.5 });
+    else auNoise(d, v * 1.1, 'bandpass', 900, 450, 1, { att: d * 0.25 });
+  },
+  exhale() { auNoise(0.7, 0.05, 'bandpass', 1000, 420, 0.9, { att: 0.05 }); },
+  heart(k = 1) {
+    for (const [dl, v] of [[0, 1], [0.2, 0.65]]) { auTone('sine', 62, 44, 0.09, 0.2 * k * v, { delay: dl, att: 0.008 }); auNoise(0.05, 0.04 * k * v, 'lowpass', 180, 0, 0.7, { delay: dl }); }
+  },
 };
 // Myk filtpiano: noen få deltoner gjennom et lavpass som lukker seg, og en lang hale i romklangen
 function auPiano(f, delay, vol) {
@@ -97,7 +121,7 @@ function auPiano(f, delay, vol) {
     const o = c.createOscillator(), og = c.createGain(); o.frequency.value = f * r; o.detune.value = cents; og.gain.value = a;
     o.connect(og); og.connect(lp); o.start(t); o.stop(t + 0.4 + dur);
   }
-  lp.connect(g); auOut(g, { pan: clamp((f - 260) / 600, -0.35, 0.35), verb: true });
+  lp.connect(g); auOut(g, { pan: clamp((f - 260) / 600, -0.35, 0.35), verb: true, bus: AU.amb });
 }
 // Rolig bakgrunn: piano over sakte akkorder i d-moll, fugler om dagen
 const PIANO_CH = [[146.83, 220, 349.23], [116.54, 174.61, 293.66], [87.31, 130.81, 220], [130.81, 196, 293.66]]; // Dm, B♭, F, C
@@ -119,6 +143,7 @@ function auAmbient(dt, dayl, windS) {
   const c = AU.ctx; if (!c) return;
   AU.windG.gain.setTargetAtTime(AU.muted ? 0 : 0.014 + 0.03 * windS, c.currentTime, 0.8);
   AU.pad.gain.setTargetAtTime(AU.muted ? 0.0001 : 0.022 + 0.012 * Math.sin(c.currentTime * 0.07), c.currentTime, 1.5);
+  AU.amb.gain.setTargetAtTime(AU.focus ? 0.4 : 1, c.currentTime, 0.25);
   if (AU.muted) return;
   AU.pianoT -= dt;
   if (AU.pianoT <= 0) { const bar = rnd(8, 11); pianoBar(bar); AU.pianoT = bar; }
@@ -126,7 +151,7 @@ function auAmbient(dt, dayl, windS) {
   AU.birdT -= dt;
   if (AU.birdT <= 0) {
     AU.birdT = rnd(2, 8);
-    if (dayl > 0.4) { const f = rnd(3200, 5600), n = 3 + ((Math.random() * 5) | 0), pan = rnd(-0.9, 0.9), gap = rnd(0.06, 0.1); for (let k = 0; k < n; k++) auTone('sine', f * rnd(0.9, 1.1), f * rnd(0.75, 1.35), rnd(0.025, 0.06), 0.016, { delay: k * gap, pan, att: 0.008 }); }
+    if (dayl > 0.4) { const f = rnd(3200, 5600), n = 3 + ((Math.random() * 5) | 0), pan = rnd(-0.9, 0.9), gap = rnd(0.06, 0.1); for (let k = 0; k < n; k++) auTone('sine', f * rnd(0.9, 1.1), f * rnd(0.75, 1.35), rnd(0.025, 0.06), 0.016, { delay: k * gap, pan, att: 0.008, bus: AU.amb }); }
   }
 }
 function auMute(m) { AU.muted = m; if (AU.ctx) AU.master.gain.setTargetAtTime(m ? 0 : 0.75, AU.ctx.currentTime, 0.05); }
