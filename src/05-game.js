@@ -26,12 +26,14 @@ const UPG = [
     d: ['Kvister knekker under deg.', 'Stillere steg.', 'Nesten lydløse steg.'] },
 ];
 const ST = {
-  mag: [1.5, 1.9, 2.4, 3.0], spread: [1.1, 0.75, 0.45, 0.25], range: [260, 340, 440, 560], dmg: [40, 70, 100, 145],
+  mag: [1.5, 1.9, 2.4, 3.0], fov: [40, 22, 15, 10], spread: [1.1, 0.75, 0.45, 0.25], range: [260, 340, 440, 560], dmg: [40, 70, 100, 145],
   sway: [3.2, 2.3, 1.5, 0.9], cap: [1, 3, 4, 5], cycle: [1.5, 1.05, 0.7, 0.45], reload: [2.4, 1.8, 1.3, 0.9], noise: [950, 640, 420, 260],
   callR: [420, 520, 620, 720], scentR: [200, 300, 420], scentT: [90, 140, 200], camo: [1, 0.75, 0.55], deo: [1, 0.7, 0.45], boots: [1, 0.7, 0.48],
 };
 const CALLSP = [['radyr', 'rev'], ['radyr', 'rev', 'hjort', 'rein'], ['radyr', 'rev', 'hjort', 'rein', 'elg', 'villsvin'], SPECIES];
 const FLASK_PRICE = 120, M_PER_PX = 0.25;
+// Bøter: vådeskudd er skudd som går av uten at du sikter, bom er siktede skudd som ikke treffer dyr
+const FINE = { hip: 200, miss: 50 };
 const ZONES = { head: ['Hodeskudd', 2.2, 0.95], vital: ['Hjerte/lunge', 1.6, 1], body: ['Bogtreff', 1, 0.8], rear: ['Bakpart', 0.75, 0.7], leg: ['Beinskudd', 0.45, 0.6] };
 
 const G = {
@@ -39,7 +41,7 @@ const G = {
   wind: { a: 0, s: 0.5, x: 1, y: 0 }, animals: [], scentObjs: [], blood: [], parts: [], msgs: [], spawnT: 0, dayl: 1, hunters: [], saveT: 15, pauseT: 0,
 };
 for (const u of UPG) G.up[u.id] = 0;
-const P = { x: 0, y: 30, face: 'down', flip: false, walkT: 0, moving: false, sneak: false, aim: false, ax: 0, ay: 0, breath: 1, hold: false, ammo: 1, cycle: 0, reload: 0, callCd: 0, stepT: 0, wet: false, deep: false, cold: 0, chill: false, sway: [0, 0] };
+const P = { x: 0, y: 30, face: 'down', flip: false, walkT: 0, moving: false, sneak: false, aim: false, breath: 1, hold: false, ammo: 1, cycle: 0, reload: 0, callCd: 0, stepT: 0, wet: false, deep: false, cold: 0, chill: false, sway: [0, 0], unrest: 0, look: 0, winded: false, bph: 0 };
 const lv = id => G.up[id];
 
 // ---------- lagring (localStorage i denne nettleseren) ----------
@@ -187,6 +189,10 @@ function animalSprite(a) {
 function hitTest(a, tx, ty) {
   const s = animalSprite(a), rx = Math.round(a.x), ry = Math.round(a.y);
   const lx = a.face > 0 ? Math.floor(tx - rx) + s.ax : s.ax - 1 - Math.floor(tx - rx), ly = Math.floor(ty - ry) + s.ay;
+  return hitZone(a, s, lx, ly);
+}
+// Hvilken del av dyret pikselen (lx, ly) i spriten s er, eller null utenfor dyret
+function hitZone(a, s, lx, ly) {
   if (!s.pix.get(lx, ly)) return null;
   const A = SPEC[a.sp], u = lx - s.ax, v = ly - s.ay;
   if (s.hc && hyp(u - s.hc.x, v - s.hc.y) < s.hc.r) return 'head';
@@ -198,10 +204,13 @@ function hitTest(a, tx, ty) {
 }
 
 // ---------- jeger-handlinger ----------
-// Kulde gir store, ujevne sveip i siktet som ikke forsvinner når du holder pusten
-function aimTarget() {
-  const c = P.cold * (5 + 1.2 * ST.sway[lv('stock')]), t = G.t, n = (u, row) => (vnoise(t * u, row, 71) - 0.5) * 2;
-  return [P.ax + P.sway[0] + (n(0.8, 0) + n(1.9, 4) * 0.35) * c, P.ay + P.sway[1] + (n(0.8, 8) + n(1.9, 12) * 0.35) * c * 0.8];
+// Uro i siktet fra pusten; i tillegg gir det å flytte siktet kraftige rykk, og kulde store, ujevne sveip.
+// Ingen av de to forsvinner når du holder pusten
+function aimSway() {
+  const s = ST.sway[lv('stock')], t = G.t, n = (u, row) => (vnoise(t * u, row, 71) - 0.5) * 2;
+  const c = P.cold * (5 + 1.2 * s), m = P.unrest * (7 + 2.5 * s);
+  return [P.sway[0] + (n(0.8, 0) + n(1.9, 4) * 0.35) * c + (n(3.1, 16) + n(7.3, 20) * 0.5) * m,
+    P.sway[1] + (n(0.8, 8) + n(1.9, 12) * 0.35) * c * 0.8 + (n(3.1, 24) + n(7.3, 28) * 0.5) * m * 0.8];
 }
 function muzzle(x, y, ang) {
   for (let i = 0; i < 6; i++) G.parts.push({ x: x + Math.cos(ang) * 10, y: y + 0.5, z: 9, vx: Math.cos(ang) * rnd(10, 40) + rnd(-8, 8), vy: Math.sin(ang) * rnd(10, 40), vz: rnd(-4, 8), life: rnd(0.05, 0.14), col: i < 2 ? '#fff6c8' : '#ffb84a' });
@@ -213,31 +222,42 @@ function shoot() {
   if (P.ammo <= 0) { sfx.deny(); msg('Magasinet er tomt. Trykk R for å lade.'); return; }
   P.ammo--; P.cycle = ST.cycle[lv('bolt')];
   sfx.shot(lv('supp')); setTimeout(() => { if (P.ammo > 0) sfx.bolt(); }, 380);
-  let [tx, ty] = P.aim ? aimTarget() : [MOUSE.wx, MOUSE.wy];
-  const d = hyp(tx - P.x, ty - (P.y - 8)), sd = ST.spread[lv('barrel')] * d / 100 * (P.aim ? 1 : 4);
-  tx += gauss() * sd; ty += gauss() * sd * 0.8;
-  const ang = Math.atan2(ty - P.y + 8, tx - P.x);
-  muzzle(P.x, P.y, ang);
-  const tr = trunkBlock(P.x, P.y, tx, ty);
-  let hitA = null, zone = null;
-  if (tr) {
-    for (let i = 0; i < 6; i++) G.parts.push({ x: tr.x + rnd(-1, 1), y: tr.y + 0.5, z: rnd(6, 14), vx: rnd(-20, 20), vy: rnd(-6, 6), vz: rnd(5, 20), life: rnd(0.3, 0.7), col: '#c8a474', grav: 1 });
-    msg('Kula traff en trestamme.', 'warn');
-  } else {
-    const list = G.animals.filter(a => a.state !== 'dead').sort((a, b) => b.y - a.y);
-    for (const a of list) { const z = hitTest(a, tx, ty); if (z) { hitA = a; zone = z; break; } }
-    if (!hitA) for (let i = 0; i < 5; i++) G.parts.push({ x: tx, y: ty, z: 0, vx: rnd(-14, 14), vy: rnd(-4, 4), vz: rnd(8, 22), life: rnd(0.3, 0.6), col: isWater(tx, ty) ? '#a4ccc6' : '#8a7a5c', grav: 1 });
-  }
-  const sh = { x: P.x, y: P.y, ang, supp: lv('supp') };
+  // i siktet (3D) går kula etter trådkorset, ellers fra hofta mot musepekeren på kartet
+  const r = P.aim ? aimShot() : hipShot(), hitA = r.a;
+  muzzle(P.x, P.y, r.ang);
+  const sh = { x: P.x, y: P.y, ang: r.ang, supp: lv('supp') };
   if (hitA) {
-    const rng_ = ST.range[lv('barrel')], fall = clamp(1 - (d - rng_) / rng_, 0.35, 1);
-    Object.assign(sh, { id: hitA.id, zone, d, dmg: ST.dmg[lv('caliber')] * ZONES[zone][1] * fall, cal: ST.dmg[lv('caliber')], hx: tx, hy: ty, bl: [hitA.x, hitA.y] });
-    for (let i = 0; i < 4; i++) G.parts.push({ x: tx, y: ty + 2, z: 0, vx: rnd(-8, 8), vy: rnd(-3, 3), vz: rnd(4, 10), life: rnd(0.2, 0.4), col: '#a8302a', grav: 1 });
+    const rng_ = ST.range[lv('barrel')], fall = clamp(1 - (r.d - rng_) / rng_, 0.35, 1);
+    Object.assign(sh, { id: hitA.id, zone: r.zone, d: r.d, dmg: ST.dmg[lv('caliber')] * ZONES[r.zone][1] * fall, cal: ST.dmg[lv('caliber')], hx: r.hx, hy: r.hy, bl: [hitA.x, hitA.y] });
     G.blood.push({ x: hitA.x, y: hitA.y, t: 0 });
   }
   netSend({ t: 'shot', ...sh });
   if (isAuth()) applyShot(sh, NET.id);
-  if (!hitA && !tr) msg('Bom.');
+  if (!P.aim) fine(FINE.hip, 'Vådeskudd – du skjøt uten å sikte.');
+  else if (!hitA) fine(FINE.miss, 'Bom.');
+}
+// Trekker boten fra kassa, men aldri under null
+function fine(kr, text) {
+  const k = Math.min(kr, G.money); G.money -= k;
+  msg(text + (k ? ' −' + k + ' kr' : ''), 'warn'); save();
+}
+function hipShot() {
+  let tx = MOUSE.wx, ty = MOUSE.wy;
+  const d = hyp(tx - P.x, ty - (P.y - 8)), sd = ST.spread[lv('barrel')] * d / 100 * 4;
+  tx += gauss() * sd; ty += gauss() * sd * 0.8;
+  const r = { ang: Math.atan2(ty - P.y + 8, tx - P.x), a: null, zone: null, block: null, d, hx: tx, hy: ty };
+  const tr = trunkBlock(P.x, P.y, tx, ty);
+  if (tr) {
+    r.block = tr.k;
+    for (let i = 0; i < 6; i++) G.parts.push({ x: tr.x + rnd(-1, 1), y: tr.y + 0.5, z: rnd(6, 14), vx: rnd(-20, 20), vy: rnd(-6, 6), vz: rnd(5, 20), life: rnd(0.3, 0.7), col: '#c8a474', grav: 1 });
+    msg('Kula traff en trestamme.', 'warn');
+    return r;
+  }
+  const list = G.animals.filter(a => a.state !== 'dead').sort((a, b) => b.y - a.y);
+  for (const a of list) { const z = hitTest(a, tx, ty); if (z) { r.a = a; r.zone = z; break; } }
+  if (r.a) for (let i = 0; i < 4; i++) G.parts.push({ x: tx, y: ty + 2, z: 0, vx: rnd(-8, 8), vy: rnd(-3, 3), vz: rnd(4, 10), life: rnd(0.2, 0.4), col: '#a8302a', grav: 1 });
+  else for (let i = 0; i < 5; i++) G.parts.push({ x: tx, y: ty, z: 0, vx: rnd(-14, 14), vy: rnd(-4, 4), vz: rnd(8, 22), life: rnd(0.3, 0.6), col: isWater(tx, ty) ? '#a4ccc6' : '#8a7a5c', grav: 1 });
+  return r;
 }
 // Verten avgjør hva skuddet gjør med dyra, uansett hvem som skjøt
 function applyShot(sh, pid) {
@@ -354,15 +374,22 @@ function playerUpdate(dt) {
       if (isAuth()) stepNoise({ x: P.x, y: P.y, sneak: P.sneak, wet: P.wet, boots: lv('boots') });
     }
   }
-  // sikte: pust og ro
+  // sikte: pust og ro. Flytter du siktet, kommer børsa i uro som tar over et sekund å roe seg.
+  // Bare når du ligger helt i ro og holder pusten, står siktet stille, og bare i noen få sekunder;
+  // går lufta tom, hiver du etter pusten, og du kan ikke holde den igjen før du har hentet deg inn
   const swayA = ST.sway[lv('stock')] * (P.sneak ? 0.85 : 1) * (1 + 1.2 * P.cold);
+  const look = Math.min(1, P.look / Math.max(dt, 1e-3) / 40); P.look = 0;
+  P.unrest = look > P.unrest ? lerp(P.unrest, look, Math.min(1, dt * 6)) : Math.max(look, P.unrest - dt * 0.8);
+  if (P.winded && P.breath >= 0.8) P.winded = false;
+  if (P.winded) P.hold = false;
   if (P.aim) {
-    if (P.hold && P.breath > 0) P.breath = Math.max(0, P.breath - dt / 4);
-    else { P.breath = Math.min(1, P.breath + dt / 3); if (P.breath < 0.02) P.hold = false; }
-    const k = P.hold && P.breath > 0 ? 0.22 : P.breath < 0.25 ? 1.8 : 1, t = G.t;
+    if (P.hold && P.breath > 0) { P.breath = Math.max(0, P.breath - dt / 3); if (!P.breath) P.winded = true; }
+    else P.breath = Math.min(1, P.breath + dt / 3);
+    P.bph += dt * (P.winded ? 2.4 : 1);
+    const k = P.winded ? 3.2 : P.hold ? 0 : P.breath < 0.25 ? 1.8 : 1, t = P.bph;
     const tgx = (Math.sin(t * 1.1) * 0.7 + Math.sin(t * 2.3 + 1) * 0.3) * swayA * k, tgy = (Math.sin(t * 1.7 + 2) * 0.6 + Math.sin(t * 0.8) * 0.4) * swayA * 0.8 * k;
     P.sway[0] = lerp(P.sway[0], tgx, Math.min(1, dt * 6)); P.sway[1] = lerp(P.sway[1], tgy, Math.min(1, dt * 6));
-    const dx = P.ax - P.x, dy = P.ay - P.y;
+    const dx = Math.cos(AIM.yaw), dy = Math.sin(AIM.yaw);
     if (Math.abs(dx) > Math.abs(dy) * 0.8) { P.face = 'side'; P.flip = dx < 0; } else P.face = dy > 0 ? 'down' : 'up';
   } else P.breath = Math.min(1, P.breath + dt / 2);
 }

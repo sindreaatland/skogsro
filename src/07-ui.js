@@ -36,7 +36,8 @@ function hudUpdate(dt) {
   $('cold').hidden = !(G.started && P.cold > 0);
   if (P.cold > 0) { setText('coldTxt', P.wet ? 'I vannet · fryser' : 'Våt og kald · tørker'); $('coldFill').style.width = (P.cold * 100) + '%'; }
   $('breath').hidden = !P.aim; $('breathFill').style.width = (P.breath * 100) + '%';
-  $('breathFill').classList.toggle('low', P.breath < 0.25);
+  $('breathFill').classList.toggle('low', P.breath < 0.25 || P.winded);
+  setText('breathTxt', P.winded ? 'Andpusten · hent deg inn' : 'Pust · hold Space for å holde pusten');
   // handlingsprompt
   let pr = '';
   if (G.started && !G.paused && !P.aim) {
@@ -185,22 +186,14 @@ function bindInput() {
     e.preventDefault(); auInit();
     if (!G.started || G.paused) return;
     if (!MOUSE.locked) lockPointer();
-    if (e.button === 2) {
-      P.aim = true; P.sway = [0, 0];
-      let ax = MOUSE.wx, ay = MOUSE.wy; const d = hyp(ax - P.x, ay - P.y), mx = ST.range[lv('barrel')] * 1.4;
-      if (d > mx) { ax = P.x + (ax - P.x) / d * mx; ay = P.y + (ay - P.y) / d * mx; }
-      P.ax = ax; P.ay = ay;
-    } else if (e.button === 0) shoot();
+    if (e.button === 2) { P.aim = true; P.sway = [0, 0]; P.unrest = Math.max(P.unrest, 0.6); aimStart(MOUSE.wx, MOUSE.wy); }
+    else if (e.button === 0) shoot();
   });
   addEventListener('mouseup', e => { if (e.button === 2) { P.aim = false; P.hold = false; } });
   addEventListener('mousemove', e => {
     if (MOUSE.locked) { MOUSE.x = clamp(MOUSE.x + e.movementX * DPR, 0, W); MOUSE.y = clamp(MOUSE.y + e.movementY * DPR, 0, H); }
     else { MOUSE.x = e.clientX * DPR; MOUSE.y = e.clientY * DPR; }
-    if (P.aim) {
-      P.ax += e.movementX * DPR / CAM.S * 0.9; P.ay += e.movementY * DPR / CAM.S * 0.9;
-      const d = hyp(P.ax - P.x, P.ay - P.y), mx = ST.range[lv('barrel')] * 1.6;
-      if (d > mx) { P.ax = P.x + (P.ax - P.x) / d * mx; P.ay = P.y + (P.ay - P.y) / d * mx; }
-    }
+    if (P.aim) aimLook(e.movementX * DPR, e.movementY * DPR);
   });
   document.addEventListener('pointerlockchange', () => {
     MOUSE.locked = document.pointerLockElement === cv; document.body.classList.toggle('locked', MOUSE.locked);

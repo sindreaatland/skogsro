@@ -38,11 +38,13 @@ function drawHunter(s, X, Y, flip, deep) {
   else b.drawImage(s.c, 0, 0, s.w, hh, X - s.ax, Y + sk - s.ay, s.w, hh);
 }
 let genBudgetT = 0;
+// Tåke og dis over døgnet: tett om morgenen, litt om kvelden
+const mist = h => 0.6 * smooth(3, 5.5, h) * (1 - smooth(7.5, 10.5, h)) + 0.1 + 0.3 * smooth(18.5, 21, h) * (1 - smooth(23, 24, h));
 function render(dt) {
+  if (G.started && P.aim) { render3D(dt); return; }
   // kamera
   let tx, ty, tz = 1;
   if (!G.started) { tx = P.x + Math.sin(G.t * 0.05) * 70; ty = P.y - 30 + Math.cos(G.t * 0.04) * 30; }
-  else if (P.aim) { const a = aimTarget(); tx = a[0]; ty = a[1]; tz = ST.mag[lv('scope')]; }
   else { tx = P.x; ty = P.y - 10; }
   CAM.z = lerp(CAM.z, tz, Math.min(1, dt * 9));
   if (Math.abs(CAM.z - tz) < 0.01) CAM.z = tz;
@@ -129,7 +131,7 @@ function render(dt) {
   }
   b.globalAlpha = 1;
   // tåke
-  const fogA = 0.6 * smooth(3, 5.5, h) * (1 - smooth(7.5, 10.5, h)) + 0.1 + 0.3 * smooth(18.5, 21, h) * (1 - smooth(23, 24, h));
+  const fogA = mist(h);
   if (!WISPS.length) for (let i = 0; i < 16; i++) WISPS.push({ x: CAM.x + rnd(-400, 400), y: CAM.y + rnd(-250, 250), k: i & 3, s: rnd(0.6, 1.2) });
   for (const w of WISPS) {
     w.x += (G.wind.x * (4 + 10 * G.wind.s) + 2) * w.s * dt; w.y += G.wind.y * 3 * w.s * dt;
@@ -185,8 +187,8 @@ function pxText(t, x, y, size, col, align) {
 }
 function drawOverlay() {
   const u = Math.max(2, Math.round(2 * DPR)), l = lv('scope');
-  if (G.started && P.aim && CAM.z > 1.02) {
-    const [rx, ry] = toScreen(...aimTarget()), cx = W / 2, cy = H / 2;
+  if (G.started && P.aim) {
+    const rx = AIM.cx * ZB, ry = AIM.cy * ZB, cx = rx, cy = ry;
     if (l === 0) {
       // åpne sikter: pipe som går ned mot skjermkanten, bakre skjæring og korn
       const k = u * 3, bx = W / 2, top = ry + k * 2;
@@ -210,10 +212,9 @@ function drawOverlay() {
       m.fillRect(rx - g0, ry - tn / 2, g0 * 2, tn); m.fillRect(rx - tn / 2, ry - g0, tn, g0 * 2);
       if (l === 3) { for (let i = 1; i <= 4; i++) { m.fillRect(rx + i * g0 / 5 - u / 2, ry - u / 2, u, u); m.fillRect(rx - i * g0 / 5 - u / 2, ry - u / 2, u, u); m.fillRect(rx - u / 2, ry + i * g0 / 5 - u / 2, u, u); } m.fillStyle = '#e8402c'; m.fillRect(rx - u / 2, ry - u / 2, u, u); }
       if (l >= 2) {
-        const [ax, ay] = aimTarget(), d = Math.round(hyp(ax - P.x, ay - P.y) * M_PER_PX);
-        const ty = cy - R + 34 * DPR;
-        let line = d + ' m';
-        if (l === 3) { const a = G.animals.find(a => hitTest(a, ax, ay)); if (a) line = SPEC[a.sp].name + ', ' + SPEC[a.sp].sexn[a.sex] + ' · ca. ' + Math.round(a.kg / 5) * 5 + ' kg · ' + line; }
+        const a = AIM.pick && AIM.pick.it.a, ty = cy - R + 34 * DPR;
+        let line = AIM.range == null ? '– m' : Math.round(AIM.range * M_PER_PX) + ' m';
+        if (l === 3 && a) line = SPEC[a.sp].name + ', ' + SPEC[a.sp].sexn[a.sex] + ' · ca. ' + Math.round(a.kg / 5) * 5 + ' kg · ' + line;
         pxText(line, cx, ty, Math.round(15 * DPR), '#f0b450');
       }
     }

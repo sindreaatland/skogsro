@@ -252,7 +252,7 @@ function genGround(ch) {
   }
   stamps(p, ch);
   paintBridges(p, ch);
-  ch.ground = p.canvas();
+  ch.ground = p.canvas(); ch.gpix = p.d; // pikslene leses også av 3D-siktet
 }
 function getChunk(cx, cy) {
   const key = cx + ',' + cy; let ch = chunks.get(key);

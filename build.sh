@@ -4,7 +4,7 @@ set -e
 cd "$(dirname "$0")"
 mkdir -p dist
 JS=$(mktemp)
-{ echo '<script>'; cat src/01-core.js src/02-sprites.js src/03-world.js src/04-audio.js src/05-game.js src/06-render.js src/07-ui.js src/08-net.js; echo '</script>'; } > "$JS"
+{ echo '<script>'; cat src/01-core.js src/02-sprites.js src/03-world.js src/04-audio.js src/05-game.js src/06-render.js src/07-ui.js src/08-net.js src/09-aim3d.js; echo '</script>'; } > "$JS"
 python3 - "$JS" <<'EOF'
 import sys
 js=open(sys.argv[1]).read()
