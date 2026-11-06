@@ -2,7 +2,7 @@
 // Bakken projiseres rad for rad fra de samme bakkebitene som kartet bruker (gulvcasting), og trær,
 // stein, busker, dyr og andre jegere er de vanlige spritene skalert etter avstand og tegnet bakerst
 // først. Kula følger trådkorset: det første faste du ser der, er det den treffer.
-const AIM = { yaw: 0, pitch: 0, ry: 0, rp: 0, camYaw: 0, f: 300, eye: 15, cx: 0, cy: 0, hy: 0, t: 0, kick: 0, range: null, pick: null, list: [], im: null, px: null };
+const AIM = { yaw: 0, pitch: 0, ry: 0, rp: 0, camYaw: 0, f: 300, eye: 15, cx: 0, cy: 0, sx: 0, sy: 0, hy: 0, t: 0, kick: 0, range: null, pick: null, list: [], im: null, px: null };
 const EYE = 15, NEAR = 14, FAR = 900, SWAY_K = 0.005, PITCH_MAX = 0.35;
 const FOG_HEX = '#a9b6a2', FOG = C(FOG_HEX), SKY_HEX = '#c6d4d2', GROUND0 = C('#3d5334'), CSB = Math.log2(CS);
 // Gress, bregner, siv og lyng stopper ikke kula; alt annet du ser, gjør det
@@ -40,28 +40,41 @@ function aimLook(dx, dy) {
 function render3D(dt) {
   AIM.t += dt; AIM.kick = Math.max(0, AIM.kick - dt * 4);
   const bw = Math.ceil(W / ZB), bh = Math.ceil(H / ZB), f = AIM.f = aimFocal(), eye = AIM.eye = aimEye();
-  // kamera: siktelinja pluss pust, skjelving og rekyl
-  const [swx, swy] = aimSway();
-  const yaw = AIM.camYaw = AIM.yaw + swx * SWAY_K, pitch = AIM.pitch - swy * SWAY_K + AIM.kick * AIM.kick * 0.06;
+  // kamera: bare siktelinja fra musa, så bildet står helt stille når du ikke flytter den
+  const yaw = AIM.camYaw = AIM.yaw, pitch = AIM.pitch;
   const vx = Math.cos(yaw), vy = Math.sin(yaw), rx = -vy, ry = vx;
   const cx = AIM.cx = (bw >> 1) + 0.5, cy = AIM.cy = (bh >> 1) + 0.5, hy = AIM.hy = cy + Math.tan(pitch) * f;
   const far = FAR * (1 - 0.45 * mist(G.hour)), fog = z => smooth(40, far, z);
+  // pust, skjelving og rekyl flytter trådkorset over bildet i stedet, og aldri ut av kikkerten
+  const [swx, swy] = aimSway();
+  let ox = Math.tan(swx * SWAY_K) * f, oy = hy - Math.tan(pitch - swy * SWAY_K + AIM.kick * AIM.kick * 0.06) * f - cy;
+  const om = 0.35 * Math.min(bw, bh), ol = hyp(ox, oy); if (ol > om) { ox *= om / ol; oy *= om / ol; }
+  AIM.sx = cx + ox; AIM.sy = cy + oy;
 
-  // bakke: hver rad under horisonten ligger på én avstand; dis legges på mot horisonten
-  if (!AIM.im || AIM.im.width !== bw || AIM.im.height !== bh) { AIM.im = b.createImageData(bw, bh); AIM.px = new Uint32Array(AIM.im.data.buffer); }
-  const px = AIM.px, need = new Map(), M = CS - 1, fr = FOG & 255, fg = (FOG >>> 8) & 255, fb = (FOG >>> 16) & 255;
+  // bakke: hver rad under horisonten ligger på én avstand; dis legges på mot horisonten.
+  // Langt unna dekker én pikselrad mange bakkepiksler i dybden, så raden blir snittet av flere delrader
+  if (!AIM.im || AIM.im.width !== bw || AIM.im.height !== bh) { AIM.im = b.createImageData(bw, bh); AIM.px = new Uint32Array(AIM.im.data.buffer); AIM.acc = new Uint32Array(bw * 3); }
+  const px = AIM.px, acc = AIM.acc, need = new Map(), M = CS - 1, fr = FOG & 255, fg = (FOG >>> 8) & 255, fb = (FOG >>> 16) & 255;
   px.fill(0);
   for (let y = Math.max(0, Math.floor(hy)); y < bh; y++) {
     const dy = y + 0.5 - hy; if (dy <= 0) continue;
     const z = eye * f / dy, fo = Math.round(fog(z) * 256), row = y * bw;
     if (fo >= 256) { px.fill(FOG, row, row + bw); continue; }
-    const st = z / f, sx = rx * st, sy = ry * st;
-    let wx = P.x + vx * z + rx * (0.5 - cx) * st, wy = P.y + vy * z + ry * (0.5 - cx) * st, lkx = NaN, lky = NaN, d = null;
-    for (let i = row, e = row + bw; i < e; i++, wx += sx, wy += sy) {
-      const ix = Math.floor(wx), iy = Math.floor(wy), kx = ix >> CSB, ky = iy >> CSB;
-      if (kx !== lkx || ky !== lky) { lkx = kx; lky = ky; const key = kx + ',' + ky, ch = chunks.get(key); d = ch && ch.gpix; if (!d) need.set(key, [kx, ky, z]); }
-      const c = d ? d[(iy & M) << CSB | ix & M] : GROUND0, r = c & 255, g = (c >>> 8) & 255, bl = (c >>> 16) & 255;
-      px[i] = 0xff000000 | (bl + ((fb - bl) * fo >> 8)) << 16 | (g + ((fg - g) * fo >> 8)) << 8 | (r + ((fr - r) * fo >> 8));
+    const n = Math.min(16, Math.ceil(z / dy));
+    acc.fill(0);
+    for (let j = 0; j < n; j++) {
+      const zj = eye * f / Math.max(0.05, dy - 0.5 + (j + 0.5) / n), st = zj / f, sx = rx * st, sy = ry * st;
+      let wx = P.x + vx * zj + rx * (0.5 - cx) * st, wy = P.y + vy * zj + ry * (0.5 - cx) * st, lkx = NaN, lky = NaN, d = null;
+      for (let i = 0, e = bw * 3; i < e; i += 3, wx += sx, wy += sy) {
+        const ix = Math.floor(wx), iy = Math.floor(wy), kx = ix >> CSB, ky = iy >> CSB;
+        if (kx !== lkx || ky !== lky) { lkx = kx; lky = ky; const key = kx + ',' + ky, ch = chunks.get(key); d = ch && ch.gpix; if (!d) need.set(key, [kx, ky, zj]); }
+        const c = d ? d[(iy & M) << CSB | ix & M] : GROUND0;
+        acc[i] += c & 255; acc[i + 1] += (c >>> 8) & 255; acc[i + 2] += (c >>> 16) & 255;
+      }
+    }
+    for (let i = 0, p = row, e = row + bw; p < e; i += 3, p++) {
+      const r = acc[i] / n | 0, g = acc[i + 1] / n | 0, bl = acc[i + 2] / n | 0;
+      px[p] = 0xff000000 | (bl + ((fb - bl) * fo >> 8)) << 16 | (g + ((fg - g) * fo >> 8)) << 8 | (r + ((fr - r) * fo >> 8));
     }
   }
   b.putImageData(AIM.im, 0, 0);
@@ -79,12 +92,13 @@ function render3D(dt) {
     if (it.fo < 0.99) L.push(it);
   };
   const ex = (cx + 8) / f * far, xs = [P.x, P.x + vx * far + rx * ex, P.x + vx * far - rx * ex], ys = [P.y, P.y + vy * far + ry * ex, P.y + vy * far - ry * ex];
-  const wl = (G.wind.x * rx + G.wind.y * ry) * 0.6;
+  // bare trærne rører seg, og bare når det blåser mer enn flau vind
+  const wl = (G.wind.x * rx + G.wind.y * ry) * 0.6, wa = Math.max(0, G.wind.s - 0.25) * 2.9;
   for (let ky = Math.floor((Math.min(...ys) - 40) / CS); ky <= Math.floor((Math.max(...ys) + 40) / CS); ky++)
     for (let kx = Math.floor((Math.min(...xs) - 40) / CS); kx <= Math.floor((Math.max(...xs) + 40) / CS); kx++)
       for (const o of getChunk(kx, ky).objs) {
         const s = SPR[o.k][o.v];
-        add(o.x, o.y, s, false, { o, solid: !SOFT[o.k], sw: s.sway ? (Math.sin(G.t * 1.3 + o.ph) * 0.8 + wl) * G.wind.s * 2.2 : 0 });
+        add(o.x, o.y, s, false, { o, solid: !SOFT[o.k], sw: s.sway ? (Math.sin(G.t * 1.3 + o.ph) * 0.8 + wl) * wa : 0 });
       }
   // dyra vises i profil og snus etter hvilken vei de går sett herfra
   for (const a of G.animals) add(a.x, a.y, animalSprite(a), Math.cos(a.head) * rx + Math.sin(a.head) * ry < 0, { a, solid: a.state !== 'dead' });
@@ -95,8 +109,9 @@ function render3D(dt) {
     add(r.x, r.y, HUN[dir][r.aim ? 1 : 0][r.moving ? 1 + ((r.walkT * 7.5) | 0) % 4 : 0], dir === 'side' && lt < 0, { peer: r });
   }
   for (const so of G.scentObjs) add(so.x, so.y, FX.bottle, false, {});
+  // bare det skuddet virvler opp; fallende løv, ildfluer og lukt driver ikke forbi i siktet
   for (const p of G.parts) {
-    if (p.fly) continue;
+    if (p.fly || p.faint || p.glow || p.leaf !== undefined) continue;
     const dx = p.x - P.x, dy = p.y - P.y, z = dx * vx + dy * vy;
     if (z < NEAR || z > far) continue;
     const k = f / z; L.push({ p, z, k, X: cx + (dx * rx + dy * ry) * k, Y: hy + (eye - p.z) * k, fo: fog(z) });
@@ -126,7 +141,7 @@ function render3D(dt) {
   m.setTransform(1, 0, 0, 1, 0, 0); m.imageSmoothingEnabled = false;
   m.drawImage(buf, 0, 0, bw, bh, 0, 0, bw * ZB, bh * ZB);
   // avstandsmåleren leser det som ligger i trådkorset, ellers bakken
-  const pk = AIM.pick = aimPick(cx, cy), zg = cy > hy ? eye * f / (cy - hy) : Infinity;
+  const pk = AIM.pick = aimPick(AIM.sx, AIM.sy), zg = AIM.sy > hy ? eye * f / (AIM.sy - hy) : Infinity;
   AIM.range = pk ? pk.it.z : zg < far ? zg : null;
   drawOverlay();
   if (AIM.t < 0.2) { m.globalAlpha = 1 - AIM.t / 0.2; m.fillStyle = '#070a08'; m.fillRect(0, 0, W, H); m.globalAlpha = 1; }
@@ -134,12 +149,12 @@ function render3D(dt) {
   const t0 = performance.now();
   for (const [kx, ky] of [...need.values()].sort((p, q) => p[2] - q[2])) { genGround(getChunk(kx, ky)); if (performance.now() - t0 > 6) break; }
 }
-// Sprite skalert inn i ruta it.W × it.H; trær som svaier tegnes i striper som i 2D
+// Sprite skalert inn i ruta it.W × it.H; trær som svaier tegnes i striper som i 2D, én bufferpiksel om gangen
 function drawBill(img, it) {
   const s = it.s;
   if (!it.sw) { b.drawImage(img, 0, 0, it.W, it.H); return; }
   for (let y0 = 0; y0 < s.h; y0 += 6) {
-    const q = 1 - y0 / s.h, off = Math.round(Math.round(it.sw * q * q) * it.k), ya = Math.round(y0 * it.k), yb = Math.round(Math.min(s.h, y0 + 6) * it.k);
+    const q = 1 - y0 / s.h, off = Math.round(it.sw * q * q * it.k), ya = Math.round(y0 * it.k), yb = Math.round(Math.min(s.h, y0 + 6) * it.k);
     if (yb > ya) b.drawImage(img, 0, y0, s.w, Math.min(6, s.h - y0), off, ya, it.W, yb - ya);
   }
 }
@@ -151,7 +166,7 @@ function aimPick(px, py) {
     const s = it.s, ly = Math.floor((py - it.Y) * s.h / it.H);
     if (ly < 0 || ly >= s.h) continue;
     let u = px - it.X;
-    if (it.sw) { const q = 1 - (ly - ly % 6) / s.h; u -= Math.round(Math.round(it.sw * q * q) * it.k); }
+    if (it.sw) { const q = 1 - (ly - ly % 6) / s.h; u -= Math.round(it.sw * q * q * it.k); }
     let lx = Math.floor(u * s.w / it.W);
     if (lx < 0 || lx >= s.w) continue;
     if (it.flip) lx = s.w - 1 - lx;
@@ -167,8 +182,8 @@ function aimPoint(px, py, z) {
 // Skudd i 3D: spredningen er en vinkel rundt trådkorset, og kula treffer det første faste den møter
 function aimShot() {
   const sd = ST.spread[lv('barrel')] / 100, gx = gauss() * sd, gy = gauss() * sd * 0.8;
-  const px = AIM.cx + gx * AIM.f, py = AIM.cy - gy * AIM.f, pk = aimPick(px, py);
-  const r = { ang: AIM.camYaw + gx, a: null, zone: null, block: null };
+  const px = AIM.sx + gx * AIM.f, py = AIM.sy - gy * AIM.f, pk = aimPick(px, py);
+  const r = { ang: AIM.camYaw + Math.atan((px - AIM.cx) / AIM.f), a: null, zone: null, block: null };
   const burst = (x, y, z, col, n, sp) => { for (let i = 0; i < n; i++) G.parts.push({ x, y, z, vx: rnd(-sp, sp), vy: rnd(-sp, sp) * 0.4, vz: rnd(4, 14), life: rnd(0.3, 0.6), col, grav: 1 }); };
   AIM.kick = 1;
   if (pk && pk.it.a) {

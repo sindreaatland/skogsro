@@ -188,7 +188,8 @@ function pxText(t, x, y, size, col, align) {
 function drawOverlay() {
   const u = Math.max(2, Math.round(2 * DPR)), l = lv('scope');
   if (G.started && P.aim) {
-    const rx = AIM.cx * ZB, ry = AIM.cy * ZB, cx = rx, cy = ry;
+    // siktene vandrer med pust og uro (rx, ry), mens kikkerten og skyggen rundt står midt i bildet (cx, cy)
+    const rx = AIM.sx * ZB, ry = AIM.sy * ZB, cx = AIM.cx * ZB, cy = AIM.cy * ZB;
     if (l === 0) {
       // åpne sikter: pipe som går ned mot skjermkanten, bakre skjæring og korn
       const k = u * 3, bx = W / 2, top = ry + k * 2;
@@ -206,11 +207,13 @@ function drawOverlay() {
       m.fillStyle = '#070a08'; m.beginPath(); m.rect(0, 0, W, H); m.arc(cx, cy, R, 0, TAU); m.fill('evenodd');
       const g = m.createRadialGradient(cx, cy, R * 0.75, cx, cy, R); g.addColorStop(0, 'rgba(7,10,8,0)'); g.addColorStop(1, 'rgba(7,10,8,0.85)'); m.fillStyle = g; m.beginPath(); m.arc(cx, cy, R, 0, TAU); m.fill();
       m.strokeStyle = '#26302a'; m.lineWidth = u * 2; m.beginPath(); m.arc(cx, cy, R, 0, TAU); m.stroke();
+      m.save(); m.beginPath(); m.arc(cx, cy, R, 0, TAU); m.clip();
       m.fillStyle = '#0c0e0c'; const th = u * 2, tn = Math.max(1, Math.round(DPR)), g0 = R * 0.28;
-      m.fillRect(rx - R * 1.1, ry - th / 2, R * 1.1 - g0, th); m.fillRect(rx + g0, ry - th / 2, R * 1.1, th); m.fillRect(rx - th / 2, ry + g0, th, R * 1.1);
-      if (l < 3) m.fillRect(rx - th / 2, ry - R * 1.1, th, R * 1.1 - g0);
+      m.fillRect(rx - R * 2, ry - th / 2, R * 2 - g0, th); m.fillRect(rx + g0, ry - th / 2, R * 2, th); m.fillRect(rx - th / 2, ry + g0, th, R * 2);
+      if (l < 3) m.fillRect(rx - th / 2, ry - R * 2, th, R * 2 - g0);
       m.fillRect(rx - g0, ry - tn / 2, g0 * 2, tn); m.fillRect(rx - tn / 2, ry - g0, tn, g0 * 2);
       if (l === 3) { for (let i = 1; i <= 4; i++) { m.fillRect(rx + i * g0 / 5 - u / 2, ry - u / 2, u, u); m.fillRect(rx - i * g0 / 5 - u / 2, ry - u / 2, u, u); m.fillRect(rx - u / 2, ry + i * g0 / 5 - u / 2, u, u); } m.fillStyle = '#e8402c'; m.fillRect(rx - u / 2, ry - u / 2, u, u); }
+      m.restore();
       if (l >= 2) {
         const a = AIM.pick && AIM.pick.it.a, ty = cy - R + 34 * DPR;
         let line = AIM.range == null ? '– m' : Math.round(AIM.range * M_PER_PX) + ' m';
