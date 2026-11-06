@@ -176,7 +176,6 @@ function bindInput() {
       case 'KeyF': interact(); break;
       case 'KeyJ': case 'Tab': openBook(); break;
       case 'KeyM': auMute(!AU.muted); $('muteBtn').setAttribute('aria-pressed', AU.muted); msg(AU.muted ? 'Lyden er av.' : 'Lyden er på.'); break;
-      case 'Space': if (P.aim) P.hold = true; break;
     }
   });
   addEventListener('keyup', e => { KEYS[e.code] = false; if (e.code === 'Space') P.hold = false; });
@@ -186,7 +185,7 @@ function bindInput() {
     e.preventDefault(); auInit();
     if (!G.started || G.paused) return;
     if (!MOUSE.locked) lockPointer();
-    if (e.button === 2) { P.aim = true; P.sway = [0, 0]; P.unrest = Math.max(P.unrest, 0.6); aimStart(MOUSE.wx, MOUSE.wy); }
+    if (e.button === 2) { P.aim = true; P.sway = [0, 0]; P.unrest = Math.max(P.unrest, 0.35); aimStart(MOUSE.wx, MOUSE.wy); }
     else if (e.button === 0) shoot();
   });
   addEventListener('mouseup', e => { if (e.button === 2) { P.aim = false; P.hold = false; } });

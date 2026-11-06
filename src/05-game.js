@@ -27,7 +27,7 @@ const UPG = [
 ];
 const ST = {
   mag: [1.5, 1.9, 2.4, 3.0], fov: [40, 22, 15, 10], spread: [1.1, 0.75, 0.45, 0.25], range: [260, 340, 440, 560], dmg: [40, 70, 100, 145],
-  sway: [3.2, 2.3, 1.5, 0.9], cap: [1, 3, 4, 5], cycle: [1.5, 1.05, 0.7, 0.45], reload: [2.4, 1.8, 1.3, 0.9], noise: [950, 640, 420, 260],
+  sway: [2.4, 1.7, 1.1, 0.7], cap: [1, 3, 4, 5], cycle: [1.5, 1.05, 0.7, 0.45], reload: [2.4, 1.8, 1.3, 0.9], noise: [950, 640, 420, 260],
   callR: [420, 520, 620, 720], scentR: [200, 300, 420], scentT: [90, 140, 200], camo: [1, 0.75, 0.55], deo: [1, 0.7, 0.45], boots: [1, 0.7, 0.48],
 };
 const CALLSP = [['radyr', 'rev'], ['radyr', 'rev', 'hjort', 'rein'], ['radyr', 'rev', 'hjort', 'rein', 'elg', 'villsvin'], SPECIES];
@@ -41,7 +41,7 @@ const G = {
   wind: { a: 0, s: 0.5, x: 1, y: 0 }, animals: [], scentObjs: [], blood: [], parts: [], msgs: [], spawnT: 0, dayl: 1, hunters: [], saveT: 15, pauseT: 0,
 };
 for (const u of UPG) G.up[u.id] = 0;
-const P = { x: 0, y: 30, face: 'down', flip: false, walkT: 0, moving: false, sneak: false, aim: false, breath: 1, hold: false, ammo: 1, cycle: 0, reload: 0, callCd: 0, stepT: 0, wet: false, deep: false, cold: 0, chill: false, sway: [0, 0], unrest: 0, look: 0, winded: false, bph: 0 };
+const P = { x: 0, y: 30, face: 'down', flip: false, walkT: 0, moving: false, sneak: false, aim: false, breath: 1, hold: false, ammo: 1, cycle: 0, reload: 0, callCd: 0, stepT: 0, wet: false, deep: false, cold: 0, chill: false, sway: [0, 0], unrest: 0, winded: false, bph: 0 };
 const lv = id => G.up[id];
 
 // ---------- lagring (localStorage i denne nettleseren) ----------
@@ -204,8 +204,8 @@ function hitZone(a, s, lx, ly) {
 }
 
 // ---------- jeger-handlinger ----------
-// Uro i siktet fra pusten; i tillegg gir det å flytte siktet kraftige rykk, og kulde store, ujevne sveip.
-// Ingen av de to forsvinner når du holder pusten
+// Uro i siktet fra pusten; i tillegg gir store sving med børsa kraftige rykk, og kulde store, ujevne sveip.
+// Holder du pusten, roer rykkene seg fortere, men kulda blir værende
 function aimSway() {
   const s = ST.sway[lv('stock')], t = G.t, n = (u, row) => (vnoise(t * u, row, 71) - 0.5) * 2;
   const c = P.cold * (5 + 1.2 * s), m = P.unrest * (7 + 2.5 * s);
@@ -374,14 +374,17 @@ function playerUpdate(dt) {
       if (isAuth()) stepNoise({ x: P.x, y: P.y, sneak: P.sneak, wet: P.wet, boots: lv('boots') });
     }
   }
-  // sikte: pust og ro. Flytter du siktet, kommer børsa i uro som tar over et sekund å roe seg.
-  // Bare når du ligger helt i ro og holder pusten, står siktet stille, og bare i noen få sekunder;
-  // går lufta tom, hiver du etter pusten, og du kan ikke holde den igjen før du har hentet deg inn
+  // sikte: pust og ro. Små justeringer går greit, men svinger du børsa langt (f.eks. fra ett dyr til et annet),
+  // kommer den i uro som tar rundt et sekund å roe seg. Holder du pusten (Space), står siktet stille, og bare i
+  // noen få sekunder; går lufta tom, hiver du etter pusten, og du kan ikke holde den igjen før du har hentet deg inn
   const swayA = ST.sway[lv('stock')] * (P.sneak ? 0.85 : 1) * (1 + 1.2 * P.cold);
-  const look = Math.min(1, P.look / Math.max(dt, 1e-3) / 40); P.look = 0;
-  P.unrest = look > P.unrest ? lerp(P.unrest, look, Math.min(1, dt * 6)) : Math.max(look, P.unrest - dt * 0.8);
   if (P.winded && P.breath >= 0.8) P.winded = false;
-  if (P.winded) P.hold = false;
+  P.hold = P.aim && !P.winded && !!KEYS.Space;
+  // hvileretningen følger siktet etter; hvor langt siktet er fra den, sier hvor stort svinget er (radianer)
+  const ra = 1 - Math.exp(-dt / 0.6);
+  AIM.ry += (AIM.yaw - AIM.ry) * ra; AIM.rp += (AIM.pitch - AIM.rp) * ra;
+  const swing = P.aim ? smooth(0.05, 0.2, hyp(AIM.yaw - AIM.ry, AIM.pitch - AIM.rp)) : 0;
+  P.unrest = swing > P.unrest ? lerp(P.unrest, swing, Math.min(1, dt * 8)) : Math.max(swing, P.unrest - dt * (P.hold ? 2 : 0.9));
   if (P.aim) {
     if (P.hold && P.breath > 0) { P.breath = Math.max(0, P.breath - dt / 3); if (!P.breath) P.winded = true; }
     else P.breath = Math.min(1, P.breath + dt / 3);

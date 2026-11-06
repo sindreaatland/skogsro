@@ -2,7 +2,7 @@
 // Bakken projiseres rad for rad fra de samme bakkebitene som kartet bruker (gulvcasting), og trær,
 // stein, busker, dyr og andre jegere er de vanlige spritene skalert etter avstand og tegnet bakerst
 // først. Kula følger trådkorset: det første faste du ser der, er det den treffer.
-const AIM = { yaw: 0, pitch: 0, camYaw: 0, f: 300, eye: 15, cx: 0, cy: 0, hy: 0, t: 0, kick: 0, range: null, pick: null, list: [], im: null, px: null };
+const AIM = { yaw: 0, pitch: 0, ry: 0, rp: 0, camYaw: 0, f: 300, eye: 15, cx: 0, cy: 0, hy: 0, t: 0, kick: 0, range: null, pick: null, list: [], im: null, px: null };
 const EYE = 15, NEAR = 14, FAR = 900, SWAY_K = 0.005, PITCH_MAX = 0.35;
 const FOG_HEX = '#a9b6a2', FOG = C(FOG_HEX), SKY_HEX = '#c6d4d2', GROUND0 = C('#3d5334'), CSB = Math.log2(CS);
 // Gress, bregner, siv og lyng stopper ikke kula; alt annet du ser, gjør det
@@ -28,13 +28,13 @@ function aimStart(tx, ty) {
   const d = hyp(tx - P.x, ty - P.y);
   AIM.yaw = AIM.camYaw = d > 8 ? Math.atan2(ty - P.y, tx - P.x) : P.face === 'side' ? (P.flip ? Math.PI : 0) : P.face === 'up' ? -Math.PI / 2 : Math.PI / 2;
   AIM.pitch = clamp(Math.atan((h - aimEye()) / Math.max(d, 30)), -PITCH_MAX, PITCH_MAX);
+  AIM.ry = AIM.yaw; AIM.rp = AIM.pitch;
   AIM.f = aimFocal(); AIM.t = 0; AIM.kick = 0; AIM.list.length = 0; AIM.pick = null; AIM.range = null;
 }
 // Musa flytter bildet like mange skjermpiksler som den beveger seg, uansett forstørrelse
 function aimLook(dx, dy) {
   const k = 0.9 / (ZB * AIM.f);
   AIM.yaw += dx * k; AIM.pitch = clamp(AIM.pitch - dy * k, -PITCH_MAX, PITCH_MAX);
-  P.look += hyp(dx, dy) / DPR; // hvor mye siktet flyttes, gjør børsa urolig (se playerUpdate)
 }
 
 function render3D(dt) {
