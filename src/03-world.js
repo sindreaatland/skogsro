@@ -20,13 +20,16 @@ function nearestCabin(x, y) {
   return { x: b.x, y: b.y, d: bd };
 }
 
+// Elver og stier følger nullkonturen til hvert sitt støyfelt
+const riverN = (x, y) => fbm(x / 560, y / 560, SEED + 37, 2) - 0.5;
+const trailN = (x, y) => fbm(x / 310 + 40, y / 310 + 40, SEED + 53, 2) - 0.5;
 // Felt som styrer landskapet: [skogtetthet, bartre-andel, vann, sti, lyng, grov variasjon]
 function fields(x, y, cabs) {
   let F = clamp((fbm(x / 330, y / 330, SEED + 11, 3) - 0.5) * 2.4 + 0.5, 0, 1);
   const Cn = clamp((fbm(x / 470, y / 470, SEED + 23, 2) - 0.5) * 2.8 + 0.5, 0, 1);
-  const r = Math.abs(fbm(x / 560, y / 560, SEED + 37, 2) - 0.5), pd = vnoise(x / 820 + 5.2, y / 820 - 3.1, SEED + 41);
+  const r = Math.abs(riverN(x, y)), pd = vnoise(x / 820 + 5.2, y / 820 - 3.1, SEED + 41);
   let Wv = r / (0.010 + Math.max(0, pd - 0.6) * 0.18);
-  let Tr = Math.abs(fbm(x / 310 + 40, y / 310 + 40, SEED + 53, 2) - 0.5) / 0.011;
+  let Tr = Math.abs(trailN(x, y)) / 0.011;
   const He = vnoise(x / 110, y / 110, SEED + 61), Va = vnoise(x / 37, y / 37, SEED + 5);
   for (const c of cabs) {
     const d = hyp(x - c.x, (y - c.y) * 1.3);
@@ -34,7 +37,72 @@ function fields(x, y, cabs) {
   }
   return [F, Cn, Wv, Tr, He, Va];
 }
-function isWater(x, y) { return fields(x, y, cabinsNear(x, y))[2] < 1; }
+// Vanndybde (vann under 1, djupt under 0,55); på en bro er det tørt
+function waterAt(x, y) { const w = fields(x, y, cabinsNear(x, y))[2]; return w < 1.6 && bridgeAt(x, y) ? 9 : w; }
+function isWater(x, y) { return waterAt(x, y) < 1; }
+
+// ---------- bruer der stiene krysser bekker og elver ----------
+// Krysningspunktet finnes med Newton-iterasjon på de to støyfeltene, så alle biter (og alle
+// jegere på nettet) finner nøyaktig samme punkt. Biten punktet ligger i eier brua.
+const _br = new Map(), BR_HW = 5, BR_MAX = 64;
+function crossing(x, y) {
+  for (let i = 0; i < 24; i++) {
+    const a = trailN(x, y), c = riverN(x, y);
+    const ax = trailN(x + 0.5, y) - trailN(x - 0.5, y), ay = trailN(x, y + 0.5) - trailN(x, y - 0.5);
+    const cx = riverN(x + 0.5, y) - riverN(x - 0.5, y), cy = riverN(x, y + 0.5) - riverN(x, y - 0.5);
+    const det = ax * cy - ay * cx; if (Math.abs(det) < 1e-12) return null;
+    let dx = (a * cy - ay * c) / det, dy = (ax * c - cx * a) / det;
+    const l = hyp(dx, dy); if (l > 6) { dx *= 6 / l; dy *= 6 / l; } // dempede steg: støyen er ikke lineær langt unna
+    x -= dx; y -= dy;
+    if (dx * dx + dy * dy < 1e-8) return [x, y];
+  }
+  return null;
+}
+function makeBridge(x, y) {
+  const cabs = cabinsNear(x, y), wv = (px, py) => fields(px, py, cabs)[2];
+  if (wv(x, y) >= 1) return null;
+  const gx = trailN(x + 0.5, y) - trailN(x - 0.5, y), gy = trailN(x, y + 0.5) - trailN(x, y - 0.5), gl = hyp(gx, gy);
+  const tx = -gy / gl, ty = gx / gl;
+  // gå langs stien til land på begge sider; begge kantene av dekket må også nå land
+  const reach = dir => {
+    let m = 0;
+    for (const q of [-BR_HW, 0, BR_HW]) {
+      let s = 0;
+      while (wv(x + tx * s * dir - ty * q, y + ty * s * dir + tx * q) < 1.6) if (++s > BR_MAX) return -1;
+      m = Math.max(m, s);
+    }
+    return m + 2;
+  };
+  const a = reach(-1), b = reach(1);
+  if (a < 0 || b < 0) return null; // for bredt vann (innsjø): ingen bro
+  const bb = [1e9, 1e9, -1e9, -1e9];
+  for (const s of [-a, b]) for (const q of [-BR_HW - 1, BR_HW + 1]) {
+    const px = x + tx * s - ty * q, py = y + ty * s + tx * q;
+    bb[0] = Math.min(bb[0], px); bb[1] = Math.min(bb[1], py); bb[2] = Math.max(bb[2], px); bb[3] = Math.max(bb[3], py + 2);
+  }
+  return { x, y, tx, ty, a: -a, b, hw: BR_HW, id: (hash2(x | 0, y | 0, 5) * 1e6) | 0, bb };
+}
+function bridgesOf(cx, cy) {
+  const key = cx + ',' + cy; let L = _br.get(key);
+  if (L) return L;
+  L = []; const seen = [], x0 = cx * CS, y0 = cy * CS;
+  for (let y = y0 - 12; y < y0 + CS + 12; y += 8) for (let x = x0 - 12; x < x0 + CS + 12; x += 8) {
+    if (Math.abs(trailN(x, y)) > 0.04 || Math.abs(riverN(x, y)) > 0.04) continue;
+    const c = crossing(x, y);
+    if (!c || c[0] < x0 || c[0] >= x0 + CS || c[1] < y0 || c[1] >= y0 + CS || seen.some(p => hyp(p[0] - c[0], p[1] - c[1]) < 3)) continue;
+    seen.push(c); const br = makeBridge(c[0], c[1]); if (br) L.push(br);
+  }
+  _br.set(key, L); return L;
+}
+// Står (x, y) på en av bruene i lista? m utvider brua i alle retninger
+function inBridge(list, x, y, m) {
+  for (const br of list) {
+    const dx = x - br.x, dy = y - br.y, s = dx * br.tx + dy * br.ty, q = dy * br.tx - dx * br.ty;
+    if (s >= br.a - m && s <= br.b + m && Math.abs(q) <= br.hw + m) return br;
+  }
+  return null;
+}
+const bridgeAt = (x, y, m) => inBridge(getChunk(Math.floor(x / CS), Math.floor(y / CS)).br, x, y, m || 0);
 
 const GT = {
   water: T('#1e3b48', '#28525f', '#376c76'), spark: C('#a4ccc6'),
@@ -106,7 +174,9 @@ function stamps(p, ch) {
 }
 
 function genChunk(cx, cy) {
-  const x0 = cx * CS, y0 = cy * CS, ch = { cx, cy, objs: [], col: [], ground: null, cabs: cabinsNear(x0 + 128, y0 + 128) };
+  const x0 = cx * CS, y0 = cy * CS, ch = { cx, cy, objs: [], col: [], ground: null, cabs: cabinsNear(x0 + 128, y0 + 128), br: [] };
+  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) for (const br of bridgesOf(cx + i, cy + j))
+    if (br.bb[0] < x0 + CS && br.bb[2] >= x0 && br.bb[1] < y0 + CS && br.bb[3] >= y0) ch.br.push(br);
   const inC = (x, y) => x >= x0 && x < x0 + CS && y >= y0 && y < y0 + CS;
   const nearCab = (x, y, d) => { for (const c of ch.cabs) if (hyp(x - c.x, y - c.y + 12) < d) return true; return false; };
   // trær
@@ -133,7 +203,7 @@ function genChunk(cx, cy) {
     const f = fields(x, y, ch.cabs), F = f[0], Cn = f[1], Wv = f[2], Tr = f[3], He = f[4], h = hash2(gx, gy, 203);
     let k = null;
     if (Wv < 1) continue;
-    if (Wv < 2) { if (h < 0.55) k = 'reed'; }
+    if (Wv < 2) { if (h < 0.55 && !inBridge(ch.br, x, y, 3)) k = 'reed'; }
     else if (Tr < 1.4 || nearCab(x, y, 58)) continue;
     else if (F > 0.5 && Cn > 0.55) k = h < 0.15 ? 'fern' : h < 0.2 ? 'rock' : h < 0.22 ? 'stump' : h < 0.235 ? 'log' : h < 0.28 ? 'shrub' : h < 0.29 ? 'juniper' : null;
     else if (F > 0.45) k = h < 0.12 ? 'shrub' : h < 0.2 ? 'fern' : h < 0.24 ? 'rock' : h < 0.32 ? 'grassT' : h < 0.335 ? 'log' : h < 0.35 ? 'stump' : null;
@@ -145,6 +215,27 @@ function genChunk(cx, cy) {
   }
   for (const c of ch.cabs) if (inC(c.x, c.y)) { const o = { k: 'cabin', x: c.x, y: c.y, v: 0, ph: 0, a: 1, r: 0, rect: SPR.cabin[0].rect }; ch.objs.push(o); ch.col.push(o); }
   return ch;
+}
+// Plankedekke på tvers av stien, rekkverk med stolper langs kantene og skygge på vannet under
+const BRT = { plank: T('#5a412d', '#6e5038', '#836244', '#977452'), gap: C('#2c2017'), rail: C('#45321f'), post: C('#a88660') };
+function paintBridges(p, ch) {
+  const x0 = ch.cx * CS, y0 = ch.cy * CS;
+  for (const br of ch.br) {
+    const i0 = Math.max(0, Math.floor(br.bb[0]) - x0), i1 = Math.min(CS - 1, Math.ceil(br.bb[2]) - x0);
+    const j0 = Math.max(0, Math.floor(br.bb[1]) - y0), j1 = Math.min(CS - 1, Math.ceil(br.bb[3]) - y0);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const dx = x0 + i + 0.5 - br.x, dy = y0 + j + 0.5 - br.y, s = dx * br.tx + dy * br.ty, q = dy * br.tx - dx * br.ty, k = j * CS + i;
+      if (s < br.a || s > br.b || Math.abs(q) > br.hw + 1) {
+        const s2 = s - 2 * br.ty, q2 = q - 2 * br.tx; // dekket 2 px over kaster skygge hit
+        if (s2 >= br.a && s2 <= br.b && Math.abs(q2) <= br.hw + 1) p.d[k] = dkc(p.d[k], 0.55);
+        continue;
+      }
+      const u = s - br.a;
+      if (Math.abs(q) > br.hw - 0.5) p.d[k] = (u | 0) % 6 === 1 ? BRT.post : BRT.rail;
+      else if (u % 3 < 1) p.d[k] = BRT.gap;
+      else p.d[k] = tone(BRT.plank, hash2((u / 3) | 0, br.id, 3) * 0.75 + hash2(i, j, 4) * 0.25, i, j, 2);
+    }
+  }
 }
 function genGround(ch) {
   const p = new Pix(CS, CS), x0 = ch.cx * CS, y0 = ch.cy * CS, G = 4, N = CS / G + 1, NF = 6;
@@ -160,6 +251,7 @@ function genGround(ch) {
     }
   }
   stamps(p, ch);
+  paintBridges(p, ch);
   ch.ground = p.canvas();
 }
 function getChunk(cx, cy) {

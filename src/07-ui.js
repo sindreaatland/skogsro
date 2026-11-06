@@ -33,6 +33,8 @@ function hudUpdate(dt) {
   setText('callName', UPG[7].lv[lv('call')]);
   $('callCd').style.height = (P.callCd / 9 * 100) + '%';
   setText('scentN', '× ' + G.scents);
+  $('cold').hidden = !(G.started && P.cold > 0);
+  if (P.cold > 0) { setText('coldTxt', P.wet ? 'I vannet · fryser' : 'Våt og kald · tørker'); $('coldFill').style.width = (P.cold * 100) + '%'; }
   $('breath').hidden = !P.aim; $('breathFill').style.width = (P.breath * 100) + '%';
   $('breathFill').classList.toggle('low', P.breath < 0.25);
   // handlingsprompt
@@ -103,7 +105,7 @@ function buy(u) {
 }
 function openShop() {
   G.paused = true; G.panel = 'shop'; P.aim = false; try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
-  P.ammo = ST.cap[lv('mag')]; P.reload = 0;
+  P.ammo = ST.cap[lv('mag')]; P.reload = 0; P.cold = 0; // ovnen i bua tørker klærne
   $('sleepBtn').hidden = mp();
   renderShop(); $('shop').hidden = false; sfx.ui();
 }

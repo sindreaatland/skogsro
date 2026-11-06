@@ -39,7 +39,7 @@ const G = {
   wind: { a: 0, s: 0.5, x: 1, y: 0 }, animals: [], scentObjs: [], blood: [], parts: [], msgs: [], spawnT: 0, dayl: 1, hunters: [], saveT: 15, pauseT: 0,
 };
 for (const u of UPG) G.up[u.id] = 0;
-const P = { x: 0, y: 30, face: 'down', flip: false, walkT: 0, moving: false, sneak: false, aim: false, ax: 0, ay: 0, breath: 1, hold: false, ammo: 1, cycle: 0, reload: 0, callCd: 0, stepT: 0, wet: false, sway: [0, 0] };
+const P = { x: 0, y: 30, face: 'down', flip: false, walkT: 0, moving: false, sneak: false, aim: false, ax: 0, ay: 0, breath: 1, hold: false, ammo: 1, cycle: 0, reload: 0, callCd: 0, stepT: 0, wet: false, deep: false, cold: 0, chill: false, sway: [0, 0] };
 const lv = id => G.up[id];
 
 // ---------- lagring (localStorage i denne nettleseren) ----------
@@ -198,7 +198,11 @@ function hitTest(a, tx, ty) {
 }
 
 // ---------- jeger-handlinger ----------
-function aimTarget() { return [P.ax + P.sway[0], P.ay + P.sway[1]]; }
+// Kulde gir rask skjelving i siktet som ikke forsvinner når du holder pusten
+function aimTarget() {
+  const c = P.cold * ST.sway[lv('stock')] * 0.7, t = G.t;
+  return [P.ax + P.sway[0] + (Math.sin(t * 29) + Math.sin(t * 47 + 1.3) * 0.5) * c, P.ay + P.sway[1] + (Math.sin(t * 37 + 0.7) + Math.sin(t * 23 + 2.1) * 0.5) * c * 0.8];
+}
 function muzzle(x, y, ang) {
   for (let i = 0; i < 6; i++) G.parts.push({ x: x + Math.cos(ang) * 10, y: y + 0.5, z: 9, vx: Math.cos(ang) * rnd(10, 40) + rnd(-8, 8), vy: Math.sin(ang) * rnd(10, 40), vz: rnd(-4, 8), life: rnd(0.05, 0.14), col: i < 2 ? '#fff6c8' : '#ffb84a' });
   for (let i = 0; i < 5; i++) G.parts.push({ x: x + Math.cos(ang) * 10, y: y + 0.5, z: 9, vx: Math.cos(ang) * rnd(4, 12), vy: Math.sin(ang) * rnd(4, 12), vz: rnd(2, 6), life: rnd(0.6, 1.4), col: '#c8c8bc', smoke: 1 });
@@ -325,13 +329,22 @@ function playerUpdate(dt) {
     if (KEYS.KeyW || KEYS.ArrowUp) my -= 1; if (KEYS.KeyS || KEYS.ArrowDown) my += 1;
   }
   P.sneak = !!(KEYS.ShiftLeft || KEYS.ShiftRight);
-  const f = fields(P.x, P.y, cabinsNear(P.x, P.y)), wv = f[2];
-  P.wet = wv < 1.1;
+  const br = bridgeAt(P.x, P.y), wv = br ? 9 : fields(P.x, P.y, cabinsNear(P.x, P.y))[2];
+  P.wet = wv < 1.1; P.deep = wv < 0.55;
+  // vassing gjør deg våt og kald, svømming enda mer; på land tørker klærne sakte
+  if (P.wet) P.cold = Math.max(P.cold, Math.min(P.deep ? 1 : 0.6, P.cold + dt * 0.6));
+  else P.cold = Math.max(0, P.cold - dt / 80);
+  if (G.started && !P.chill && P.cold >= 0.3) { P.chill = true; msg('Du er våt og kald. Siktet skjelver til klærne har tørket.', 'warn'); }
+  else if (P.chill && P.cold === 0) { P.chill = false; msg('Klærne har tørket. Du er varm igjen.', 'good'); }
   P.moving = mx !== 0 || my !== 0;
   if (P.moving) {
-    const l = hyp(mx, my), sp = (P.sneak ? 16 : 40) * (P.wet ? 0.55 : 1);
+    const l = hyp(mx, my), sp = (P.sneak ? 16 : 40) * (P.deep ? 0.35 : P.wet ? 0.55 : 1);
     let nx = P.x + mx / l * sp * dt, ny = P.y + my / l * sp * dt * 0.85;
-    if (fields(nx, ny, cabinsNear(nx, ny))[2] < 0.55) { nx = P.x; ny = P.y; }
+    // rekkverket holder deg på brua til du går av i en av endene
+    if (br) {
+      const dx = nx - br.x, dy = ny - br.y, s = dx * br.tx + dy * br.ty;
+      if (s > br.a && s < br.b) { const q = clamp(dy * br.tx - dx * br.ty, 1.5 - br.hw, br.hw - 1.5); nx = br.x + br.tx * s - br.ty * q; ny = br.y + br.ty * s + br.tx * q; }
+    }
     const c = collide(nx, ny, 3); P.x = c.x; P.y = c.y;
     P.walkT += dt * (P.sneak ? 0.55 : 1);
     if (Math.abs(mx) >= Math.abs(my)) { P.face = 'side'; P.flip = mx < 0; } else P.face = my > 0 ? 'down' : 'up';
@@ -342,7 +355,7 @@ function playerUpdate(dt) {
     }
   }
   // sikte: pust og ro
-  const swayA = ST.sway[lv('stock')] * (P.sneak ? 0.85 : 1);
+  const swayA = ST.sway[lv('stock')] * (P.sneak ? 0.85 : 1) * (1 + 1.2 * P.cold);
   if (P.aim) {
     if (P.hold && P.breath > 0) P.breath = Math.max(0, P.breath - dt / 4);
     else { P.breath = Math.min(1, P.breath + dt / 3); if (P.breath < 0.02) P.hold = false; }

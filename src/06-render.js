@@ -31,6 +31,12 @@ function drawSway(o, s, X, Y) {
     b.drawImage(s.c, 0, y0, s.w, hh, X - s.ax + off, Y - s.ay + y0, s.w, hh);
   }
 }
+// Jeger; ute på djupt vann synker kroppen så bare overkroppen stikker opp
+function drawHunter(s, X, Y, flip, deep) {
+  const sk = deep ? 5 : 0, hh = deep ? s.ay - 8 : s.h;
+  if (flip) { b.save(); b.translate(X, Y + sk); b.scale(-1, 1); b.drawImage(s.c, 0, 0, s.w, hh, -s.ax, -s.ay, s.w, hh); b.restore(); }
+  else b.drawImage(s.c, 0, 0, s.w, hh, X - s.ax, Y + sk - s.ay, s.w, hh);
+}
 let genBudgetT = 0;
 function render(dt) {
   // kamera
@@ -80,7 +86,7 @@ function render(dt) {
   const sdx = dayl > 0.05 ? lerp(-1.0, 1.0, sunT) : 0.35, sls = dayl > 0.05 ? 0.3 + 0.4 * (1 - Math.sin(Math.PI * sunT)) : 0.4;
   sh.setTransform(1, 0, 0, 1, 0, 0); sh.clearRect(0, 0, bw, bh);
   for (const it of items) {
-    if (it.s.nosh || it.o && (it.o.k === 'fern' || it.o.k === 'grassT' || it.o.k === 'reed')) continue;
+    if (it.s.nosh || it.o && (it.o.k === 'fern' || it.o.k === 'grassT' || it.o.k === 'reed') || it.hunter && P.deep) continue;
     const ent = it.o || it.a || it.peer || P, flip = it.a ? it.a.face < 0 : it.hunter ? P.flip && P.face === 'side' : it.peer ? it.peer.flip && it.peer.face === 'side' : false;
     sh.setTransform(flip ? -1 : 1, 0, -sdx, -sls * 0.5, Math.round(ent.x - ox), Math.round(ent.y - oy) + 1);
     sh.drawImage(it.s.sil, -it.s.ax, -it.s.ay);
@@ -105,14 +111,12 @@ function render(dt) {
       if (a.state === 'dead') icons.push([FX.ex, X - 2, Y - 18 - (Math.sin(G.t * 3) > 0 ? 1 : 0)]);
       else if (a.state === 'alert' && !P.aim) icons.push([FX.q, X - 2, Y - SPEC[a.sp].leg - SPEC[a.sp].Hh - 14]);
     } else if (it.hunter) {
-      const s = it.s, X = Math.round(P.x - ox), Y = Math.round(P.y - oy);
-      if (P.flip && P.face === 'side') { b.save(); b.translate(X, Y); b.scale(-1, 1); b.drawImage(s.c, -s.ax, -s.ay); b.restore(); }
-      else b.drawImage(s.c, X - s.ax, Y - s.ay);
-      if (P.wet) { b.fillStyle = '#a4ccc6'; const k = (G.t * 4) | 0; b.fillRect(X - 4 + (k & 1), Y, 2, 1); b.fillRect(X + 2 - (k & 1), Y, 2, 1); }
+      const s = it.s, X = Math.round(P.x - ox), Y = Math.round(P.y - oy), wl = P.deep ? Y - 3 : Y;
+      drawHunter(s, X, Y, P.flip && P.face === 'side', P.deep);
+      if (P.wet) { b.fillStyle = '#a4ccc6'; const k = (G.t * 4) | 0; b.fillRect(X - 4 + (k & 1), wl, 2, 1); b.fillRect(X + 2 - (k & 1), wl, 2, 1); }
     } else if (it.peer) {
       const r = it.peer, s = it.s, X = Math.round(r.x - ox), Y = Math.round(r.y - oy);
-      if (r.flip && r.face === 'side') { b.save(); b.translate(X, Y); b.scale(-1, 1); b.drawImage(s.c, -s.ax, -s.ay); b.restore(); }
-      else b.drawImage(s.c, X - s.ax, Y - s.ay);
+      drawHunter(s, X, Y, r.flip && r.face === 'side', r.wet && waterAt(r.x, r.y) < 0.55);
     } else if (it.bottle) b.drawImage(it.s.c, Math.round(it.bottle.x - ox) - it.s.ax, Math.round(it.bottle.y - oy) - it.s.ay);
   }
   // partikler
