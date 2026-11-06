@@ -114,6 +114,11 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 .big { font-size: 20px; padding: 12px 26px; background: #3a4a2a; border: 3px solid #7f9c55; cursor: pointer; box-shadow: 0 4px 0 #1b2a20; }
 .big:hover { background: #4a5e34; } .big:active { transform: translateY(2px); box-shadow: 0 2px 0 #1b2a20; }
 .ghost { font-size: 15px; padding: 10px 16px; background: rgba(16,24,20,.7); border: 2px solid #44574a; cursor: pointer; }
+#saveTxt { font-size: 14px; color: var(--muted); margin-top: -8px; }
+.pause-card { width: min(440px, 100%); }
+.pause-body { padding: 18px 20px 22px; display: grid; gap: 12px; }
+.pause-body p { margin: 0; }
+.pause-acts { display: grid; gap: 10px; margin-top: 6px; }
 .t-keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 6px 22px; text-align: left; font-size: 14px; color: var(--paper); background: var(--panel); border: 2px solid var(--edge); padding: 14px 18px; width: min(680px, 100%); }
 .t-keys div { display: flex; align-items: center; gap: 6px; }
 #mp { display: grid; gap: 8px; justify-items: center; }
@@ -130,7 +135,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 
 <div id="tl" class="hud box"><div id="kr">0 kr</div><div id="clock">Dag 1 · 06:30</div><div id="who" hidden></div></div>
 <div id="tr" class="hud box"><img id="windArrow" alt="Vindretning"><div><div class="lab">Vind</div><div id="windS">Svak vind</div><div id="windD">fra sørvest</div></div></div>
-<div id="tbtns" class="hud"><button class="tbtn" id="bookBtn" type="button">Jaktbok (J)</button><button class="tbtn" id="muteBtn" type="button" aria-pressed="false">Lyd (M)</button></div>
+<div id="tbtns" class="hud"><button class="tbtn" id="pauseBtn" type="button">Pause (Esc)</button><button class="tbtn" id="bookBtn" type="button">Jaktbok (J)</button><button class="tbtn" id="muteBtn" type="button" aria-pressed="false">Lyd (M)</button></div>
 <div id="log" class="hud" aria-live="polite"></div>
 <div id="prompt" class="hud box" hidden><kbd>F</kbd><span id="promptTxt"></span></div>
 <div id="breath" class="hud box" hidden><div class="lab">Pust · hold Space for å holde pusten</div><div class="meter"><i id="breathFill"></i></div></div>
@@ -139,7 +144,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
   <div class="slot box"><img id="callIco" alt=""><div><div class="slot-t" id="callName">Rådyrpipe</div><div class="slot-s">Lokk</div></div><kbd class="k">Q</kbd><div id="callCd"></div></div>
   <div class="slot box"><img id="scentIco" alt=""><div><div class="slot-t" id="scentN">× 2</div><div class="slot-s">Luktstoff</div></div><kbd class="k">E</kbd></div>
 </div>
-<div id="keys" class="hud"><span><kbd>WASD</kbd>gå</span><span><kbd>Shift</kbd>snik</span><span><kbd>Høyreklikk</kbd>sikt</span><span><kbd>Venstreklikk</kbd>skyt</span><span><kbd>Space</kbd>hold pusten</span><span><kbd>F</kbd>handling</span></div>
+<div id="keys" class="hud"><span><kbd>WASD</kbd>gå</span><span><kbd>Shift</kbd>snik</span><span><kbd>Høyreklikk</kbd>sikt</span><span><kbd>Venstreklikk</kbd>skyt</span><span><kbd>Space</kbd>hold pusten</span><span><kbd>F</kbd>handling</span><span><kbd>Esc</kbd>pause</span></div>
 
 <div id="shop" class="sheet" hidden>
   <div class="card" role="dialog" aria-label="Jaktbua">
@@ -167,13 +172,25 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
   </div>
 </div>
 
+<div id="pause" class="sheet" hidden>
+  <div class="card pause-card" role="dialog" aria-label="Pause">
+    <div class="card-h"><h2>Pause</h2></div>
+    <div class="pause-body">
+      <p class="side-note">Pengene, rifla, utstyret og jaktboka di lagres automatisk i denne nettleseren.</p>
+      <p class="side-note" id="pauseNote" hidden>Andre jegere er i skogen, så tida går videre mens du har pause.</p>
+      <div class="pause-acts"><button class="big" type="button" id="resumeBtn">Fortsett (Esc)</button><button class="ghost" type="button" id="quitBtn">Til tittelskjermen</button></div>
+    </div>
+  </div>
+</div>
+
 <div id="title">
   <div class="t-wrap">
     <h1 class="t-name">Skogsro</h1>
     <p class="t-sub">Gå stille gjennom en skog som aldri tar slutt. Les vinden, lokk på dyrene og vent på det rette skuddet.</p>
     <div id="loading">Tegner skogen …</div>
-    <div id="mp" hidden><label class="mp-name">Navnet ditt <input id="nameIn" maxlength="16" autocomplete="off" spellcheck="false"></label><div id="mpTxt"></div></div>
+    <div id="mp"><label class="mp-name">Navnet ditt <input id="nameIn" maxlength="16" autocomplete="off" spellcheck="false"></label><div id="mpTxt" hidden></div></div>
     <div id="titleBtns" hidden><button class="big" id="startBtn" type="button">Gå inn i skogen</button><button class="ghost" id="newBtn" type="button" hidden>Start på nytt</button></div>
+    <div id="saveTxt" hidden></div>
     <div class="t-keys">
       <div><kbd>WASD</kbd>Gå · <kbd>Shift</kbd>snik</div>
       <div><kbd>Høyreklikk</kbd>Sikt (hold)</div>
@@ -184,6 +201,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
       <div><kbd>E</kbd>Sett ut luktstoff</div>
       <div><kbd>F</kbd>Ta vare på dyr · bua</div>
       <div><kbd>J</kbd>Jaktbok · <kbd>M</kbd>lyd</div>
+      <div><kbd>Esc</kbd>Pause</div>
     </div>
   </div>
 </div>

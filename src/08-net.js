@@ -1,9 +1,12 @@
 // ===== Flerspiller på lokalnettet: én nettleser (verten) simulerer dyra, de andre speiler =====
 const NET = { on: false, seen: false, ws: null, id: null, host: null, peers: new Map(), urls: [], name: 'Jeger', sendT: 0, snapT: 0 };
 const isAuth = () => !NET.on || NET.host === NET.id;
-const mp = () => NET.on && NET.peers.size > 0;
+// Flerspiller i spillets forstand: minst én annen er faktisk i skogen (ikke bare på tittelskjermen)
+function mp() { if (!NET.on) return false; for (const r of NET.peers.values()) if (r.started) return true; return false; }
 const NAME_KEY = 'skogsro.name';
 
+// Borte = skjult fane eller tittelskjerm; serveren lar helst en som spiller styre dyra
+function netAway() { netSend({ t: 'away', v: document.hidden || !G.started }); }
 function netSend(m) { if (NET.on && NET.ws && NET.ws.readyState === 1) NET.ws.send(JSON.stringify(m)); }
 
 function netConnect() {
@@ -76,7 +79,7 @@ function netMsg(m) {
     case 'hello':
       NET.on = NET.seen = true; NET.id = m.id; NET.host = m.host; NET.urls = m.urls || [];
       NET.peers.clear(); for (const id of m.peers || []) NET.peers.set(id, { id });
-      if (document.hidden) netSend({ t: 'away', v: true });
+      netAway();
       netUi(); break;
     case 'join': NET.peers.set(m.id, { id: m.id }); netUi(); break;
     case 'leave': {
@@ -130,7 +133,7 @@ function netUpdate(dt) {
     if (r.moving) r.walkT += dt * (r.sneak ? 0.55 : 1);
     if (auth && r.moving && !r.in) { r.stepT -= dt; if (r.stepT <= 0) { r.stepT = r.sneak ? 0.55 : 0.32; stepNoise(r); } }
   }
-  if (!mp()) return;
+  if (!NET.peers.size) return;
   NET.sendT -= dt;
   if (G.started && NET.sendT <= 0) {
     NET.sendT = 1 / 15;
@@ -147,7 +150,7 @@ function netUpdate(dt) {
 
 // ---------- tittelskjerm ----------
 function netUi() {
-  $('mp').hidden = !NET.on;
+  $('mpTxt').hidden = !NET.on;
   if (!NET.on) return;
   const n = NET.peers.size, url = NET.urls[0];
   setText('mpTxt', (n === 0 ? 'Ingen andre er koblet til ennå.' : n === 1 ? '1 annen jeger er koblet til.' : n + ' andre jegere er koblet til.') + (url ? ' Andre på samme nett kan åpne ' + url : ''));
@@ -156,7 +159,8 @@ function netInit() {
   let name = '';
   try { name = localStorage.getItem(NAME_KEY) || ''; } catch (e) { }
   $('nameIn').value = name || 'Jeger ' + (10 + ((Math.random() * 90) | 0));
-  document.addEventListener('visibilitychange', () => netSend({ t: 'away', v: document.hidden }));
+  netSetName(); $('nameIn').addEventListener('input', netSetName);
+  document.addEventListener('visibilitychange', netAway);
   netConnect();
 }
 function netSetName() {

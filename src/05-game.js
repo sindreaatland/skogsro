@@ -36,17 +36,17 @@ const ZONES = { head: ['Hodeskudd', 2.2, 0.95], vital: ['Hjerte/lunge', 1.6, 1],
 
 const G = {
   t: 0, hour: 6.6, day: 1, money: 0, scents: 2, journal: [], up: {}, started: false, paused: false, panel: null,
-  wind: { a: 0, s: 0.5, x: 1, y: 0 }, animals: [], scentObjs: [], blood: [], parts: [], msgs: [], spawnT: 0, dayl: 1, hunters: [],
+  wind: { a: 0, s: 0.5, x: 1, y: 0 }, animals: [], scentObjs: [], blood: [], parts: [], msgs: [], spawnT: 0, dayl: 1, hunters: [], saveT: 15, pauseT: 0,
 };
 for (const u of UPG) G.up[u.id] = 0;
 const P = { x: 0, y: 30, face: 'down', flip: false, walkT: 0, moving: false, sneak: false, aim: false, ax: 0, ay: 0, breath: 1, hold: false, ammo: 1, cycle: 0, reload: 0, callCd: 0, stepT: 0, wet: false, sway: [0, 0] };
 const lv = id => G.up[id];
 
-// ---------- lagring ----------
+// ---------- lagring (localStorage i denne nettleseren) ----------
 const SAVE_KEY = 'skogsro.v1';
-function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ money: G.money, up: G.up, scents: G.scents, journal: G.journal, day: G.day })); } catch (e) { } }
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ money: G.money, up: G.up, scents: G.scents, journal: G.journal, day: G.day, hour: G.hour })); } catch (e) { } }
 function load() {
-  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (!s) return false; G.money = s.money | 0; Object.assign(G.up, s.up || {}); G.scents = s.scents ?? 2; G.journal = s.journal || []; G.day = s.day || 1; return true; } catch (e) { return false; }
+  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (!s) return false; G.money = s.money | 0; Object.assign(G.up, s.up || {}); G.scents = s.scents ?? 2; G.journal = s.journal || []; G.day = s.day || 1; if (typeof s.hour === 'number') G.hour = s.hour; return true; } catch (e) { return false; }
 }
 
 // ---------- meldinger ----------
@@ -361,6 +361,7 @@ function update(dt) {
     G.hour += dt / 30;
     if (G.hour >= 24) { G.hour -= 24; G.day++; }
   }
+  if (G.started) { G.saveT -= dt; if (G.saveT <= 0) { G.saveT = 15; save(); } }
   const h = G.hour; G.dayl = clamp(Math.min(smooth(4.8, 7.5, h), 1 - smooth(18.5, 21.2, h)), 0, 1);
   const wa = vnoise(G.t / 45, 3.3, 99) * TAU * 1.6 + 0.6, ws = clamp(0.15 + 0.85 * vnoise(G.t / 20, 7.7, 98), 0, 1);
   G.wind.a = wa; G.wind.s = ws; G.wind.x = Math.cos(wa); G.wind.y = Math.sin(wa);

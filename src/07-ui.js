@@ -43,6 +43,7 @@ function hudUpdate(dt) {
     else { const c = nearestCabin(P.x, P.y); if (hyp(P.x - (c.x - 13), P.y - (c.y + 6)) < 26) pr = 'Gå inn i bua'; }
   }
   $('prompt').hidden = !pr; if (pr) setText('promptTxt', pr);
+  if (G.panel === 'pause') $('pauseNote').hidden = !mp();
   if (HUD.dirtyMsg) {
     HUD.dirtyMsg = false; const el = $('log'); el.innerHTML = '';
     for (const mm_ of G.msgs) { const d = document.createElement('div'); d.className = 'msg ' + mm_.kind; d.textContent = mm_.text; el.appendChild(d); }
@@ -126,12 +127,20 @@ function openBook() {
   setText('bookTot', G.journal.length + ' dyr · ' + fmtKr(tot) + ' totalt');
   $('book').hidden = false; sfx.ui();
 }
+// Alene fryser verden; med andre på nettet står jegeren stille mens tida går videre
+function openPause() {
+  if (!G.started || G.panel) return;
+  G.paused = true; G.panel = 'pause'; G.pauseT = performance.now(); P.aim = false; P.hold = false;
+  try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
+  save(); $('pauseNote').hidden = !mp(); $('pause').hidden = false; sfx.ui();
+}
+function resume() { closePanel(); lockPointer(); }
 function closePanel() { if (!G.panel) return; $(G.panel).hidden = true; G.panel = null; G.paused = false; sfx.ui(); }
 
 // ---------- start ----------
 function startGame(fresh) {
   if (fresh) { G.money = 0; for (const u of UPG) G.up[u.id] = 0; G.scents = 2; G.journal = []; if (!mp()) { G.day = 1; G.hour = 6.6; G.animals = []; } save(); }
-  netSetName(); auInit(); G.started = true; G.paused = false; $('title').hidden = true;
+  netSetName(); auInit(); G.started = true; G.paused = false; $('title').hidden = true; netAway();
   P.ammo = ST.cap[lv('mag')];
   const [s, d] = windName();
   msg('Vinden kommer ' + d + '. Gå mot vinden, så kjenner ikke dyrene lukta di.');
@@ -145,9 +154,17 @@ function bindInput() {
   addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') { if (e.code === 'Enter' && !G.started) startGame(false); return; }
     if (e.code === 'Tab' || e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
+    // Esc/P: pause og fortsett (Esc lukker også bua og jaktboka). Håndteres før KEYS fordi
+    // nettleseren kan svelge keyup for Esc når den slipper musepekeren.
+    if (G.started && !e.repeat && (e.code === 'Escape' || e.code === 'KeyP')) {
+      if (G.panel === 'pause') { if (performance.now() - G.pauseT > 300) resume(); }
+      else if (G.panel) { if (e.code === 'Escape') closePanel(); }
+      else openPause();
+      return;
+    }
     if (KEYS[e.code]) return; KEYS[e.code] = true;
     if (!G.started) { if (e.code === 'Enter') startGame(false); return; }
-    if (e.code === 'Escape' || (G.panel === 'book' && (e.code === 'KeyJ' || e.code === 'Tab'))) { closePanel(); return; }
+    if (G.panel === 'book' && (e.code === 'KeyJ' || e.code === 'Tab')) { closePanel(); return; }
     if (G.panel) return;
     switch (e.code) {
       case 'KeyR': startReload(); break;
@@ -183,12 +200,21 @@ function bindInput() {
       if (d > mx) { P.ax = P.x + (P.ax - P.x) / d * mx; P.ay = P.y + (P.ay - P.y) / d * mx; }
     }
   });
-  document.addEventListener('pointerlockchange', () => { MOUSE.locked = document.pointerLockElement === cv; document.body.classList.toggle('locked', MOUSE.locked); });
+  document.addEventListener('pointerlockchange', () => {
+    MOUSE.locked = document.pointerLockElement === cv; document.body.classList.toggle('locked', MOUSE.locked);
+    if (!MOUSE.locked && G.started && !G.panel) openPause();
+  });
+  // lagre når siden lukkes eller skjules
+  addEventListener('pagehide', () => { if (G.started) save(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && G.started) save(); });
   addEventListener('resize', resize);
   document.querySelectorAll('#shopTabs button').forEach(bt => bt.onclick = () => { shopCat = bt.dataset.cat; sfx.ui(); renderShop(); });
   document.querySelectorAll('[data-close]').forEach(bt => bt.onclick = closePanel);
   $('sleepBtn').onclick = () => { if (mp()) return; if (G.hour > 5.5) G.day++; G.hour = 5.5; G.animals = []; G.scentObjs = []; msg('Du sov godt. Det lysner over skogen.'); save(); closePanel(); };
   $('startBtn').onclick = () => startGame(false);
+  $('pauseBtn').onclick = () => openPause();
+  $('resumeBtn').onclick = resume;
+  $('quitBtn').onclick = () => { save(); location.reload(); };
   $('newBtn').onclick = () => { const bt = $('newBtn'); if (bt.dataset.arm) startGame(true); else { bt.dataset.arm = 1; bt.textContent = 'Sikker? Trykk igjen'; } };
   $('muteBtn').onclick = () => { auInit(); auMute(!AU.muted); $('muteBtn').setAttribute('aria-pressed', AU.muted); };
   $('bookBtn').onclick = () => { if (G.started && !G.panel) openBook(); };
@@ -205,7 +231,10 @@ function boot() {
   $('windArrow').src = dataURL(FX.arrow); $('callIco').src = ICONURL.call; $('scentIco').src = ICONURL.scent;
   const has = load();
   P.x = -13; P.y = 6; CAM.x = P.x; CAM.y = P.y - 30;
-  if (has && (G.money > 0 || G.journal.length)) { $('startBtn').textContent = 'Fortsett jakta · ' + fmtKr(G.money); $('newBtn').hidden = false; }
+  if (has) {
+    $('startBtn').textContent = 'Fortsett jakt'; $('newBtn').hidden = false;
+    setText('saveTxt', 'Lagret jakt: dag ' + G.day + ' · ' + fmtKr(G.money) + ' · ' + G.journal.length + ' dyr felt'); $('saveTxt').hidden = false;
+  }
   resize(); bindInput(); netInit();
   // noen dyr i nærheten av bua fra start
   for (let i = 0; i < 3; i++) { const a = rnd(0, TAU), d = rnd(260, 420); const x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d; if (!isWater(x, y)) spawnAnimal(i === 0 ? 'radyr' : pickSpecies(x, y), x, y); }
