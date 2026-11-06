@@ -36,7 +36,7 @@ function hudUpdate(dt) {
   $('callCd').style.height = (P.callCd / 9 * 100) + '%';
   setText('scentN', '× ' + G.scents);
   setText('treatN', '× ' + G.treats);
-  setText('dogTxt', { heel: 'Send ut hunden', search: 'Hunden søker', mark: 'Hunden står!', back: 'Hunden kommer' }[D.st]);
+  setText('dogTxt', { heel: 'Send ut hunden', search: 'Kall inn hunden', mark: 'Kall inn hunden', back: 'Hunden kommer' }[D.st]);
   $('cold').hidden = !(G.started && P.cold > 0);
   if (P.cold > 0) { setText('coldTxt', P.wet ? 'I vannet · fryser' : 'Våt og kald · tørker'); $('coldFill').style.width = (P.cold * 100) + '%'; }
   // pustemåleren vises i siktet, og ellers så lenge du springer eller henter deg inn etterpå

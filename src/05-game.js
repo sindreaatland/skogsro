@@ -460,7 +460,8 @@ function dogReset() { Object.assign(D, { x: P.x - 14, y: P.y + 4, st: 'heel', a:
 function holdAnimal(a, x) { a.bay = 1.2; a.bayX = x; }
 function sendDog() {
   if (!G.started || G.paused) return;
-  if (D.st === 'search' || D.st === 'mark') { D.st = 'back'; D.a = null; sfx.whistle(); msg('Du kaller inn hunden.'); return; }
+  // er hunden ute, kaller H den inn; den sendes ikke ut igjen før den er tilbake ved foten
+  if (D.st !== 'heel') { sfx.whistle(); msg(D.st === 'back' ? 'Hunden er på vei inn.' : 'Du kaller inn hunden.'); D.st = 'back'; D.a = null; return; }
   if (G.treats <= 0) { sfx.deny(); msg('Tom for godbiter. Kjøp flere i bua.'); return; }
   // finnes det ikke dyr innen rekkevidde, slår hunden ut mot pekeren og ser etter dyr der
   const an = Math.atan2(MOUSE.wy - P.y, MOUSE.wx - P.x);
