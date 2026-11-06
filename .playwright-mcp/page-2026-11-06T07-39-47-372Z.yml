@@ -1,0 +1,79 @@
+- generic [active] [ref=f2e1]:
+  - generic "Skogen sett ovenfra" [ref=f2e2]
+  - generic:
+    - generic: 0 kr
+    - generic: Dag 1 · 06:30
+  - generic:
+    - img "Vindretning"
+    - generic:
+      - generic: Vind
+      - generic: Svak vind
+      - generic: fra sørvest
+  - generic [ref=f2e3]:
+    - button "Pause (Esc)" [ref=f2e4] [cursor=pointer]
+    - button "Jaktbok (J)" [ref=f2e5] [cursor=pointer]
+    - button "Lyd (M)" [ref=f2e6] [cursor=pointer]
+  - generic:
+    - generic:
+      - generic: Rifle
+      - generic: R
+    - generic:
+      - generic:
+        - generic: Rådyrpipe
+        - generic: Lokk
+      - generic: Q
+    - generic:
+      - generic:
+        - generic: × 2
+        - generic: Luktstoff
+      - generic: E
+  - generic:
+    - generic: WASDgå
+    - generic: Shiftsnik
+    - generic: Høyreklikksikt
+    - generic: Venstreklikkskyt
+    - generic: Spacehold pusten
+    - generic: Fhandling
+    - generic: Escpause
+  - generic [ref=f2e8]:
+    - heading "Skogsro" [level=1] [ref=f2e9]
+    - paragraph [ref=f2e10]: Gå stille gjennom en skog som aldri tar slutt. Les vinden, lokk på dyrene og vent på det rette skuddet.
+    - generic [ref=f2e11]: Tegner skogen …
+    - generic [ref=f2e13]:
+      - text: Navnet ditt
+      - textbox "Navnet ditt" [ref=f2e14]
+    - generic [ref=f2e15]:
+      - generic [ref=f2e16]:
+        - generic [ref=f2e17]: WASD
+        - text: Gå ·
+        - generic [ref=f2e18]: Shift
+        - text: snik
+      - generic [ref=f2e19]:
+        - generic [ref=f2e20]: Høyreklikk
+        - text: Sikt (hold)
+      - generic [ref=f2e21]:
+        - generic [ref=f2e22]: Venstreklikk
+        - text: Skyt
+      - generic [ref=f2e23]:
+        - generic [ref=f2e24]: Space
+        - text: Hold pusten i siktet
+      - generic [ref=f2e25]:
+        - generic [ref=f2e26]: R
+        - text: Lad om
+      - generic [ref=f2e27]:
+        - generic [ref=f2e28]: Q
+        - text: Lokkefløyte
+      - generic [ref=f2e29]:
+        - generic [ref=f2e30]: E
+        - text: Sett ut luktstoff
+      - generic [ref=f2e31]:
+        - generic [ref=f2e32]: F
+        - text: Ta vare på dyr · bua
+      - generic [ref=f2e33]:
+        - generic [ref=f2e34]: J
+        - text: Jaktbok ·
+        - generic [ref=f2e35]: M
+        - text: lyd
+      - generic [ref=f2e36]:
+        - generic [ref=f2e37]: Esc
+        - text: Pause
