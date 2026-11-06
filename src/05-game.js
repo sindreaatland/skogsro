@@ -198,10 +198,10 @@ function hitTest(a, tx, ty) {
 }
 
 // ---------- jeger-handlinger ----------
-// Kulde gir rask skjelving i siktet som ikke forsvinner når du holder pusten
+// Kulde gir store, ujevne sveip i siktet som ikke forsvinner når du holder pusten
 function aimTarget() {
-  const c = P.cold * ST.sway[lv('stock')] * 0.7, t = G.t;
-  return [P.ax + P.sway[0] + (Math.sin(t * 29) + Math.sin(t * 47 + 1.3) * 0.5) * c, P.ay + P.sway[1] + (Math.sin(t * 37 + 0.7) + Math.sin(t * 23 + 2.1) * 0.5) * c * 0.8];
+  const c = P.cold * (5 + 1.2 * ST.sway[lv('stock')]), t = G.t, n = (u, row) => (vnoise(t * u, row, 71) - 0.5) * 2;
+  return [P.ax + P.sway[0] + (n(0.8, 0) + n(1.9, 4) * 0.35) * c, P.ay + P.sway[1] + (n(0.8, 8) + n(1.9, 12) * 0.35) * c * 0.8];
 }
 function muzzle(x, y, ang) {
   for (let i = 0; i < 6; i++) G.parts.push({ x: x + Math.cos(ang) * 10, y: y + 0.5, z: 9, vx: Math.cos(ang) * rnd(10, 40) + rnd(-8, 8), vy: Math.sin(ang) * rnd(10, 40), vz: rnd(-4, 8), life: rnd(0.05, 0.14), col: i < 2 ? '#fff6c8' : '#ffb84a' });
