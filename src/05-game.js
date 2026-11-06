@@ -68,7 +68,7 @@ function anchors() {
   return L;
 }
 function stepNoise(h) {
-  const nr = (h.sneak ? 32 : 95) * ST.boots[h.boots] * (h.wet ? 1.4 : 1);
+  const nr = (h.sneak ? 32 : h.run ? 170 : 95) * ST.boots[h.boots] * (h.wet ? 1.4 : 1);
   for (const a of G.animals) if (a.state !== 'dead' && a.state !== 'flee') { const d = hyp(a.x - h.x, a.y - h.y); if (d < nr) a.aware = Math.min(1.6, a.aware + 0.45 * (1 - d / nr) * SPEC[a.sp].hear); }
 }
 const canTake = (a, pid) => !a.by || a.by === pid || (a.by !== NET.id && !NET.peers.has(a.by));
@@ -357,8 +357,10 @@ function playerUpdate(dt) {
   if (G.started && !P.chill && P.cold >= 0.3) { P.chill = true; msg('Du er våt og kald. Siktet skjelver til klærne har tørket.', 'warn'); }
   else if (P.chill && P.cold === 0) { P.chill = false; msg('Klærne har tørket. Du er varm igjen.', 'good'); }
   P.moving = mx !== 0 || my !== 0;
+  // Space mens du går: spring. Det går fort, men bråker og tar pusten, og er lufta tom, må du hente deg inn
+  P.run = P.moving && !P.sneak && !P.winded && !!KEYS.Space;
   if (P.moving) {
-    const l = hyp(mx, my), sp = (P.sneak ? 16 : 40) * (P.deep ? 0.35 : P.wet ? 0.55 : 1);
+    const l = hyp(mx, my), sp = (P.sneak ? 16 : P.run ? 72 : 40) * (P.deep ? 0.35 : P.wet ? 0.55 : 1);
     let nx = P.x + mx / l * sp * dt, ny = P.y + my / l * sp * dt * 0.85;
     // rekkverket holder deg på brua til du går av i en av endene
     if (br) {
@@ -366,12 +368,12 @@ function playerUpdate(dt) {
       if (s > br.a && s < br.b) { const q = clamp(dy * br.tx - dx * br.ty, 1.5 - br.hw, br.hw - 1.5); nx = br.x + br.tx * s - br.ty * q; ny = br.y + br.ty * s + br.tx * q; }
     }
     const c = collide(nx, ny, 3); P.x = c.x; P.y = c.y;
-    P.walkT += dt * (P.sneak ? 0.55 : 1);
+    P.walkT += dt * (P.sneak ? 0.55 : P.run ? 1.7 : 1);
     if (Math.abs(mx) >= Math.abs(my)) { P.face = 'side'; P.flip = mx < 0; } else P.face = my > 0 ? 'down' : 'up';
     P.stepT -= dt;
     if (P.stepT <= 0) {
-      P.stepT = P.sneak ? 0.55 : 0.32; sfx.step(P.sneak, P.wet);
-      if (isAuth()) stepNoise({ x: P.x, y: P.y, sneak: P.sneak, wet: P.wet, boots: lv('boots') });
+      P.stepT = P.sneak ? 0.55 : P.run ? 0.2 : 0.32; sfx.step(P.sneak, P.wet);
+      if (isAuth()) stepNoise({ x: P.x, y: P.y, sneak: P.sneak, run: P.run, wet: P.wet, boots: lv('boots') });
     }
   }
   // sikte: pust og ro. Små justeringer går greit, men svinger du børsa langt (f.eks. fra ett dyr til et annet),
@@ -394,7 +396,8 @@ function playerUpdate(dt) {
     P.sway[0] = lerp(P.sway[0], tgx, Math.min(1, dt * 6)); P.sway[1] = lerp(P.sway[1], tgy, Math.min(1, dt * 6));
     const dx = Math.cos(AIM.yaw), dy = Math.sin(AIM.yaw);
     if (Math.abs(dx) > Math.abs(dy) * 0.8) { P.face = 'side'; P.flip = dx < 0; } else P.face = dy > 0 ? 'down' : 'up';
-  } else P.breath = Math.min(1, P.breath + dt / 2);
+  } else if (P.run) { P.breath = Math.max(0, P.breath - dt / 5); if (!P.breath) P.winded = true; }
+  else P.breath = Math.min(1, P.breath + dt / 2);
 }
 function update(dt) {
   G.t += dt;

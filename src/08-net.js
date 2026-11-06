@@ -69,7 +69,7 @@ function peerState(m) {
   r.name = String(m.n || 'Jeger').slice(0, 16);
   if (!r.started) { r.started = true; r.x = x; r.y = y; r.walkT = 0; r.stepT = 0; if (G.started) msg(r.name + ' kom inn i skogen.', 'good'); netUi(); }
   r.tx = x; r.ty = y;
-  r.face = HUN[m.f] ? m.f : 'down'; r.flip = !!m.fl; r.moving = !!m.mv; r.sneak = !!m.sn; r.aim = !!m.am; r.wet = !!m.w; r.in = !!m.in;
+  r.face = HUN[m.f] ? m.f : 'down'; r.flip = !!m.fl; r.moving = !!m.mv; r.sneak = !!m.sn; r.run = !!m.rn; r.aim = !!m.am; r.wet = !!m.w; r.in = !!m.in;
   r.camo = clamp(u[0] | 0, 0, 2); r.deo = clamp(u[1] | 0, 0, 2); r.boots = clamp(u[2] | 0, 0, 2);
 }
 
@@ -130,14 +130,14 @@ function netUpdate(dt) {
     const k = Math.min(1, dt * 12);
     r.x = lerp(r.x, r.tx, k); r.y = lerp(r.y, r.ty, k);
     if (hyp(r.x - r.tx, r.y - r.ty) > 80) { r.x = r.tx; r.y = r.ty; }
-    if (r.moving) r.walkT += dt * (r.sneak ? 0.55 : 1);
-    if (auth && r.moving && !r.in) { r.stepT -= dt; if (r.stepT <= 0) { r.stepT = r.sneak ? 0.55 : 0.32; stepNoise(r); } }
+    if (r.moving) r.walkT += dt * (r.sneak ? 0.55 : r.run ? 1.7 : 1);
+    if (auth && r.moving && !r.in) { r.stepT -= dt; if (r.stepT <= 0) { r.stepT = r.sneak ? 0.55 : r.run ? 0.2 : 0.32; stepNoise(r); } }
   }
   if (!NET.peers.size) return;
   NET.sendT -= dt;
   if (G.started && NET.sendT <= 0) {
     NET.sendT = 1 / 15;
-    netSend({ t: 'p', n: NET.name, x: Math.round(P.x * 10) / 10, y: Math.round(P.y * 10) / 10, f: P.face, fl: P.flip, mv: P.moving, sn: P.sneak, am: P.aim, w: P.wet, in: G.panel === 'shop', u: [lv('camo'), lv('deo'), lv('boots')] });
+    netSend({ t: 'p', n: NET.name, x: Math.round(P.x * 10) / 10, y: Math.round(P.y * 10) / 10, f: P.face, fl: P.flip, mv: P.moving, sn: P.sneak, rn: P.run, am: P.aim, w: P.wet, in: G.panel === 'shop', u: [lv('camo'), lv('deo'), lv('boots')] });
   }
   if (auth) {
     NET.snapT -= dt;

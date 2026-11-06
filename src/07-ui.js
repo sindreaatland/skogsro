@@ -35,9 +35,10 @@ function hudUpdate(dt) {
   setText('scentN', '× ' + G.scents);
   $('cold').hidden = !(G.started && P.cold > 0);
   if (P.cold > 0) { setText('coldTxt', P.wet ? 'I vannet · fryser' : 'Våt og kald · tørker'); $('coldFill').style.width = (P.cold * 100) + '%'; }
-  $('breath').hidden = !P.aim; $('breathFill').style.width = (P.breath * 100) + '%';
+  // pustemåleren vises i siktet, og ellers så lenge du springer eller henter deg inn etterpå
+  $('breath').hidden = !(G.started && (P.aim || P.breath < 1)); $('breathFill').style.width = (P.breath * 100) + '%';
   $('breathFill').classList.toggle('low', P.breath < 0.25 || P.winded);
-  setText('breathTxt', P.winded ? 'Andpusten · hent deg inn' : 'Pust · hold Space for å holde pusten');
+  setText('breathTxt', P.winded ? 'Andpusten · hent deg inn' : P.aim ? 'Pust · hold Space for å holde pusten' : 'Pust · hold Space for å springe');
   // handlingsprompt
   let pr = '';
   if (G.started && !G.paused && !P.aim) {
