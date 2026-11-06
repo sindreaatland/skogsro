@@ -154,6 +154,56 @@ function openBook() {
   setText('bookTot', G.journal.length + ' dyr · ' + fmtKr(tot) + ' totalt');
   $('book').hidden = false; sfx.ui();
 }
+// ---------- inventar ----------
+// Som i et klossespill: jegeren og utstyret øverst, det du bærer på i ruter med antall i hjørnet under,
+// og alle tastene ved siden av. Hold musa over en rute for å se hva det er
+function invSlots() {
+  const L = id => upg(id).lv[lv(id)], ammoR = hagle() ? P.ammo2 : P.ammo, ammoH = hagle() ? P.ammo : P.ammo2, held = ' (i hendene)';
+  const gear = [
+    { ico: 'rifle', n: 'Rifle' + (hagle() ? '' : held), d: L('caliber') + ' · ' + L('scope') + ' · ' + L('barrel') + '. Ta den med 1.', on: !hagle() },
+    lv('hagle') && { ico: 'hagle', n: L('hagle') + (hagle() ? held : ''), d: L('choke') + ' · ' + L('shell') + '. Ta den med 2.', on: hagle() },
+    lv('axe') && { ico: 'axe', n: 'Øks', d: upg('axe').d[1] },
+    { ico: 'call', n: L('call'), d: 'Lokker ' + CALLSP[lv('call')].map(s => SPEC[s].name.toLowerCase()).join(', ') + ' (Q).' },
+    { ico: 'camo', n: L('camo'), d: upg('camo').d[lv('camo')] },
+    { ico: 'boots', n: L('boots'), d: upg('boots').d[lv('boots')] },
+    lv('deo') && { ico: 'deo', n: L('deo'), d: upg('deo').d[lv('deo')] },
+  ];
+  const bag = [
+    { ico: 'coin', n: 'Penger', c: G.money, d: fmtKr(G.money) + '. Felt vilt du tar vare på, gir penger.' },
+    { ico: 'caliber', n: 'Riflepatroner', c: ammoR, d: ammoR + ' av ' + gunCap('rifle') + ', ' + L('caliber') + '. Fylles gratis i bua.' },
+    lv('hagle') && { ico: 'shell', n: 'Haglpatroner', c: ammoH, d: ammoH + ' av ' + gunCap('hagle') + ', ' + L('shell').toLowerCase() + '. Fylles gratis i bua.' },
+    { ico: 'wood', n: 'Ved', c: G.wood, d: 'Et bål tar én kubbe, en gapahuk ' + HUT_WOOD + '. Hogg trær med øks (F).' },
+    { ico: 'meat', n: 'Kjøtt', c: G.meat, d: 'Stek det over bålet (F) og spis for +25 helse.' },
+    { ico: 'match', n: 'Fyrstikker', c: G.matches, d: 'Hver fyrstikk tenner ett bål (B).' },
+    { ico: 'scent', n: 'Luktstoff', c: G.scents, d: L('scentLv') + '. Sett ut en flaske med E.' },
+    { ico: 'treat', n: 'Godbiter', c: G.treats, d: 'Hunden får én hver gang den står for et dyr (H).' },
+  ];
+  return [gear.filter(Boolean), bag.filter(Boolean)];
+}
+function renderInv() {
+  const [gear, bag] = invSlots();
+  const tip = it => { setText('invTipN', it ? it.n : 'Inventar'); setText('invTipD', it ? it.d : 'Hold musa over en rute for å se hva det er.'); };
+  // n ruter; de som ikke har noe i seg, står tomme. Er du tom for noe, vises det blekt uten tall
+  const fill = (el, list, n) => {
+    el.innerHTML = '';
+    for (let i = 0; i < n; i++) {
+      const it = list[i], s = document.createElement('div'); s.className = 'mc-slot';
+      if (it) {
+        s.tabIndex = 0; s.setAttribute('aria-label', it.n + (it.c != null ? ': ' + it.c : ''));
+        s.classList.toggle('on', !!it.on); s.classList.toggle('zero', it.c === 0);
+        s.innerHTML = `<img alt="" src="${ICONURL[it.ico]}">` + (it.c ? `<span class="mc-n">${it.c < 1e4 ? it.c : Math.floor(it.c / 1000) + 'k'}</span>` : '');
+        s.onmouseenter = s.onfocus = () => tip(it); s.onmouseleave = s.onblur = () => tip(null);
+      }
+      el.appendChild(s);
+    }
+  };
+  fill($('invGear'), gear, 8); fill($('invBag'), bag, 27); tip(null);
+  setText('invName', NET.name || 'Jeger');
+}
+function openInv() {
+  G.paused = true; G.panel = 'inv'; aimReset(); try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
+  renderInv(); $('inv').hidden = false; sfx.ui();
+}
 // Alene fryser verden; med andre på nettet står jegeren stille mens tida går videre
 function openPause() {
   if (!G.started || G.panel) return;
@@ -194,6 +244,7 @@ function bindInput() {
     if (KEYS[e.code]) return; KEYS[e.code] = true;
     if (!G.started) { if (e.code === 'Enter') startGame(false); return; }
     if (G.panel === 'book' && (e.code === 'KeyJ' || e.code === 'Tab')) { closePanel(); return; }
+    if (G.panel === 'inv' && e.code === 'KeyI') { closePanel(); return; }
     if (G.panel) return;
     switch (e.code) {
       case 'KeyR': startReload(); break;
@@ -207,6 +258,7 @@ function bindInput() {
       case 'KeyB': lightFire(); break;
       case 'KeyG': buildHut(); break;
       case 'KeyV': toggleView(); break;
+      case 'KeyI': openInv(); break;
       case 'KeyJ': case 'Tab': openBook(); break;
       case 'KeyM': auMute(!AU.muted); $('muteBtn').setAttribute('aria-pressed', AU.muted); msg(AU.muted ? 'Lyden er av.' : 'Lyden er på.'); break;
     }
@@ -247,6 +299,7 @@ function bindInput() {
   $('newBtn').onclick = () => { const bt = $('newBtn'); if (bt.dataset.arm) startGame(true); else { bt.dataset.arm = 1; bt.textContent = 'Sikker? Trykk igjen'; } };
   $('muteBtn').onclick = () => { auInit(); auMute(!AU.muted); $('muteBtn').setAttribute('aria-pressed', AU.muted); };
   $('bookBtn').onclick = () => { if (G.started && !G.panel) openBook(); };
+  $('invBtn').onclick = () => { if (G.started && !G.panel) openInv(); };
 }
 
 // ---------- oppstart ----------
@@ -257,6 +310,7 @@ function boot() {
   genAll();
   for (const k in ICON) ICONURL[k] = dataURL(ICON[k]);
   for (const sp of SPECIES) ICONURL['an_' + sp] = dataURL(cropSprite(ANI[sp].m.stand[0], 2));
+  $('invMe').src = dataURL(cropSprite(HUN.down[0][0], 2));
   $('windArrow').src = dataURL(FX.arrow); $('callIco').src = ICONURL.call; $('scentIco').src = ICONURL.scent; $('treatIco').src = ICONURL.treat; $('campIco').src = ICONURL.fire;
   const has = load();
   P.x = -13; P.y = 6; CAM.x = P.x; CAM.y = P.y - 30;

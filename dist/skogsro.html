@@ -49,7 +49,8 @@ body.aiming #tbtns { pointer-events: none; }
 #log { left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(60px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 4px; max-width: min(520px, 60vw); }
 .msg { background: var(--panel); border-left: 3px solid var(--edge); padding: 5px 10px; font-size: 15px; line-height: 1.3; transition: opacity .4s; }
 .msg.good { border-left-color: var(--moss); } .msg.warn { border-left-color: var(--rust); } .msg.money { border-left-color: var(--amber); color: var(--amber); }
-#keys { left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
+/* tastelinja nederst: svart bakgrunn så teksten synes over skogen; alle tastene står i inventaret (I) */
+#keys { left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); max-width: calc(100vw - 32px); display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 6px 10px; font-size: 13px; color: var(--paper); background: rgba(0,0,0,.85); }
 kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); background: #26332b; border: 1px solid #3d4f42; border-bottom-width: 3px; padding: 1px 5px; margin-right: 4px; }
 
 #bar { right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(52px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap-reverse; justify-content: flex-end; gap: 8px; align-items: stretch; max-width: min(calc(100vw - min(520px, 60vw) - 56px), calc(50vw - 140px)); }
@@ -112,6 +113,30 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 .e-d, .e-z { color: var(--muted); } .e-kr { color: var(--amber); text-align: right; }
 .empty { color: var(--muted); margin: 0; }
 
+/* Inventaret: ruter med fasede kanter som i et klossespill, i skogens grågrønne steinfarge */
+.inv-card { width: min(940px, 100%); }
+.inv-body { display: grid; grid-template-columns: auto minmax(240px, 1fr); }
+@media (max-width: 860px) { .inv-body { grid-template-columns: 1fr; } }
+.mc { --s: clamp(34px, 5.2vw, 52px); margin: 16px 20px 20px; padding: 12px 14px 14px; display: grid; gap: 8px; align-content: start; justify-content: start; background: #b9bfae; color: #2c3326; border: 3px solid; border-color: #f2f4ea #4b5244 #4b5244 #f2f4ea; box-shadow: 0 0 0 3px #0c110e; }
+.mc-lab { font-family: var(--f-lab); font-size: 11px; letter-spacing: .08em; color: #3a4232; }
+.mc-top { display: flex; gap: 12px; align-items: stretch; }
+.mc-me { min-width: calc(var(--s) * 2); padding: 6px; display: grid; place-items: center; gap: 4px; background: #000; border: 3px solid; border-color: #3a4034 #eef0e4 #eef0e4 #3a4034; }
+.mc-me img { height: calc(var(--s) * 1.7); image-rendering: pixelated; }
+#invName { font-size: 13px; color: var(--paper); max-width: 12ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-grid { display: grid; grid-template-columns: repeat(9, var(--s)); gap: 4px; }
+.mc-gear { grid-template-columns: repeat(4, var(--s)); margin-top: 4px; }
+.mc-slot { width: var(--s); height: var(--s); position: relative; display: grid; place-items: center; background: #7d8574; border: 3px solid; border-color: #3a4034 #eef0e4 #eef0e4 #3a4034; }
+.mc-slot img { width: calc(var(--s) - 16px); height: calc(var(--s) - 16px); image-rendering: pixelated; }
+.mc-slot.zero img { opacity: .3; }
+.mc-slot.on { outline: 3px solid #fff; outline-offset: 1px; }
+.mc-slot[tabindex]:hover, .mc-slot[tabindex]:focus-visible { background: #a2aa96; outline-color: var(--amber); }
+.mc-n { position: absolute; right: 1px; bottom: -1px; font-family: var(--f-lab); font-size: 13px; color: #fff; text-shadow: 2px 2px 0 #3f3f3f; font-variant-numeric: tabular-nums; }
+.mc-tip { min-height: 54px; padding: 6px 10px; display: grid; gap: 2px; align-content: start; background: #12061a; border: 2px solid #34127a; color: #fff; font-size: 16px; }
+#invTipD { font-size: 14px; color: #b8b2c4; line-height: 1.35; max-width: 52ch; }
+.inv-keys { padding: 16px 20px 20px; border-left: 2px solid #2b382f; background: #1d2620; display: grid; gap: 6px; align-content: start; font-size: 14px; }
+@media (max-width: 860px) { .inv-keys { border-left: 0; border-top: 2px solid #2b382f; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); } }
+.inv-keys div { display: flex; align-items: center; gap: 4px; }
+
 /* Tittel */
 #title { position: fixed; inset: 0; z-index: 6; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(10,16,12,.25), rgba(10,16,12,.75)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px; }
 .t-wrap { display: grid; gap: 18px; justify-items: center; text-align: center; max-width: 760px; }
@@ -142,7 +167,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 
 <div id="tl" class="hud box"><div id="kr">0 kr</div><div id="clock">Dag 1 · 06:30</div><div id="who" hidden></div><div id="hp" hidden><div class="lab" id="hpTxt">Helse</div><div class="meter"><i id="hpFill"></i></div></div><div id="cold" hidden><div class="lab" id="coldTxt"></div><div class="meter"><i id="coldFill"></i></div></div></div>
 <div id="tr" class="hud box"><img id="windArrow" alt="Vindretning"><div><div class="lab">Vind</div><div id="windS">Svak vind</div><div id="windD">fra sørvest</div></div></div>
-<div id="tbtns" class="hud"><button class="tbtn" id="pauseBtn" type="button">Pause (Esc)</button><button class="tbtn" id="bookBtn" type="button">Jaktbok (J)</button><button class="tbtn" id="muteBtn" type="button" aria-pressed="false">Lyd (M)</button></div>
+<div id="tbtns" class="hud"><button class="tbtn" id="pauseBtn" type="button">Pause (Esc)</button><button class="tbtn" id="invBtn" type="button">Inventar (I)</button><button class="tbtn" id="bookBtn" type="button">Jaktbok (J)</button><button class="tbtn" id="muteBtn" type="button" aria-pressed="false">Lyd (M)</button></div>
 <div id="log" class="hud" aria-live="polite"></div>
 <div id="prompt" class="hud box" hidden><kbd>F</kbd><span id="promptTxt"></span></div>
 <div id="work" class="hud box" hidden><div class="lab" id="workTxt"></div><div class="meter"><i id="workFill"></i></div></div>
@@ -154,7 +179,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
   <div class="slot box"><img id="campIco" alt=""><div><div class="slot-t" id="campN">Ved × 0 · kjøtt × 0</div><div class="slot-s" id="campS">Bål · 0 fyrstikker</div></div><kbd class="k">B</kbd></div>
   <div class="slot box"><img id="treatIco" alt=""><div><div class="slot-t" id="treatN">× 3</div><div class="slot-s" id="dogTxt">Send ut hunden</div></div><kbd class="k">H</kbd></div>
 </div>
-<div id="keys" class="hud"><span><kbd>WASD</kbd>gå</span><span><kbd>Shift</kbd>snik</span><span><kbd>Høyreklikk</kbd>sikt</span><span><kbd>Venstreklikk</kbd>skyt</span><span><kbd>1</kbd><kbd>2</kbd>våpen</span><span><kbd>Space</kbd>spring · hold pusten</span><span><kbd>F</kbd>handling</span><span><kbd>H</kbd>hund</span><span><kbd>B</kbd>bål</span><span><kbd>G</kbd>gapahuk</span><span><kbd>V</kbd>kart/3D</span><span id="goKey" hidden><kbd>T</kbd>til jeger</span><span><kbd>Esc</kbd>pause</span></div>
+<div id="keys" class="hud"><span><kbd>WASD</kbd>gå</span><span><kbd>Høyreklikk</kbd>sikt</span><span><kbd>Venstreklikk</kbd>skyt</span><span><kbd>F</kbd>handling</span><span><kbd>V</kbd>kart/3D</span><span id="goKey" hidden><kbd>T</kbd>til jeger</span><span><kbd>I</kbd>inventar og alle taster</span><span><kbd>Esc</kbd>pause</span></div>
 
 <div id="shop" class="sheet" hidden>
   <div class="card" role="dialog" aria-label="Jaktbua">
@@ -179,6 +204,45 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
   <div class="card" role="dialog" aria-label="Jaktbok">
     <div class="card-h"><h2>Jaktbok</h2><span class="money" id="bookTot"></span><button class="xbtn" type="button" data-close>Lukk (Esc)</button></div>
     <div class="book-body"><div id="bookSpecies"></div><div class="lab">Felt vilt, nyeste først</div><div id="bookList"></div></div>
+  </div>
+</div>
+
+<div id="inv" class="sheet" hidden>
+  <div class="card inv-card" role="dialog" aria-label="Inventar">
+    <div class="card-h"><h2>Inventar</h2><button class="xbtn" type="button" data-close>Lukk (I)</button></div>
+    <div class="inv-body">
+      <div class="mc">
+        <div class="mc-top">
+          <div class="mc-me"><img id="invMe" alt="Jegeren"><div id="invName"></div></div>
+          <div><div class="mc-lab">Utstyr</div><div class="mc-grid mc-gear" id="invGear"></div></div>
+        </div>
+        <div class="mc-lab">Sekken</div>
+        <div class="mc-grid" id="invBag"></div>
+        <div class="mc-tip" aria-live="polite"><div id="invTipN"></div><div id="invTipD"></div></div>
+      </div>
+      <div class="inv-keys">
+        <div class="lab">Taster</div>
+        <div><kbd>WASD</kbd>Gå (i 3D: dit du ser)</div>
+        <div><kbd>Shift</kbd>Snik</div>
+        <div><kbd>Space</kbd>Spring · hold pusten i siktet</div>
+        <div><kbd>Høyreklikk</kbd>Sikt (hold)</div>
+        <div><kbd>Venstreklikk</kbd>Skyt</div>
+        <div><kbd>R</kbd>Lad om</div>
+        <div><kbd>1</kbd><kbd>2</kbd>Rifle / hagle</div>
+        <div><kbd>Q</kbd>Lokkefløyte</div>
+        <div><kbd>E</kbd>Sett ut luktstoff</div>
+        <div><kbd>H</kbd>Send ut / kall inn hunden</div>
+        <div><kbd>F</kbd>Ta vare på dyr · bua · hogg · stek · sov</div>
+        <div><kbd>B</kbd>Tenn bål</div>
+        <div><kbd>G</kbd>Bygg gapahuk</div>
+        <div><kbd>V</kbd>Bytt mellom kart og 3D</div>
+        <div><kbd>T</kbd>Til en annen jeger</div>
+        <div><kbd>I</kbd>Inventar</div>
+        <div><kbd>J</kbd>Jaktbok</div>
+        <div><kbd>M</kbd>Lyd av/på</div>
+        <div><kbd>Esc</kbd>Pause</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -214,7 +278,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
       <div><kbd>B</kbd>Tenn bål · <kbd>G</kbd>bygg gapahuk</div>
       <div><kbd>V</kbd>Bytt mellom kart og 3D</div>
       <div><kbd>T</kbd>Til en annen jeger</div>
-      <div><kbd>J</kbd>Jaktbok · <kbd>M</kbd>lyd</div>
+      <div><kbd>I</kbd>Inventar · <kbd>J</kbd>jaktbok · <kbd>M</kbd>lyd</div>
       <div><kbd>Esc</kbd>Pause</div>
     </div>
   </div>
@@ -1070,6 +1134,16 @@ function genIcons() {
   mk('match', p => { p.rect(3, 9, 12, 7, C('#d8b048')); p.rect(3, 9, 12, 1, C('#f0d070')); p.rect(5, 11, 8, 3, C('#3a5a8a')); p.rect(3, 15, 12, 1, C('#a07a28')); for (let i = 0; i < 3; i++) { p.line(5 + i * 3, 8, 6 + i * 3, 3, C('#e8d0a0'), 1); p.rect(6 + i * 3, 1, 1, 2, C('#d03a2a')); } });
   mk('fire', p => { p.line(2, 15, 14, 12, wd[1], 2); p.line(2, 12, 14, 15, wd[2], 2); p.ell(8.5, 8.5, 3.8, 5.2, C('#d8502a')); p.ell(8.5, 9.6, 2.6, 3.8, C('#f4a034')); p.ell(8.5, 10.8, 1.3, 2.2, C('#fff0a0')); p.set(7, 2, C('#d8502a')); p.set(10, 3, C('#f4a034')); });
   mk('treat', p => { const c = T('#9a7a50', '#d2bc90', '#f2e6c8'); p.line(5, 12, 12, 5, c[1], 3); for (const [x, y] of [[3, 12], [5, 14], [12, 3], [14, 5]]) p.ell(x, y, 1.8, 1.8, c[1]); p.line(5, 11, 11, 5, c[2], 1); p.line(6, 13, 13, 6, c[0], 1); });
+  // til inventaret: mynt, vedkubber sett fra enden, kjøttlår og rifle med kikkert
+  mk('coin', p => { p.ell(8.5, 10.5, 6, 5.5, br[0]); p.ell(8.5, 9, 6, 5.5, br[1]); p.ell(8.5, 9, 4, 3.6, br[2]); p.ell(8.5, 9, 3, 2.6, br[1]); p.rect(8, 7, 1, 4, br[0]); p.set(5, 6, C('#fff4c0')); p.set(6, 5, C('#fff4c0')); });
+  mk('wood', p => { for (const [x, y] of [[5, 12.5], [12, 12.5], [8.5, 6]]) { p.ell(x, y, 3.6, 3.6, wd[0]); p.ell(x, y, 2.7, 2.7, C('#d8b880')); p.ell(x, y, 1.1, 1.1, C('#b08850')); } });
+  mk('meat', p => { p.line(8, 8, 14, 14, C('#efe6d4'), 2); p.ell(15.5, 13.5, 1.7, 1.7, C('#efe6d4')); p.ell(13.5, 15.5, 1.7, 1.7, C('#efe6d4')); p.ell(6.5, 6.5, 5, 4.4, C('#a8382f')); p.ell(5.6, 5.6, 3.2, 2.5, C('#d0584c')); p.ell(4.6, 4.8, 1.3, 0.9, C('#f0a090')); });
+  mk('rifle', p => {
+    for (let i = 0; i < 12; i++) { const x = 5 + i, y = Math.round(12 - i * 0.6); p.set(x, y, st[1]); p.set(x, y - 1, st[2]); }
+    p.rect(1, 12, 5, 2, wd[1]); p.rect(1, 14, 3, 1, wd[0]); p.set(1, 12, wd[2]); p.line(6, 13, 9, 11, wd[2], 1);
+    for (let i = 0; i < 6; i++) { const x = 7 + i, y = Math.round(8 - i * 0.6); p.set(x, y, st[0]); p.set(x, y - 1, st[1]); }
+    p.set(8, 9, st[0]); p.set(11, 7, st[0]); p.set(13, 3, C('#7ab0c8'));
+  });
   mk('boots', p => { p.rect(5, 2, 5, 10, wd[1]); p.rect(5, 2, 1, 10, wd[2]); p.rect(5, 10, 9, 4, wd[1]); p.rect(11, 10, 3, 1, wd[2]); p.rect(4, 14, 11, 2, C('#201814')); p.rect(5, 2, 5, 1, wd[0]); p.set(9, 5, br[2]); p.set(9, 7, br[2]); });
   return I;
 }
@@ -2833,6 +2907,56 @@ function openBook() {
   setText('bookTot', G.journal.length + ' dyr · ' + fmtKr(tot) + ' totalt');
   $('book').hidden = false; sfx.ui();
 }
+// ---------- inventar ----------
+// Som i et klossespill: jegeren og utstyret øverst, det du bærer på i ruter med antall i hjørnet under,
+// og alle tastene ved siden av. Hold musa over en rute for å se hva det er
+function invSlots() {
+  const L = id => upg(id).lv[lv(id)], ammoR = hagle() ? P.ammo2 : P.ammo, ammoH = hagle() ? P.ammo : P.ammo2, held = ' (i hendene)';
+  const gear = [
+    { ico: 'rifle', n: 'Rifle' + (hagle() ? '' : held), d: L('caliber') + ' · ' + L('scope') + ' · ' + L('barrel') + '. Ta den med 1.', on: !hagle() },
+    lv('hagle') && { ico: 'hagle', n: L('hagle') + (hagle() ? held : ''), d: L('choke') + ' · ' + L('shell') + '. Ta den med 2.', on: hagle() },
+    lv('axe') && { ico: 'axe', n: 'Øks', d: upg('axe').d[1] },
+    { ico: 'call', n: L('call'), d: 'Lokker ' + CALLSP[lv('call')].map(s => SPEC[s].name.toLowerCase()).join(', ') + ' (Q).' },
+    { ico: 'camo', n: L('camo'), d: upg('camo').d[lv('camo')] },
+    { ico: 'boots', n: L('boots'), d: upg('boots').d[lv('boots')] },
+    lv('deo') && { ico: 'deo', n: L('deo'), d: upg('deo').d[lv('deo')] },
+  ];
+  const bag = [
+    { ico: 'coin', n: 'Penger', c: G.money, d: fmtKr(G.money) + '. Felt vilt du tar vare på, gir penger.' },
+    { ico: 'caliber', n: 'Riflepatroner', c: ammoR, d: ammoR + ' av ' + gunCap('rifle') + ', ' + L('caliber') + '. Fylles gratis i bua.' },
+    lv('hagle') && { ico: 'shell', n: 'Haglpatroner', c: ammoH, d: ammoH + ' av ' + gunCap('hagle') + ', ' + L('shell').toLowerCase() + '. Fylles gratis i bua.' },
+    { ico: 'wood', n: 'Ved', c: G.wood, d: 'Et bål tar én kubbe, en gapahuk ' + HUT_WOOD + '. Hogg trær med øks (F).' },
+    { ico: 'meat', n: 'Kjøtt', c: G.meat, d: 'Stek det over bålet (F) og spis for +25 helse.' },
+    { ico: 'match', n: 'Fyrstikker', c: G.matches, d: 'Hver fyrstikk tenner ett bål (B).' },
+    { ico: 'scent', n: 'Luktstoff', c: G.scents, d: L('scentLv') + '. Sett ut en flaske med E.' },
+    { ico: 'treat', n: 'Godbiter', c: G.treats, d: 'Hunden får én hver gang den står for et dyr (H).' },
+  ];
+  return [gear.filter(Boolean), bag.filter(Boolean)];
+}
+function renderInv() {
+  const [gear, bag] = invSlots();
+  const tip = it => { setText('invTipN', it ? it.n : 'Inventar'); setText('invTipD', it ? it.d : 'Hold musa over en rute for å se hva det er.'); };
+  // n ruter; de som ikke har noe i seg, står tomme. Er du tom for noe, vises det blekt uten tall
+  const fill = (el, list, n) => {
+    el.innerHTML = '';
+    for (let i = 0; i < n; i++) {
+      const it = list[i], s = document.createElement('div'); s.className = 'mc-slot';
+      if (it) {
+        s.tabIndex = 0; s.setAttribute('aria-label', it.n + (it.c != null ? ': ' + it.c : ''));
+        s.classList.toggle('on', !!it.on); s.classList.toggle('zero', it.c === 0);
+        s.innerHTML = `<img alt="" src="${ICONURL[it.ico]}">` + (it.c ? `<span class="mc-n">${it.c < 1e4 ? it.c : Math.floor(it.c / 1000) + 'k'}</span>` : '');
+        s.onmouseenter = s.onfocus = () => tip(it); s.onmouseleave = s.onblur = () => tip(null);
+      }
+      el.appendChild(s);
+    }
+  };
+  fill($('invGear'), gear, 8); fill($('invBag'), bag, 27); tip(null);
+  setText('invName', NET.name || 'Jeger');
+}
+function openInv() {
+  G.paused = true; G.panel = 'inv'; aimReset(); try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
+  renderInv(); $('inv').hidden = false; sfx.ui();
+}
 // Alene fryser verden; med andre på nettet står jegeren stille mens tida går videre
 function openPause() {
   if (!G.started || G.panel) return;
@@ -2873,6 +2997,7 @@ function bindInput() {
     if (KEYS[e.code]) return; KEYS[e.code] = true;
     if (!G.started) { if (e.code === 'Enter') startGame(false); return; }
     if (G.panel === 'book' && (e.code === 'KeyJ' || e.code === 'Tab')) { closePanel(); return; }
+    if (G.panel === 'inv' && e.code === 'KeyI') { closePanel(); return; }
     if (G.panel) return;
     switch (e.code) {
       case 'KeyR': startReload(); break;
@@ -2886,6 +3011,7 @@ function bindInput() {
       case 'KeyB': lightFire(); break;
       case 'KeyG': buildHut(); break;
       case 'KeyV': toggleView(); break;
+      case 'KeyI': openInv(); break;
       case 'KeyJ': case 'Tab': openBook(); break;
       case 'KeyM': auMute(!AU.muted); $('muteBtn').setAttribute('aria-pressed', AU.muted); msg(AU.muted ? 'Lyden er av.' : 'Lyden er på.'); break;
     }
@@ -2926,6 +3052,7 @@ function bindInput() {
   $('newBtn').onclick = () => { const bt = $('newBtn'); if (bt.dataset.arm) startGame(true); else { bt.dataset.arm = 1; bt.textContent = 'Sikker? Trykk igjen'; } };
   $('muteBtn').onclick = () => { auInit(); auMute(!AU.muted); $('muteBtn').setAttribute('aria-pressed', AU.muted); };
   $('bookBtn').onclick = () => { if (G.started && !G.panel) openBook(); };
+  $('invBtn').onclick = () => { if (G.started && !G.panel) openInv(); };
 }
 
 // ---------- oppstart ----------
@@ -2936,6 +3063,7 @@ function boot() {
   genAll();
   for (const k in ICON) ICONURL[k] = dataURL(ICON[k]);
   for (const sp of SPECIES) ICONURL['an_' + sp] = dataURL(cropSprite(ANI[sp].m.stand[0], 2));
+  $('invMe').src = dataURL(cropSprite(HUN.down[0][0], 2));
   $('windArrow').src = dataURL(FX.arrow); $('callIco').src = ICONURL.call; $('scentIco').src = ICONURL.scent; $('treatIco').src = ICONURL.treat; $('campIco').src = ICONURL.fire;
   const has = load();
   P.x = -13; P.y = 6; CAM.x = P.x; CAM.y = P.y - 30;

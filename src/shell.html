@@ -49,7 +49,8 @@ body.aiming #tbtns { pointer-events: none; }
 #log { left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(60px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 4px; max-width: min(520px, 60vw); }
 .msg { background: var(--panel); border-left: 3px solid var(--edge); padding: 5px 10px; font-size: 15px; line-height: 1.3; transition: opacity .4s; }
 .msg.good { border-left-color: var(--moss); } .msg.warn { border-left-color: var(--rust); } .msg.money { border-left-color: var(--amber); color: var(--amber); }
-#keys { left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
+/* tastelinja nederst: svart bakgrunn så teksten synes over skogen; alle tastene står i inventaret (I) */
+#keys { left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); max-width: calc(100vw - 32px); display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 6px 10px; font-size: 13px; color: var(--paper); background: rgba(0,0,0,.85); }
 kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); background: #26332b; border: 1px solid #3d4f42; border-bottom-width: 3px; padding: 1px 5px; margin-right: 4px; }
 
 #bar { right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(52px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap-reverse; justify-content: flex-end; gap: 8px; align-items: stretch; max-width: min(calc(100vw - min(520px, 60vw) - 56px), calc(50vw - 140px)); }
@@ -112,6 +113,30 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 .e-d, .e-z { color: var(--muted); } .e-kr { color: var(--amber); text-align: right; }
 .empty { color: var(--muted); margin: 0; }
 
+/* Inventaret: ruter med fasede kanter som i et klossespill, i skogens grågrønne steinfarge */
+.inv-card { width: min(940px, 100%); }
+.inv-body { display: grid; grid-template-columns: auto minmax(240px, 1fr); }
+@media (max-width: 860px) { .inv-body { grid-template-columns: 1fr; } }
+.mc { --s: clamp(34px, 5.2vw, 52px); margin: 16px 20px 20px; padding: 12px 14px 14px; display: grid; gap: 8px; align-content: start; justify-content: start; background: #b9bfae; color: #2c3326; border: 3px solid; border-color: #f2f4ea #4b5244 #4b5244 #f2f4ea; box-shadow: 0 0 0 3px #0c110e; }
+.mc-lab { font-family: var(--f-lab); font-size: 11px; letter-spacing: .08em; color: #3a4232; }
+.mc-top { display: flex; gap: 12px; align-items: stretch; }
+.mc-me { min-width: calc(var(--s) * 2); padding: 6px; display: grid; place-items: center; gap: 4px; background: #000; border: 3px solid; border-color: #3a4034 #eef0e4 #eef0e4 #3a4034; }
+.mc-me img { height: calc(var(--s) * 1.7); image-rendering: pixelated; }
+#invName { font-size: 13px; color: var(--paper); max-width: 12ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-grid { display: grid; grid-template-columns: repeat(9, var(--s)); gap: 4px; }
+.mc-gear { grid-template-columns: repeat(4, var(--s)); margin-top: 4px; }
+.mc-slot { width: var(--s); height: var(--s); position: relative; display: grid; place-items: center; background: #7d8574; border: 3px solid; border-color: #3a4034 #eef0e4 #eef0e4 #3a4034; }
+.mc-slot img { width: calc(var(--s) - 16px); height: calc(var(--s) - 16px); image-rendering: pixelated; }
+.mc-slot.zero img { opacity: .3; }
+.mc-slot.on { outline: 3px solid #fff; outline-offset: 1px; }
+.mc-slot[tabindex]:hover, .mc-slot[tabindex]:focus-visible { background: #a2aa96; outline-color: var(--amber); }
+.mc-n { position: absolute; right: 1px; bottom: -1px; font-family: var(--f-lab); font-size: 13px; color: #fff; text-shadow: 2px 2px 0 #3f3f3f; font-variant-numeric: tabular-nums; }
+.mc-tip { min-height: 54px; padding: 6px 10px; display: grid; gap: 2px; align-content: start; background: #12061a; border: 2px solid #34127a; color: #fff; font-size: 16px; }
+#invTipD { font-size: 14px; color: #b8b2c4; line-height: 1.35; max-width: 52ch; }
+.inv-keys { padding: 16px 20px 20px; border-left: 2px solid #2b382f; background: #1d2620; display: grid; gap: 6px; align-content: start; font-size: 14px; }
+@media (max-width: 860px) { .inv-keys { border-left: 0; border-top: 2px solid #2b382f; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); } }
+.inv-keys div { display: flex; align-items: center; gap: 4px; }
+
 /* Tittel */
 #title { position: fixed; inset: 0; z-index: 6; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(10,16,12,.25), rgba(10,16,12,.75)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px; }
 .t-wrap { display: grid; gap: 18px; justify-items: center; text-align: center; max-width: 760px; }
@@ -142,7 +167,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 
 <div id="tl" class="hud box"><div id="kr">0 kr</div><div id="clock">Dag 1 · 06:30</div><div id="who" hidden></div><div id="hp" hidden><div class="lab" id="hpTxt">Helse</div><div class="meter"><i id="hpFill"></i></div></div><div id="cold" hidden><div class="lab" id="coldTxt"></div><div class="meter"><i id="coldFill"></i></div></div></div>
 <div id="tr" class="hud box"><img id="windArrow" alt="Vindretning"><div><div class="lab">Vind</div><div id="windS">Svak vind</div><div id="windD">fra sørvest</div></div></div>
-<div id="tbtns" class="hud"><button class="tbtn" id="pauseBtn" type="button">Pause (Esc)</button><button class="tbtn" id="bookBtn" type="button">Jaktbok (J)</button><button class="tbtn" id="muteBtn" type="button" aria-pressed="false">Lyd (M)</button></div>
+<div id="tbtns" class="hud"><button class="tbtn" id="pauseBtn" type="button">Pause (Esc)</button><button class="tbtn" id="invBtn" type="button">Inventar (I)</button><button class="tbtn" id="bookBtn" type="button">Jaktbok (J)</button><button class="tbtn" id="muteBtn" type="button" aria-pressed="false">Lyd (M)</button></div>
 <div id="log" class="hud" aria-live="polite"></div>
 <div id="prompt" class="hud box" hidden><kbd>F</kbd><span id="promptTxt"></span></div>
 <div id="work" class="hud box" hidden><div class="lab" id="workTxt"></div><div class="meter"><i id="workFill"></i></div></div>
@@ -154,7 +179,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
   <div class="slot box"><img id="campIco" alt=""><div><div class="slot-t" id="campN">Ved × 0 · kjøtt × 0</div><div class="slot-s" id="campS">Bål · 0 fyrstikker</div></div><kbd class="k">B</kbd></div>
   <div class="slot box"><img id="treatIco" alt=""><div><div class="slot-t" id="treatN">× 3</div><div class="slot-s" id="dogTxt">Send ut hunden</div></div><kbd class="k">H</kbd></div>
 </div>
-<div id="keys" class="hud"><span><kbd>WASD</kbd>gå</span><span><kbd>Shift</kbd>snik</span><span><kbd>Høyreklikk</kbd>sikt</span><span><kbd>Venstreklikk</kbd>skyt</span><span><kbd>1</kbd><kbd>2</kbd>våpen</span><span><kbd>Space</kbd>spring · hold pusten</span><span><kbd>F</kbd>handling</span><span><kbd>H</kbd>hund</span><span><kbd>B</kbd>bål</span><span><kbd>G</kbd>gapahuk</span><span><kbd>V</kbd>kart/3D</span><span id="goKey" hidden><kbd>T</kbd>til jeger</span><span><kbd>Esc</kbd>pause</span></div>
+<div id="keys" class="hud"><span><kbd>WASD</kbd>gå</span><span><kbd>Høyreklikk</kbd>sikt</span><span><kbd>Venstreklikk</kbd>skyt</span><span><kbd>F</kbd>handling</span><span><kbd>V</kbd>kart/3D</span><span id="goKey" hidden><kbd>T</kbd>til jeger</span><span><kbd>I</kbd>inventar og alle taster</span><span><kbd>Esc</kbd>pause</span></div>
 
 <div id="shop" class="sheet" hidden>
   <div class="card" role="dialog" aria-label="Jaktbua">
@@ -179,6 +204,45 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
   <div class="card" role="dialog" aria-label="Jaktbok">
     <div class="card-h"><h2>Jaktbok</h2><span class="money" id="bookTot"></span><button class="xbtn" type="button" data-close>Lukk (Esc)</button></div>
     <div class="book-body"><div id="bookSpecies"></div><div class="lab">Felt vilt, nyeste først</div><div id="bookList"></div></div>
+  </div>
+</div>
+
+<div id="inv" class="sheet" hidden>
+  <div class="card inv-card" role="dialog" aria-label="Inventar">
+    <div class="card-h"><h2>Inventar</h2><button class="xbtn" type="button" data-close>Lukk (I)</button></div>
+    <div class="inv-body">
+      <div class="mc">
+        <div class="mc-top">
+          <div class="mc-me"><img id="invMe" alt="Jegeren"><div id="invName"></div></div>
+          <div><div class="mc-lab">Utstyr</div><div class="mc-grid mc-gear" id="invGear"></div></div>
+        </div>
+        <div class="mc-lab">Sekken</div>
+        <div class="mc-grid" id="invBag"></div>
+        <div class="mc-tip" aria-live="polite"><div id="invTipN"></div><div id="invTipD"></div></div>
+      </div>
+      <div class="inv-keys">
+        <div class="lab">Taster</div>
+        <div><kbd>WASD</kbd>Gå (i 3D: dit du ser)</div>
+        <div><kbd>Shift</kbd>Snik</div>
+        <div><kbd>Space</kbd>Spring · hold pusten i siktet</div>
+        <div><kbd>Høyreklikk</kbd>Sikt (hold)</div>
+        <div><kbd>Venstreklikk</kbd>Skyt</div>
+        <div><kbd>R</kbd>Lad om</div>
+        <div><kbd>1</kbd><kbd>2</kbd>Rifle / hagle</div>
+        <div><kbd>Q</kbd>Lokkefløyte</div>
+        <div><kbd>E</kbd>Sett ut luktstoff</div>
+        <div><kbd>H</kbd>Send ut / kall inn hunden</div>
+        <div><kbd>F</kbd>Ta vare på dyr · bua · hogg · stek · sov</div>
+        <div><kbd>B</kbd>Tenn bål</div>
+        <div><kbd>G</kbd>Bygg gapahuk</div>
+        <div><kbd>V</kbd>Bytt mellom kart og 3D</div>
+        <div><kbd>T</kbd>Til en annen jeger</div>
+        <div><kbd>I</kbd>Inventar</div>
+        <div><kbd>J</kbd>Jaktbok</div>
+        <div><kbd>M</kbd>Lyd av/på</div>
+        <div><kbd>Esc</kbd>Pause</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -214,7 +278,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
       <div><kbd>B</kbd>Tenn bål · <kbd>G</kbd>bygg gapahuk</div>
       <div><kbd>V</kbd>Bytt mellom kart og 3D</div>
       <div><kbd>T</kbd>Til en annen jeger</div>
-      <div><kbd>J</kbd>Jaktbok · <kbd>M</kbd>lyd</div>
+      <div><kbd>I</kbd>Inventar · <kbd>J</kbd>jaktbok · <kbd>M</kbd>lyd</div>
       <div><kbd>Esc</kbd>Pause</div>
     </div>
   </div>

@@ -727,6 +727,16 @@ function genIcons() {
   mk('match', p => { p.rect(3, 9, 12, 7, C('#d8b048')); p.rect(3, 9, 12, 1, C('#f0d070')); p.rect(5, 11, 8, 3, C('#3a5a8a')); p.rect(3, 15, 12, 1, C('#a07a28')); for (let i = 0; i < 3; i++) { p.line(5 + i * 3, 8, 6 + i * 3, 3, C('#e8d0a0'), 1); p.rect(6 + i * 3, 1, 1, 2, C('#d03a2a')); } });
   mk('fire', p => { p.line(2, 15, 14, 12, wd[1], 2); p.line(2, 12, 14, 15, wd[2], 2); p.ell(8.5, 8.5, 3.8, 5.2, C('#d8502a')); p.ell(8.5, 9.6, 2.6, 3.8, C('#f4a034')); p.ell(8.5, 10.8, 1.3, 2.2, C('#fff0a0')); p.set(7, 2, C('#d8502a')); p.set(10, 3, C('#f4a034')); });
   mk('treat', p => { const c = T('#9a7a50', '#d2bc90', '#f2e6c8'); p.line(5, 12, 12, 5, c[1], 3); for (const [x, y] of [[3, 12], [5, 14], [12, 3], [14, 5]]) p.ell(x, y, 1.8, 1.8, c[1]); p.line(5, 11, 11, 5, c[2], 1); p.line(6, 13, 13, 6, c[0], 1); });
+  // til inventaret: mynt, vedkubber sett fra enden, kjøttlår og rifle med kikkert
+  mk('coin', p => { p.ell(8.5, 10.5, 6, 5.5, br[0]); p.ell(8.5, 9, 6, 5.5, br[1]); p.ell(8.5, 9, 4, 3.6, br[2]); p.ell(8.5, 9, 3, 2.6, br[1]); p.rect(8, 7, 1, 4, br[0]); p.set(5, 6, C('#fff4c0')); p.set(6, 5, C('#fff4c0')); });
+  mk('wood', p => { for (const [x, y] of [[5, 12.5], [12, 12.5], [8.5, 6]]) { p.ell(x, y, 3.6, 3.6, wd[0]); p.ell(x, y, 2.7, 2.7, C('#d8b880')); p.ell(x, y, 1.1, 1.1, C('#b08850')); } });
+  mk('meat', p => { p.line(8, 8, 14, 14, C('#efe6d4'), 2); p.ell(15.5, 13.5, 1.7, 1.7, C('#efe6d4')); p.ell(13.5, 15.5, 1.7, 1.7, C('#efe6d4')); p.ell(6.5, 6.5, 5, 4.4, C('#a8382f')); p.ell(5.6, 5.6, 3.2, 2.5, C('#d0584c')); p.ell(4.6, 4.8, 1.3, 0.9, C('#f0a090')); });
+  mk('rifle', p => {
+    for (let i = 0; i < 12; i++) { const x = 5 + i, y = Math.round(12 - i * 0.6); p.set(x, y, st[1]); p.set(x, y - 1, st[2]); }
+    p.rect(1, 12, 5, 2, wd[1]); p.rect(1, 14, 3, 1, wd[0]); p.set(1, 12, wd[2]); p.line(6, 13, 9, 11, wd[2], 1);
+    for (let i = 0; i < 6; i++) { const x = 7 + i, y = Math.round(8 - i * 0.6); p.set(x, y, st[0]); p.set(x, y - 1, st[1]); }
+    p.set(8, 9, st[0]); p.set(11, 7, st[0]); p.set(13, 3, C('#7ab0c8'));
+  });
   mk('boots', p => { p.rect(5, 2, 5, 10, wd[1]); p.rect(5, 2, 1, 10, wd[2]); p.rect(5, 10, 9, 4, wd[1]); p.rect(11, 10, 3, 1, wd[2]); p.rect(4, 14, 11, 2, C('#201814')); p.rect(5, 2, 5, 1, wd[0]); p.set(9, 5, br[2]); p.set(9, 7, br[2]); });
   return I;
 }
