@@ -35,6 +35,8 @@ function hudUpdate(dt) {
   setText('callName', UPG[7].lv[lv('call')]);
   $('callCd').style.height = (P.callCd / 9 * 100) + '%';
   setText('scentN', '× ' + G.scents);
+  setText('treatN', '× ' + G.treats);
+  setText('dogTxt', { heel: 'Send ut hunden', search: 'Hunden søker', mark: 'Hunden står!', back: 'Hunden kommer' }[D.st]);
   $('cold').hidden = !(G.started && P.cold > 0);
   if (P.cold > 0) { setText('coldTxt', P.wet ? 'I vannet · fryser' : 'Våt og kald · tørker'); $('coldFill').style.width = (P.cold * 100) + '%'; }
   // pustemåleren vises i siktet, og ellers så lenge du springer eller henter deg inn etterpå
@@ -91,13 +93,8 @@ function renderShop() {
     bt.textContent = max ? 'Ferdig' : fmtKr(price); bt.disabled = max || G.money < price;
     bt.onclick = () => buy(u); row.appendChild(bt); list.appendChild(row);
   }
-  if (shopCat === 'lure') {
-    const row = document.createElement('div'); row.className = 'item';
-    row.innerHTML = `<img class="ico" alt="" src="${ICONURL.flask}"><div class="it-body"><div class="it-head"><span class="it-name">Påfyll av luktstoff</span></div><div class="it-now">Du har ${G.scents} flasker.</div><div class="it-next">Tre flasker med ${UPG[8].lv[lv('scentLv')].toLowerCase()}.</div></div>`;
-    const bt = document.createElement('button'); bt.className = 'buy'; bt.id = 'buy-flask'; bt.textContent = fmtKr(FLASK_PRICE); bt.disabled = G.money < FLASK_PRICE;
-    bt.onclick = () => { if (G.money < FLASK_PRICE) return sfx.deny(); G.money -= FLASK_PRICE; G.scents += 3; sfx.buy(); save(); renderShop(); };
-    row.appendChild(bt); list.appendChild(row);
-  }
+  if (shopCat === 'lure') supplyRow(list, 'flask', 'Påfyll av luktstoff', `Du har ${G.scents} flasker.`, `Tre flasker med ${UPG[8].lv[lv('scentLv')].toLowerCase()}.`, 'flask', FLASK_PRICE, () => { G.scents += 3; });
+  if (shopCat === 'gear') supplyRow(list, 'treat', 'Godbiter til hunden', `Du har ${G.treats} godbiter.`, `${TREAT_N} godbiter. Hunden får én hver gang den står for et dyr.`, 'treat', TREAT_PRICE, () => { G.treats += TREAT_N; });
   const st = $('stats'); st.innerHTML = '';
   for (const [n, v, t] of statRows()) {
     const r = document.createElement('div'); r.className = 'stat';
@@ -106,6 +103,14 @@ function renderShop() {
   }
   setText('magTxt', ST.cap[lv('mag')] === 1 ? 'Enkeltskudd' : ST.cap[lv('mag')] + ' patroner i magasinet');
   setText('callTxt', CALLSP[lv('call')].map(s => SPEC[s].name.toLowerCase()).join(', '));
+}
+// Forbruksvarer som kjøpes i pakker (luktstoff, godbiter)
+function supplyRow(list, ico, name, now, next, id, price, add) {
+  const row = document.createElement('div'); row.className = 'item';
+  row.innerHTML = `<img class="ico" alt="" src="${ICONURL[ico]}"><div class="it-body"><div class="it-head"><span class="it-name">${name}</span></div><div class="it-now">${now}</div><div class="it-next">${next}</div></div>`;
+  const bt = document.createElement('button'); bt.className = 'buy'; bt.id = 'buy-' + id; bt.textContent = fmtKr(price); bt.disabled = G.money < price;
+  bt.onclick = () => { if (G.money < price) return sfx.deny(); G.money -= price; add(); sfx.buy(); save(); renderShop(); };
+  row.appendChild(bt); list.appendChild(row);
 }
 function buy(u) {
   const L = lv(u.id); if (L >= u.lv.length - 1) return;
@@ -153,13 +158,14 @@ function closePanel() { if (!G.panel) return; $(G.panel).hidden = true; G.panel 
 
 // ---------- start ----------
 function startGame(fresh) {
-  if (fresh) { G.money = 0; for (const u of UPG) G.up[u.id] = 0; G.scents = 2; G.journal = []; if (!mp()) { G.day = 1; G.hour = 6.6; G.animals = []; } save(); }
+  if (fresh) { G.money = 0; for (const u of UPG) G.up[u.id] = 0; G.scents = 2; G.treats = TREAT_START; G.journal = []; if (!mp()) { G.day = 1; G.hour = 6.6; G.animals = []; } save(); }
   netSetName(); auInit(); G.started = true; G.paused = false; $('title').hidden = true; netAway();
   if (!lv('hagle')) G.gun = 'rifle';
-  refill();
+  refill(); dogReset();
   const [s, d] = windName();
   msg('Vinden kommer ' + d + '. Gå mot vinden, så kjenner ikke dyrene lukta di.');
   msg('Høyreklikk for å sikte, venstreklikk for å skyte. Q lokker, E setter ut luktstoff.');
+  msg('Hunden følger deg. H sender den ut for å finne dyr; den spiser en godbit hver gang den står for et.');
   lockPointer();
 }
 function lockPointer() { try { const r = cv.requestPointerLock && cv.requestPointerLock(); if (r && r.catch) r.catch(() => { }); } catch (e) { } }
@@ -189,6 +195,7 @@ function bindInput() {
       case 'KeyE': placeScent(); break;
       case 'KeyF': interact(); break;
       case 'KeyT': goToHunter(); break;
+      case 'KeyH': sendDog(); break;
       case 'KeyJ': case 'Tab': openBook(); break;
       case 'KeyM': auMute(!AU.muted); $('muteBtn').setAttribute('aria-pressed', AU.muted); msg(AU.muted ? 'Lyden er av.' : 'Lyden er på.'); break;
     }
@@ -219,7 +226,7 @@ function bindInput() {
   addEventListener('resize', resize);
   document.querySelectorAll('#shopTabs button').forEach(bt => bt.onclick = () => { shopCat = bt.dataset.cat; sfx.ui(); renderShop(); });
   document.querySelectorAll('[data-close]').forEach(bt => bt.onclick = closePanel);
-  $('sleepBtn').onclick = () => { if (mp()) return; if (G.hour > 5.5) G.day++; G.hour = 5.5; G.animals = []; G.scentObjs = []; msg('Du sov godt. Det lysner over skogen.'); save(); closePanel(); };
+  $('sleepBtn').onclick = () => { if (mp()) return; if (G.hour > 5.5) G.day++; G.hour = 5.5; G.animals = []; G.scentObjs = []; dogReset(); msg('Du sov godt. Det lysner over skogen.'); save(); closePanel(); };
   $('startBtn').onclick = () => startGame(false);
   $('pauseBtn').onclick = () => openPause();
   $('resumeBtn').onclick = resume;
@@ -237,7 +244,7 @@ function boot() {
   genAll();
   for (const k in ICON) ICONURL[k] = dataURL(ICON[k]);
   for (const sp of SPECIES) ICONURL['an_' + sp] = dataURL(cropSprite(ANI[sp].m.stand[0], 2));
-  $('windArrow').src = dataURL(FX.arrow); $('callIco').src = ICONURL.call; $('scentIco').src = ICONURL.scent;
+  $('windArrow').src = dataURL(FX.arrow); $('callIco').src = ICONURL.call; $('scentIco').src = ICONURL.scent; $('treatIco').src = ICONURL.treat;
   const has = load();
   P.x = -13; P.y = 6; CAM.x = P.x; CAM.y = P.y - 30;
   if (has) {

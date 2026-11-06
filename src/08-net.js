@@ -71,6 +71,11 @@ function peerState(m) {
   r.tx = x; r.ty = y;
   r.face = HUN[m.f] ? m.f : 'down'; r.flip = !!m.fl; r.moving = !!m.mv; r.sneak = !!m.sn; r.run = !!m.rn; r.aim = !!m.am; r.wet = !!m.w; r.in = !!m.in;
   r.camo = clamp(u[0] | 0, 0, 2); r.deo = clamp(u[1] | 0, 0, 2); r.boots = clamp(u[2] | 0, 0, 2);
+  // hunden deres: [x, y, tilstand, retning]
+  if (Array.isArray(m.dg)) {
+    const g = r.dog || (r.dog = { x: +m.dg[0] || 0, y: +m.dg[1] || 0, anim: 0, spd: 0 });
+    g.tx = +m.dg[0] || 0; g.ty = +m.dg[1] || 0; g.st = DOG_ST[m.dg[2]] || 'heel'; g.face = m.dg[3] < 0 ? -1 : 1;
+  }
 }
 // T: teleporter bort til en annen jeger; trykker du igjen, kommer du til den neste
 function goToHunter() {
@@ -120,6 +125,7 @@ function netMsg(m) {
       break;
     }
     case 'scent': if (isAuth()) addScent(m); break;
+    case 'bay': { const a = isAuth() && G.animals.find(x => x.id === m.id); if (a) holdAnimal(a, +m.x || a.x); break; }
     case 'collect': {
       if (!isAuth()) break;
       const a = G.animals.find(x => x.id === m.id && x.state === 'dead');
@@ -148,12 +154,18 @@ function netUpdate(dt) {
     if (hyp(r.x - r.tx, r.y - r.ty) > 80) { r.x = r.tx; r.y = r.ty; }
     if (r.moving) r.walkT += dt * (r.sneak ? 0.55 : r.run ? 1.7 : 1);
     if (auth && r.moving && !r.in) { r.stepT -= dt; if (r.stepT <= 0) { r.stepT = r.sneak ? 0.55 : r.run ? 0.2 : 0.32; stepNoise(r); } }
+    const g = r.dog;
+    if (g) {
+      const x0 = g.x, y0 = g.y; g.x = lerp(g.x, g.tx, k); g.y = lerp(g.y, g.ty, k);
+      if (hyp(g.x - g.tx, g.y - g.ty) > 80) { g.x = g.tx; g.y = g.ty; }
+      g.spd = lerp(g.spd, hyp(g.x - x0, g.y - y0) / Math.max(dt, 1e-3), Math.min(1, dt * 6)); g.anim += g.spd * dt * (g.spd > 60 ? 0.085 : 0.14);
+    }
   }
   if (!NET.peers.size) return;
   NET.sendT -= dt;
   if (G.started && NET.sendT <= 0) {
     NET.sendT = 1 / 15;
-    netSend({ t: 'p', n: NET.name, x: Math.round(P.x * 10) / 10, y: Math.round(P.y * 10) / 10, f: P.face, fl: P.flip, mv: P.moving, sn: P.sneak, rn: P.run, am: P.aim, w: P.wet, in: G.panel === 'shop', u: [lv('camo'), lv('deo'), lv('boots')] });
+    netSend({ t: 'p', n: NET.name, x: Math.round(P.x * 10) / 10, y: Math.round(P.y * 10) / 10, f: P.face, fl: P.flip, mv: P.moving, sn: P.sneak, rn: P.run, am: P.aim, w: P.wet, in: G.panel === 'shop', u: [lv('camo'), lv('deo'), lv('boots')], dg: [Math.round(D.x), Math.round(D.y), DOG_ST.indexOf(D.st), D.face] });
   }
   if (auth) {
     NET.snapT -= dt;

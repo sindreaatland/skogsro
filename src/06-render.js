@@ -81,6 +81,10 @@ function render(dt) {
     if (!r.started || r.in || r.x + 20 < ox || r.x - 20 > ox + bw || r.y - 40 > oy + bh || r.y + 10 < oy) continue;
     items.push({ y: r.y, peer: r, s: HUN[r.face][r.aim ? 1 : 0][r.moving ? 1 + ((r.walkT * 7.5) | 0) % 4 : 0] });
   }
+  // hunden din, og hundene til de andre jegerne
+  const dogs = G.started ? [D] : [];
+  for (const r of NET.peers.values()) if (r.started && !r.in && r.dog) dogs.push(r.dog);
+  for (const d of dogs) if (d.x + 30 > ox && d.x - 30 < ox + bw && d.y - 40 < oy + bh && d.y + 10 > oy) items.push({ y: d.y, dog: d, s: dogSprite(d) });
   for (const so of G.scentObjs) items.push({ y: so.y, bottle: so, s: FX.bottle });
   items.sort((p, q) => p.y - q.y);
   // skygger (silhuetter skjøvet bort fra sola)
@@ -91,27 +95,30 @@ function render(dt) {
     if (it.s.nosh || it.o && (it.o.k === 'fern' || it.o.k === 'grassT' || it.o.k === 'reed') || it.hunter && P.deep) continue;
     // fugl i lufta kaster bare en liten flekk på bakken under seg
     if (it.a && it.a.z > 1) { sh.setTransform(1, 0, 0, 1, 0, 0); sh.fillStyle = '#0b1a1c'; sh.fillRect(Math.round(it.a.x - ox) - 3, Math.round(it.a.y - oy) - 1, 6, 2); continue; }
-    const ent = it.o || it.a || it.peer || P, flip = it.a ? it.a.face < 0 : it.hunter ? P.flip && P.face === 'side' : it.peer ? it.peer.flip && it.peer.face === 'side' : false;
+    const ent = it.o || it.a || it.peer || it.dog || P, flip = it.a || it.dog ? ent.face < 0 : it.hunter ? P.flip && P.face === 'side' : it.peer ? it.peer.flip && it.peer.face === 'side' : false;
     sh.setTransform(flip ? -1 : 1, 0, -sdx, -sls * 0.5, Math.round(ent.x - ox), Math.round(ent.y - oy) + 1);
     sh.drawImage(it.s.sil, -it.s.ax, -it.s.ay);
   }
   b.globalAlpha = 0.12 + 0.24 * dayl; b.drawImage(shL, 0, 0, bw, bh, 0, 0, bw, bh); b.globalAlpha = 1;
-  // ring av lyse prikker med mørk kant som går rundt på bakken under felte dyr du kan hente
+  // ring av lyse prikker (k × k piksler) med mørk kant som går rundt
+  const ring = (X, Y, rx, ry, n, k = 1) => {
+    b.globalAlpha = 0.75 + 0.25 * Math.sin(G.t * 3);
+    for (let i = 0; i < n; i++) {
+      const t = i / n * TAU + G.t * 0.6, x = Math.round(X + Math.cos(t) * rx), y = Math.round(Y + Math.sin(t) * ry);
+      b.fillStyle = '#1a1410'; b.fillRect(x, y + 1, k, k); b.fillStyle = '#fff4d6'; b.fillRect(x, y, k, k);
+    }
+    b.globalAlpha = 1;
+  };
+  // på bakken under felte dyr du kan hente
   for (const it of items) {
     const a = it.a; if (!a || a.state !== 'dead' || !canTake(a, NET.id)) continue;
-    const s = it.s, bb = s.bb || (s.bb = s.pix.bbox()), rx = bb[2] / 2 + 3, ry = Math.max(3, rx * 0.35);
-    const X = a.x - ox + (bb[0] + bb[2] / 2 - s.ax) * (a.face < 0 ? -1 : 1), Y = a.y - oy - s.ay + bb[1] + bb[3] - 2;
-    b.globalAlpha = 0.75 + 0.25 * Math.sin(G.t * 3);
-    for (let i = 0; i < 18; i++) {
-      const t = i / 18 * TAU + G.t * 0.6, x = Math.round(X + Math.cos(t) * rx), y = Math.round(Y + Math.sin(t) * ry);
-      b.fillStyle = '#1a1410'; b.fillRect(x, y + 1, 1, 1); b.fillStyle = '#fff4d6'; b.fillRect(x, y, 1, 1);
-    }
+    const s = it.s, bb = s.bb || (s.bb = s.pix.bbox()), rx = bb[2] / 2 + 3;
+    ring(a.x - ox + (bb[0] + bb[2] / 2 - s.ax) * (a.face < 0 ? -1 : 1), a.y - oy - s.ay + bb[1] + bb[3] - 2, rx, Math.max(3, rx * 0.35), 18);
   }
-  b.globalAlpha = 1;
   // objekter, dyr, jeger
   const icons = [], reveal = [[P.x, P.y - 6]];
   for (const a of G.animals) if (hyp(a.x - P.x, a.y - P.y) < 340) reveal.push([a.x, a.state === 'dead' ? a.y - 3 : a.y - SPEC[a.sp].leg - (a.z || 0)]);
-  for (const it of items) if (it.peer) reveal.push([it.peer.x, it.peer.y - 6]);
+  for (const it of items) if (it.peer || it.dog) reveal.push([(it.peer || it.dog).x, (it.peer || it.dog).y - 6]);
   for (const it of items) {
     if (it.o) {
       const o = it.o, s = it.s, X = Math.round(o.x - ox), Y = Math.round(o.y - oy);
@@ -133,6 +140,12 @@ function render(dt) {
     } else if (it.peer) {
       const r = it.peer, s = it.s, X = Math.round(r.x - ox), Y = Math.round(r.y - oy);
       drawHunter(s, X, Y, r.flip && r.face === 'side', r.wet && waterAt(r.x, r.y) < 0.55);
+    } else if (it.dog) {
+      const d = it.dog, s = it.s, X = Math.round(d.x - ox), Y = Math.round(d.y - oy);
+      if (d.face < 0) { b.save(); b.translate(X, Y); b.scale(-1, 1); b.drawImage(s.c, -s.ax, -s.ay); b.restore(); }
+      else b.drawImage(s.c, X - s.ax, Y - s.ay);
+      // står hunden for vilt, hopper en oransje nål over den
+      if (d.st === 'mark') icons.push([FX.mark, X - 5, Y - 34 - Math.round(Math.abs(Math.sin(G.t * 5)) * 3)]);
     } else if (it.bottle) b.drawImage(it.s.c, Math.round(it.bottle.x - ox) - it.s.ax, Math.round(it.bottle.y - oy) - it.s.ay);
   }
   // partikler
@@ -173,6 +186,8 @@ function render(dt) {
     for (let y = sy; y < bh; y += 256) for (let x = sx; x < bw; x += 256) b.drawImage(FX.rays, x, y);
   }
   b.globalCompositeOperation = 'source-over'; b.globalAlpha = 1;
+  // hvit sirkel rundt hunden din når den er ute, tegnet over skogen og lyset så den alltid synes
+  if (G.started && D.st !== 'heel') ring(D.x - ox - 1, D.y - oy - 7, 14, 14, 20, 2);
   for (const ic of icons) b.drawImage(ic[0], ic[1], ic[2]);
   // opp på skjermen
   m.setTransform(1, 0, 0, 1, 0, 0); m.imageSmoothingEnabled = false;
@@ -251,6 +266,10 @@ function drawOverlay() {
   if (G.started && !P.aim) {
     const c = nearestCabin(P.x, P.y);
     edgeMark(c.x, c.y - 30, 'Bua ' + Math.round(c.d * M_PER_PX) + ' m', FX.house);
+    if (D.st !== 'heel') {
+      const t = (D.st === 'mark' ? 'Hunden står ' : 'Hunden ') + Math.round(hyp(D.x - P.x, D.y - P.y) * M_PER_PX) + ' m';
+      if (!edgeMark(D.x, D.y - 6, t, FX.dog) && D.st === 'mark') { const [sx, sy] = toScreen(D.x, D.y - 44); pxText('Hunden står', sx, sy, Math.round(13 * DPR), '#ffb050'); }
+    }
     for (const a of G.animals) if (a.state === 'dead' && (!a.by || a.by === NET.id)) edgeMark(a.x, a.y - 6, SPEC[a.sp].name + ' ' + Math.round(hyp(a.x - P.x, a.y - P.y) * M_PER_PX) + ' m', FX.deer);
     for (const r of NET.peers.values()) {
       if (!r.started || r.in) continue;

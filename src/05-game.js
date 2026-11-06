@@ -41,6 +41,8 @@ const ST = {
 const HST = { cap: [0, 1, 2, 3], reload: [0, 1.5, 1.8, 1.2], cycle: [0, 0.3, 0.22, 0.3], spread: [0.07, 0.05, 0.036], pellets: [26, 20, 14], pdmg: [1.5, 2.2, 3.2], prange: [90, 115, 145], fov: 66, sway: 0.5 };
 const CALLSP = [['radyr', 'rev'], ['radyr', 'rev', 'hjort', 'rein'], ['radyr', 'rev', 'hjort', 'rein', 'elg', 'villsvin'], ['radyr', 'rev', 'hjort', 'rein', 'elg', 'villsvin', 'bjorn', 'gaupe', 'ulv']];
 const FLASK_PRICE = 120, M_PER_PX = 0.25;
+// Godbiter til hunden: én går med for hvert dyr hunden står for
+const TREAT_PRICE = 150, TREAT_N = 5, TREAT_START = 3;
 // Bøter: vådeskudd er skudd som går av uten at du sikter, bom er siktede skudd som ikke treffer dyr
 // Hagle er bare lov på småvilt og fugl; skyter du storvilt med den, blir det bot
 const FINE = { hip: 200, miss: 50, big: 300 };
@@ -49,7 +51,7 @@ const ZONES = { head: ['Hodeskudd', 2.2, 0.95], vital: ['Hjerte/lunge', 1.6, 1],
 const fmtKg = kg => String(kg).replace('.', ',') + ' kg';
 
 const G = {
-  t: 0, hour: 6.6, day: 1, money: 0, scents: 2, journal: [], up: {}, started: false, paused: false, panel: null, gun: 'rifle',
+  t: 0, hour: 6.6, day: 1, money: 0, scents: 2, treats: TREAT_START, journal: [], up: {}, started: false, paused: false, panel: null, gun: 'rifle',
   wind: { a: 0, s: 0.5, x: 1, y: 0 }, animals: [], scentObjs: [], blood: [], parts: [], msgs: [], spawnT: 0, quiet: [], dayl: 1, hunters: [], saveT: 15, pauseT: 0,
 };
 for (const u of UPG) G.up[u.id] = 0;
@@ -68,9 +70,9 @@ function switchGun(g) {
 
 // ---------- lagring (localStorage i denne nettleseren) ----------
 const SAVE_KEY = 'skogsro.v1';
-function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ money: G.money, up: G.up, scents: G.scents, journal: G.journal, day: G.day, hour: G.hour })); } catch (e) { } }
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ money: G.money, up: G.up, scents: G.scents, treats: G.treats, journal: G.journal, day: G.day, hour: G.hour })); } catch (e) { } }
 function load() {
-  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (!s) return false; G.money = s.money | 0; Object.assign(G.up, s.up || {}); G.scents = s.scents ?? 2; G.journal = s.journal || []; G.day = s.day || 1; if (typeof s.hour === 'number') G.hour = s.hour; return true; } catch (e) { return false; }
+  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (!s) return false; G.money = s.money | 0; Object.assign(G.up, s.up || {}); G.scents = s.scents ?? 2; G.treats = s.treats ?? TREAT_START; G.journal = s.journal || []; G.day = s.day || 1; if (typeof s.hour === 'number') G.hour = s.hour; return true; } catch (e) { return false; }
 }
 
 // ---------- meldinger ----------
@@ -167,6 +169,8 @@ function animalUpdate(a, dt) {
   a.aware = clamp(gain > 0 ? a.aware + gain : a.aware - 0.11 * dt, 0, 1.6);
   if (a.state !== 'flee' && a.aware >= 1) { startFlee(a, th.x, th.y); if (a.smelled) tell(a.smelled.id, SPEC[a.sp].name + ' fikk teven av deg i vinden.', 'warn'); a.smelled = null; }
   else if (a.aware > 0.35 && a.state !== 'flee' && a.state !== 'alert') { a.prev = a.state; a.state = 'alert'; a.t = rnd(2.5, 5); }
+  // står hunden for dyret, blir det stående og se på hunden i stedet for å trekke videre; jegeren kan fortsatt skremme det
+  if (a.bay > 0) { a.bay -= dt; if (a.state !== 'flee' && a.state !== 'alert') { a.state = 'stand'; a.t = 1; a.face = a.bayX > a.x ? 1 : -1; } }
   let spd = 0;
   switch (a.state) {
     case 'graze': case 'stand':
@@ -411,6 +415,74 @@ function interact() {
   if (hyp(P.x - (c.x - 13), P.y - (c.y + 6)) < 26) openShop();
 }
 
+// ---------- jakthunden ----------
+// Hunden går ved foten. Sendt ut (H) søker den opp nærmeste dyr og står for det: dyret blir stående, og hunden
+// gjør los til du kommer. Hver gang den står for et dyr, går det med en godbit; finner den ingenting, beholder du den.
+const DOG_R = 1000, DOG_ST = ['heel', 'search', 'mark', 'back'];
+const D = { x: 0, y: 0, st: 'heel', face: 1, anim: 0, spd: 0, a: null, tx: 0, ty: 0, t: 0, ph: 0, barkT: 0, waterT: 0, wet: false, netT: 0 };
+const dogOk = a => !!a && a.state !== 'dead' && a.state !== 'flee' && !(a.z > 0) && G.animals.includes(a);
+function dogFind(x, y, r) {
+  let best = null, bd = r;
+  for (const a of G.animals) if (dogOk(a)) { const d = hyp(a.x - x, a.y - y); if (d < bd) { bd = d; best = a; } }
+  return best;
+}
+function dogReset() { Object.assign(D, { x: P.x - 14, y: P.y + 4, st: 'heel', a: null, spd: 0 }); }
+function holdAnimal(a, x) { a.bay = 1.2; a.bayX = x; }
+function sendDog() {
+  if (!G.started || G.paused) return;
+  if (D.st === 'search' || D.st === 'mark') { D.st = 'back'; D.a = null; sfx.whistle(); msg('Du kaller inn hunden.'); return; }
+  if (G.treats <= 0) { sfx.deny(); msg('Tom for godbiter. Kjøp flere i bua.'); return; }
+  // finnes det ikke dyr innen rekkevidde, slår hunden ut mot pekeren og ser etter dyr der
+  const an = Math.atan2(MOUSE.wy - P.y, MOUSE.wx - P.x);
+  D.st = 'search'; D.a = dogFind(P.x, P.y, DOG_R); D.t = 25; D.tx = P.x + Math.cos(an) * 360; D.ty = P.y + Math.sin(an) * 300;
+  sfx.whistle(); msg('Hunden går ut og søker.');
+}
+function dogBack(text) { D.st = 'back'; D.a = null; if (text) msg(text, 'warn'); }
+function dogUpdate(dt) {
+  if (!G.started) return;
+  D.t -= dt; D.ph += dt * 2.6;
+  const dp = hyp(P.x - D.x, P.y - D.y);
+  let tx = P.x, ty = P.y, spd = 110;
+  if (D.st === 'heel') {
+    // følger etter et par steg unna; har du flyttet deg langt (T), er den straks hos deg igjen
+    if (dp > 600) { dogReset(); return; }
+    spd = dp > 60 ? 105 : clamp((dp - 14) * 3, 0, 80);
+  } else if (D.st === 'search') {
+    if (!dogOk(D.a)) { if (D.a) { D.tx = D.a.x; D.ty = D.a.y; } D.a = dogFind(D.x, D.y, 400); }
+    if (D.a) {
+      tx = D.a.x; ty = D.a.y;
+      if (hyp(tx - D.x, ty - D.y) < 64) {
+        D.st = 'mark'; D.barkT = 0; G.treats--; save();
+        msg('Hunden står for vilt ' + Math.round(dp * M_PER_PX) + ' m unna. Følg losen.', 'good');
+      }
+    } else { tx = D.tx; ty = D.ty; if (hyp(tx - D.x, ty - D.y) < 12) D.t = 0; }
+    if (D.st === 'search' && D.t <= 0) dogBack('Hunden fant ingenting og kommer tilbake.');
+  } else if (D.st === 'mark') {
+    if (!dogOk(D.a)) dogBack(D.a && D.a.state === 'flee' ? 'Dyret brøt ut. Hunden kommer tilbake.' : '');
+    else {
+      spd = 0; D.face = D.a.x > D.x ? 1 : -1;
+      if (isAuth()) holdAnimal(D.a, D.x);
+      else if ((D.netT -= dt) <= 0) { D.netT = 0.4; netSend({ t: 'bay', to: NET.host, id: D.a.id, x: D.x }); }
+      if ((D.barkT -= dt) <= 0) { D.barkT = rnd(0.9, 1.6); sfx.woof(clamp(1 - dp / 1400, 0.08, 1), clamp((D.x - P.x) / 500, -0.9, 0.9)); }
+    }
+  } else if (dp < 24) D.st = 'heel';
+  // litt slingrende når den søker, sakte i vann; stammer og stein dytter den rundt
+  const ex = tx - D.x, ey = ty - D.y, ed = hyp(ex, ey);
+  if (spd > 0 && ed > 1) {
+    const h = Math.atan2(ey, ex) + (D.st === 'search' ? Math.sin(D.ph) * 0.6 * smooth(40, 160, ed) : 0);
+    D.waterT -= dt; if (D.waterT <= 0) { D.waterT = 0.25; D.wet = isWater(D.x, D.y); }
+    const s = Math.min(spd * (D.wet ? 0.45 : 1), ed / Math.max(dt, 1e-3)), vx = Math.cos(h) * s;
+    const c = collide(D.x + vx * dt, D.y + Math.sin(h) * s * 0.85 * dt, 2);
+    D.spd = hyp(c.x - D.x, c.y - D.y) / Math.max(dt, 1e-3); D.x = c.x; D.y = c.y;
+    if (Math.abs(vx) > 2) D.face = vx > 0 ? 1 : -1;
+  } else D.spd = 0;
+  D.anim += D.spd * dt * (D.spd > 60 ? 0.085 : 0.14);
+}
+function dogSprite(d) {
+  if (d.st === 'mark') return DOGSPR.mark[0];
+  return d.spd > 60 ? DOGSPR.run[(d.anim | 0) & 3] : d.spd > 3 ? DOGSPR.walk[(d.anim | 0) & 3] : DOGSPR.stand[0];
+}
+
 // ---------- oppdatering ----------
 const KEYS = {}, MOUSE = { x: 0, y: 0, wx: 0, wy: 0, locked: false };
 function playerUpdate(dt) {
@@ -487,6 +559,7 @@ function update(dt) {
   if (frozen) return;
   G.hunters = hunters();
   playerUpdate(dt);
+  dogUpdate(dt);
   netUpdate(dt);
   if (isAuth()) {
     for (const a of G.animals.slice()) animalUpdate(a, dt);

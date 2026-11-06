@@ -325,6 +325,10 @@ const SPEC = {
 };
 const SPECIES = Object.keys(SPEC);
 for (const k of SPECIES) SPEC[k].id = k;
+// Jakthunden tegnes med samme oppskrift som dyra, men brun med hvitt bryst og oransje vest, så den ikke forveksles med vilt
+const DOG = { name: 'Hund', seed: 141, L: 12, Hh: 5, leg: 5, lw: 2, ll: 1, legIn: 2, sw: 1.6, hock: 0.7, rumpR: 2.7, chestR: 2.9, neckL: 3.2, neckA: 44, neckW: 1.8, hl: 3.8, hh: 3.2, sl: 2.6, sh: 1.6, sdy: 0.6, hd: 10, ear: 3, headT: 'dog', vest: 1,
+  col: { dk: '#4a3020', body: '#6e4a30', lt: '#8e6640', belly: '#ece4d4', legLo: '#ddd4c2', legFar: '#3e281a', nose: '#1a1412' } };
+const DOGSPR = {};
 
 const ANT = {
   roe: [[[0, 0], [-0.5, 2.5], [-1, 5]], [[-0.6, 3], [1.2, 4.6]], [[-0.9, 4], [-2.4, 5.6]]],
@@ -353,14 +357,14 @@ function shEll(p, cx, cy, rx, ry, tn, belly, seed) {
   });
 }
 
-function genAnimal(sp, sex, pose, f) {
-  const A = SPEC[sp], c = A.col, p = new Pix(AW, AH), ox = AOX, oy = AOY, L = A.L, Hh = A.Hh, leg = A.leg, seed = A.seed;
+function genAnimal(sp, sex, pose, f, spec) {
+  const A = spec || SPEC[sp], c = A.col, p = new Pix(AW, AH), ox = AOX, oy = AOY, L = A.L, Hh = A.Hh, leg = A.leg, seed = A.seed;
   const tn = T(c.dk, c.body, c.lt), belly = c.belly ? C(c.belly) : 0;
   const legU = C(c.legU || c.body), legLo = C(c.legLo || c.dk), legF = C(c.legFar || c.dk), hoof = C('#1c1614');
   const ntn = c.neck ? T(c.neckDk, c.neck, c.neckLt) : tn;
   const stn = c.snout ? T(c.dk, c.snout, c.snout) : tn;
   const antT = A.ant && A.ant[sex], antC = C('#d6c8a2'), antD = C('#8e7e60');
-  const dead = pose === 'dead', canid = A.headT === 'fox' || A.headT === 'wolf', dark = C('#1a1412');
+  const dead = pose === 'dead', canid = A.headT === 'fox' || A.headT === 'wolf' || A.headT === 'dog', dark = C('#1a1412');
   const htn = A.headT === 'badger' ? T('#b8b6b0', '#e4e2dc', '#f4f2ec') : tn;
   let off = [0, 0, 0, 0], lift = [0, 0, 0, 0], bob = 0, nA = A.neckA, earA = 112, tailDroop = 3;
   if (pose === 'walk') { const s = [1, 0, -1, 0][f] * A.sw; off = [s, -s, -s, s]; if (f === 1) lift = [1, 0, 0, 1]; if (f === 3) lift = [0, 1, 1, 0]; nA -= 6; }
@@ -371,7 +375,15 @@ function genAnimal(sp, sex, pose, f) {
   } else if (pose === 'alert') { nA = Math.min(86, nA + 18); earA = 96; }
   let by, Sx, Sy, hx, hy, hang, antRot = 0, nearLegs = null;
   const tailFn = (ty, droop) => {
-    if (canid) {
+    if (A.headT === 'dog') {
+      // hunden bærer halen bakover; når den står for vilt (alert), peker halen rett til værs med lys tupp
+      const up = pose === 'alert', x0 = ox - L / 2 + 1, tip = T('#c8c0b0', '#ece4d4', '#ffffff');
+      for (let i = 0; i <= 10; i++) {
+        const t = i / 10, x = up ? x0 - 0.5 + 1.2 * t * t : x0 - 5 * t, y = up ? ty - 1 - 7 * t : ty - 1 - (droop ? 3 * t - 1.2 * t * t : 1 * t);
+        const rr = (up ? 1.1 : 0.8) + 0.4 * Math.sin(t * Math.PI);
+        shEll(p, x, y, rr, rr, up && t > 0.7 ? tip : tn, 0, seed + 8);
+      }
+    } else if (canid) {
       const tip = A.headT === 'fox' ? T('#cfc6b6', '#efe6d6', '#ffffff') : T('#2a2622', '#3a3430', '#4c4640');
       for (let i = 0; i <= 12; i++) { const t = i / 12, x = ox - L / 2 + 1 - A.tail * t, y = ty + droop * t * t, rr = 1 + Math.sin(t * Math.PI) * 1.5; shEll(p, x, y, rr, rr, t > 0.72 ? tip : tn, 0, seed + 8); }
     } else if (A.headT === 'lynx') {
@@ -414,6 +426,8 @@ function genAnimal(sp, sex, pose, f) {
     if (A.tail === 2) { p.set(ox - L / 2 - 0.4, by - 1.5, C(c.tailC || c.dk)); p.set(ox - L / 2 - 0.4, by - 0.5, C(c.tailC || c.dk)); }
     if (A.headT === 'boar') for (let x = ox - L / 2 + 3; x <= ox + L / 2 + 1; x++) { const dx = (x - ox) / (L / 2 + 1), ty = by - Hh / 2 * Math.sqrt(Math.max(0, 1 - dx * dx)) - (x > ox ? 0.6 : 0); p.set(x, ty - (x & 1), C(c.dk)); p.set(x, ty + 1 - (x & 1), C(c.dk)); }
     spots();
+    // signalvest over ryggen og sidene på hunden
+    if (A.vest) for (let y = Math.floor(by - Hh / 2 - 1); y <= by + 1; y++) for (let x = Math.round(ox - 2); x <= ox + 2; x++) if (p.get(x, y)) p.set(x, y, C(y < by - Hh / 2 + 1 ? '#ffb050' : y > by ? '#c45a1c' : '#ee7c2a'));
     Sx = ox + L / 2 - A.chestR * 0.7; Sy = by - Hh * 0.2;
     if (pose === 'graze') { const drop = (oy - A.hh / 2 - 1) - Sy; hx = Sx + Math.max(A.neckL * 0.9, drop * 0.72); hy = oy - A.hh / 2 - 1 + (f ? -1 : 0); hang = 1.0; antRot = 0.6; }
     else { const a = nA * Math.PI / 180; hx = Sx + Math.cos(a) * A.neckL; hy = Sy - Math.sin(a) * A.neckL; hang = A.hd * Math.PI / 180; }
@@ -588,6 +602,14 @@ function genFx() {
   { const p = new Pix(11, 10), cl = { a: C('#e2d4ae'), h: C('#9a6438'), e: C('#2a1c14') };
     ['', '.a.a...a.a.', '.aaa...aaa.', '..aa...aa..', '..hhhhhhh..', '...heheh...', '...hhhhh...', '....hhh....', '....eee....'].forEach((r, j) => r.split('').forEach((b, i) => { if (cl[b]) p.set(i, j, cl[b]); }));
     p.outlineAuto(0.3); FX.deer = p.canvas(); }
+  // hundehode med oransje halsbånd: markør for hunden ved skjermkanten
+  { const p = new Pix(11, 10), cl = { d: C('#4a3020'), b: C('#8e6640'), w: C('#ece4d4'), e: C('#1a1412'), o: C('#ee7c2a') };
+    ['...d.......', '...dd......', '..bbbd.....', '.bbbbbb....', '.bbebbbbbb.', '.bbbbbbbbbe', '.bbbbwwww..', '.bbbbw.....', '.ooooo.....', '.bbbbb.....'].forEach((r, j) => r.split('').forEach((b, i) => { if (cl[b]) p.set(i, j, cl[b]); }));
+    p.outlineAuto(0.3); FX.dog = p.canvas(); }
+  // nål med utropstegn over hunden når den står for vilt
+  { const p = new Pix(11, 12), cl = { o: C('#ee7c2a'), h: C('#ffb050'), w: C('#fff4d6') };
+    ['..hhhhh..', '.hhowooo.', 'ohoowoooo', 'oooowoooo', 'oooowoooo', 'ooooooooo', '.ooowooo.', '..ooooo..', '...ooo...', '....o....'].forEach((r, j) => r.split('').forEach((b, i) => { if (cl[b]) p.set(1 + i, 1 + j, cl[b]); }));
+    p.outlineAuto(0.3); FX.mark = p.canvas(); }
   { const p = new Pix(7, 7); p.set(3, 0, C('#f2efe2')); p.rect(2, 1, 3, 1, C('#f2efe2')); p.rect(1, 2, 5, 1, C('#f2efe2')); p.outlineAuto(0.25); FX.arrow = p.canvas(); }
   FX.bird = [['101', '010'], ['000', '111']].map(r => { const p = new Pix(3, 2); r.forEach((row, j) => row.split('').forEach((b, i) => { if (b === '1') p.set(i, j, C('#1c2224')); })); return p.canvas(); });
 }
@@ -610,6 +632,7 @@ function genIcons() {
   mk('hagle', p => { for (let i = 0; i < 11; i++) { const x = 6 + i, y = Math.round(11 - i * 0.6); p.set(x, y, st[1]); p.set(x, y - 1, st[2]); } p.rect(4, 10, 3, 2, st[0]); p.line(7, 12, 10, 10, wd[2], 1); p.rect(1, 11, 4, 2, wd[1]); p.rect(1, 13, 2, 1, wd[0]); p.set(1, 11, wd[2]); p.set(5, 12, st[0]); });
   mk('choke', p => { p.rect(3, 7, 12, 4, st[1]); p.rect(3, 7, 12, 1, st[2]); p.rect(3, 10, 12, 1, st[0]); for (let x = 4; x < 9; x += 2) { p.set(x, 8, st[0]); p.set(x, 9, st[0]); } p.rect(12, 6, 3, 6, st[0]); p.rect(13, 7, 1, 4, st[2]); });
   mk('shell', p => { p.rect(6, 3, 6, 10, C('#b8302a')); p.rect(6, 3, 1, 10, C('#d85040')); p.rect(11, 3, 1, 10, C('#8a2020')); p.rect(7, 3, 4, 1, C('#8a2020')); p.rect(5, 13, 8, 3, br[1]); p.rect(5, 13, 1, 3, br[2]); p.rect(12, 13, 1, 3, br[0]); });
+  mk('treat', p => { const c = T('#9a7a50', '#d2bc90', '#f2e6c8'); p.line(5, 12, 12, 5, c[1], 3); for (const [x, y] of [[3, 12], [5, 14], [12, 3], [14, 5]]) p.ell(x, y, 1.8, 1.8, c[1]); p.line(5, 11, 11, 5, c[2], 1); p.line(6, 13, 13, 6, c[0], 1); });
   mk('boots', p => { p.rect(5, 2, 5, 10, wd[1]); p.rect(5, 2, 1, 10, wd[2]); p.rect(5, 10, 9, 4, wd[1]); p.rect(11, 10, 3, 1, wd[2]); p.rect(4, 14, 11, 2, C('#201814')); p.rect(5, 2, 5, 1, wd[0]); p.set(9, 5, br[2]); p.set(9, 7, br[2]); });
   return I;
 }
@@ -642,6 +665,8 @@ function genAll() {
       o.dead = [gen(sp, sex, 'dead', 0)];
     }
   }
+  DOGSPR.stand = [genAnimal(null, 'm', 'stand', 0, DOG)]; DOGSPR.mark = [genAnimal(null, 'm', 'alert', 0, DOG)];
+  DOGSPR.walk = [0, 1, 2, 3].map(f => genAnimal(null, 'm', 'walk', f, DOG)); DOGSPR.run = [0, 1, 2, 3].map(f => genAnimal(null, 'm', 'run', f, DOG));
   for (const d of ['side', 'down', 'up']) HUN[d] = [0, 1].map(a => [0, 1, 2, 3, 4].map(i => genHunter(d, i, a)));
   genFx(); ICON = genIcons();
 }
