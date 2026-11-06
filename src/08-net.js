@@ -72,6 +72,22 @@ function peerState(m) {
   r.face = HUN[m.f] ? m.f : 'down'; r.flip = !!m.fl; r.moving = !!m.mv; r.sneak = !!m.sn; r.run = !!m.rn; r.aim = !!m.am; r.wet = !!m.w; r.in = !!m.in;
   r.camo = clamp(u[0] | 0, 0, 2); r.deo = clamp(u[1] | 0, 0, 2); r.boots = clamp(u[2] | 0, 0, 2);
 }
+// T: teleporter bort til en annen jeger; trykker du igjen, kommer du til den neste
+function goToHunter() {
+  if (P.aim) return;
+  const L = [...NET.peers.values()].filter(r => r.started);
+  if (!L.length) { sfx.deny(); msg('Det er ingen andre jegere i skogen.'); return; }
+  const r = L[(L.findIndex(q => q.id === NET.goTo) + 1) % L.length];
+  NET.goTo = r.id;
+  // et steg ved siden av, helst på tørt land og utenfor trær og steiner
+  let x = r.tx, y = r.ty;
+  for (let k = 0; k < 8; k++) {
+    const an = Math.PI / 2 + k * Math.PI / 4, c = collide(r.tx + Math.cos(an) * 16, r.ty + Math.sin(an) * 12, 3);
+    if (!isWater(c.x, c.y)) { x = c.x; y = c.y; break; }
+  }
+  P.x = x; P.y = y; CAM.x = x; CAM.y = y - 10;
+  msg('Du er hos ' + r.name + '.', 'good'); sfx.ui();
+}
 
 // ---------- meldinger ----------
 function netMsg(m) {

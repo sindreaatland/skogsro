@@ -22,6 +22,7 @@ function hudUpdate(dt) {
   const [ws, wd] = windName(); setText('windS', ws); setText('windD', wd);
   const others = [...NET.peers.values()].filter(r => r.started).map(r => r.name);
   $('who').hidden = !others.length; if (others.length) setText('who', 'Sammen med ' + others.join(', '));
+  $('goKey').hidden = !others.length;
   $('windArrow').style.transform = 'rotate(' + (G.wind.a + Math.PI / 2) + 'rad)';
   // våpen og ammo
   const hg = hagle(), cap = gunCap(), key = G.gun + ':' + cap + ':' + P.ammo + ':' + (P.reload > 0);
@@ -187,6 +188,7 @@ function bindInput() {
       case 'KeyQ': doCall(); break;
       case 'KeyE': placeScent(); break;
       case 'KeyF': interact(); break;
+      case 'KeyT': goToHunter(); break;
       case 'KeyJ': case 'Tab': openBook(); break;
       case 'KeyM': auMute(!AU.muted); $('muteBtn').setAttribute('aria-pressed', AU.muted); msg(AU.muted ? 'Lyden er av.' : 'Lyden er på.'); break;
     }
