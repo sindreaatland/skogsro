@@ -43,13 +43,16 @@ function hudUpdate(dt) {
   $('breath').hidden = !(G.started && (P.aim || P.breath < 1)); $('breathFill').style.width = (P.breath * 100) + '%';
   $('breathFill').classList.toggle('low', P.breath < 0.25 || P.winded);
   setText('breathTxt', P.winded ? 'Andpusten · hent deg inn' : P.aim ? 'Pust · hold Space for å holde pusten' : 'Pust · hold Space for å springe');
+  // helse, leirutstyr og arbeid som pågår
+  $('hp').hidden = !G.started;
+  setText('hpTxt', 'Helse ' + Math.ceil(P.hp) + (P.sick ? ' · forkjølet' : P.warm ? ' · varmer deg' : ''));
+  $('hpFill').style.width = P.hp + '%'; $('hpFill').classList.toggle('low', P.sick || P.hp < 30);
+  setText('campN', 'Ved × ' + G.wood + ' · kjøtt × ' + G.meat); setText('campS', 'Bål · ' + G.matches + ' fyrstikker');
+  $('work').hidden = !P.work;
+  if (P.work) { setText('workTxt', { chop: 'Hogger …', build: 'Bygger gapahuk …', cook: 'Steker kjøtt …' }[P.work.kind]); $('workFill').style.width = (P.work.t / P.work.dur * 100) + '%'; }
   // handlingsprompt
   let pr = '';
-  if (G.started && !G.paused && !P.aim) {
-    const a = nearestDead();
-    if (a) pr = 'Ta vare på ' + SPEC[a.sp].name.toLowerCase() + ' (' + SPEC[a.sp].sexn[a.sex] + ')';
-    else { const c = nearestCabin(P.x, P.y); if (hyp(P.x - (c.x - 13), P.y - (c.y + 6)) < 26) pr = 'Gå inn i bua'; }
-  }
+  if (G.started && !G.paused && !P.aim && !P.work) { const ac = action(); if (ac) pr = ac[0]; }
   $('prompt').hidden = !pr; if (pr) setText('promptTxt', pr);
   if (G.panel === 'pause') $('pauseNote').hidden = !mp();
   if (HUD.dirtyMsg) {
@@ -94,6 +97,7 @@ function renderShop() {
     bt.onclick = () => buy(u); row.appendChild(bt); list.appendChild(row);
   }
   if (shopCat === 'lure') supplyRow(list, 'flask', 'Påfyll av luktstoff', `Du har ${G.scents} flasker.`, `Tre flasker med ${UPG[8].lv[lv('scentLv')].toLowerCase()}.`, 'flask', FLASK_PRICE, () => { G.scents += 3; });
+  if (shopCat === 'camp') supplyRow(list, 'match', 'Fyrstikker', `Du har ${G.matches} fyrstikker.`, `En eske med ${MATCH_N}. Hver fyrstikk tenner ett bål.`, 'match', MATCH_PRICE, () => { G.matches += MATCH_N; });
   if (shopCat === 'gear') supplyRow(list, 'treat', 'Godbiter til hunden', `Du har ${G.treats} godbiter.`, `${TREAT_N} godbiter. Hunden får én hver gang den står for et dyr.`, 'treat', TREAT_PRICE, () => { G.treats += TREAT_N; });
   const st = $('stats'); st.innerHTML = '';
   for (const [n, v, t] of statRows()) {
@@ -118,11 +122,13 @@ function buy(u) {
   G.money -= p; G.up[u.id] = L + 1; sfx.buy();
   if (u.id === 'mag' || u.id === 'hagle') refill();
   if (u.id === 'hagle' && L === 0) msg('Trykk 2 for å ta hagla, 1 for rifla.', 'good');
+  if (u.id === 'axe') msg('Stå inntil et tre og trykk F for å hogge ved.', 'good');
   save(); renderShop();
 }
 function openShop() {
   G.paused = true; G.panel = 'shop'; P.aim = false; try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
-  refill(); P.cold = 0; // ovnen i bua tørker klærne
+  // ovnen og maten i bua gjør deg tørr, varm og frisk
+  refill(); if (P.sick) msg('Du varmet deg ved ovnen i bua og er frisk igjen.', 'good'); healFull();
   $('sleepBtn').hidden = mp();
   renderShop(); $('shop').hidden = false; sfx.ui();
 }
@@ -158,7 +164,7 @@ function closePanel() { if (!G.panel) return; $(G.panel).hidden = true; G.panel 
 
 // ---------- start ----------
 function startGame(fresh) {
-  if (fresh) { G.money = 0; for (const u of UPG) G.up[u.id] = 0; G.scents = 2; G.treats = TREAT_START; G.journal = []; if (!mp()) { G.day = 1; G.hour = 6.6; G.animals = []; } save(); }
+  if (fresh) { G.money = 0; for (const u of UPG) G.up[u.id] = 0; G.scents = 2; G.treats = TREAT_START; G.wood = G.matches = G.meat = 0; healFull(); G.huts = []; G.cut = new Set(); chunks.clear(); G.journal = []; if (!mp()) { G.day = 1; G.hour = 6.6; G.animals = []; } save(); }
   netSetName(); auInit(); G.started = true; G.paused = false; $('title').hidden = true; netAway();
   if (!lv('hagle')) G.gun = 'rifle';
   refill(); dogReset();
@@ -196,6 +202,8 @@ function bindInput() {
       case 'KeyF': interact(); break;
       case 'KeyT': goToHunter(); break;
       case 'KeyH': sendDog(); break;
+      case 'KeyB': lightFire(); break;
+      case 'KeyG': buildHut(); break;
       case 'KeyJ': case 'Tab': openBook(); break;
       case 'KeyM': auMute(!AU.muted); $('muteBtn').setAttribute('aria-pressed', AU.muted); msg(AU.muted ? 'Lyden er av.' : 'Lyden er på.'); break;
     }
@@ -226,7 +234,7 @@ function bindInput() {
   addEventListener('resize', resize);
   document.querySelectorAll('#shopTabs button').forEach(bt => bt.onclick = () => { shopCat = bt.dataset.cat; sfx.ui(); renderShop(); });
   document.querySelectorAll('[data-close]').forEach(bt => bt.onclick = closePanel);
-  $('sleepBtn').onclick = () => { if (mp()) return; if (G.hour > 5.5) G.day++; G.hour = 5.5; G.animals = []; G.scentObjs = []; dogReset(); msg('Du sov godt. Det lysner over skogen.'); save(); closePanel(); };
+  $('sleepBtn').onclick = () => { if (mp()) return; sleepToDawn('Du sov godt. Det lysner over skogen.'); closePanel(); };
   $('startBtn').onclick = () => startGame(false);
   $('pauseBtn').onclick = () => openPause();
   $('resumeBtn').onclick = resume;
@@ -244,7 +252,7 @@ function boot() {
   genAll();
   for (const k in ICON) ICONURL[k] = dataURL(ICON[k]);
   for (const sp of SPECIES) ICONURL['an_' + sp] = dataURL(cropSprite(ANI[sp].m.stand[0], 2));
-  $('windArrow').src = dataURL(FX.arrow); $('callIco').src = ICONURL.call; $('scentIco').src = ICONURL.scent; $('treatIco').src = ICONURL.treat;
+  $('windArrow').src = dataURL(FX.arrow); $('callIco').src = ICONURL.call; $('scentIco').src = ICONURL.scent; $('treatIco').src = ICONURL.treat; $('campIco').src = ICONURL.fire;
   const has = load();
   P.x = -13; P.y = 6; CAM.x = P.x; CAM.y = P.y - 30;
   if (has) {

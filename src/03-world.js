@@ -193,6 +193,7 @@ function genChunk(cx, cy) {
     else if (cn > 0.36) k = t < 0.26 ? 'spruce' : t < 0.62 ? 'pine' : t < 0.92 ? 'birch' : t < 0.98 ? 'rowan' : 'snag';
     else k = t < 0.7 ? 'birch' : t < 0.82 ? 'rowan' : t < 0.93 ? 'pine' : 'spruce';
     const o = { k, x, y, v: (hash2(gx, gy, 105) * SPR[k].length) | 0, ph: hash2(gx, gy, 106) * TAU, a: 1, r: SPR[k][0].r || 0 };
+    if (G.cut.has(x + ',' + y)) toStump(o);
     ch.objs.push(o); ch.col.push(o);
   }
   // undervegetasjon
@@ -264,19 +265,32 @@ function evictChunks(pts) {
   for (const [k, ch] of chunks) if (!pts.some(p => Math.abs(ch.cx - Math.floor(p.x / CS)) <= 5 && Math.abs(ch.cy - Math.floor(p.y / CS)) <= 5)) chunks.delete(k);
 }
 
-// Kollisjon mot stammer, stein og hytte
+// ---------- hogde trær ----------
+// Et felt tre blir en stubbe. Nøkkelen er treets faste posisjon, så biten blir lik når den lages på nytt
+function toStump(o) { o.v = (hash2(o.x, o.y, 9) * SPR.stump.length) | 0; o.k = 'stump'; o.r = SPR.stump[o.v].r; o.a = 1; }
+function cutTree(x, y) {
+  G.cut.add(x + ',' + y);
+  const ch = chunks.get(Math.floor(x / CS) + ',' + Math.floor(y / CS)), o = ch && ch.objs.find(o => o.x === x && o.y === y && CHOP[o.k]);
+  if (o) toStump(o);
+}
+
+// Kollisjon mot stammer, stein, hytte og bakveggen i gapahuker
 const COL = { x: 0, y: 0 };
+// skyver punktet ut av rektangelet langs korteste vei
+function outOfRect(x, y, x0, y0, x1, y1) {
+  if (x > x0 && x < x1 && y > y0 && y < y1) { const dl = x - x0, dr = x1 - x, dt = y - y0, db = y1 - y, m = Math.min(dl, dr, dt, db); if (m === dl) x = x0; else if (m === dr) x = x1; else if (m === dt) y = y0; else y = y1; }
+  COL.x = x; COL.y = y;
+}
 function collide(x, y, r) {
   const cx0 = Math.floor((x - 40) / CS), cx1 = Math.floor((x + 40) / CS), cy0 = Math.floor((y - 24) / CS), cy1 = Math.floor((y + 24) / CS);
   for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) for (const o of getChunk(cx, cy).col) {
-    if (o.rect) {
-      const rx0 = o.x + o.rect[0] - r, ry0 = o.y + o.rect[1] - r, rx1 = o.x + o.rect[2] + r, ry1 = o.y + o.rect[3] + r;
-      if (x > rx0 && x < rx1 && y > ry0 && y < ry1) { const dl = x - rx0, dr = rx1 - x, dt = y - ry0, db = ry1 - y, m = Math.min(dl, dr, dt, db); if (m === dl) x = rx0; else if (m === dr) x = rx1; else if (m === dt) y = ry0; else y = ry1; }
-    } else {
+    if (o.rect) { outOfRect(x, y, o.x + o.rect[0] - r, o.y + o.rect[1] - r, o.x + o.rect[2] + r, o.y + o.rect[3] + r); x = COL.x; y = COL.y; }
+    else {
       const dx = x - o.x, dy = y - o.y, rr = o.r + r, d2 = dx * dx + dy * dy;
       if (d2 < rr * rr && d2 > 1e-4) { const d = Math.sqrt(d2); x = o.x + dx / d * rr; y = o.y + dy / d * rr; }
     }
   }
+  for (const h of G.huts) { outOfRect(x, y, h.x - 16 - r, h.y - 14 - r, h.x + 16 + r, h.y - 1 + r); x = COL.x; y = COL.y; }
   COL.x = x; COL.y = y; return COL;
 }
 // Stammer som står i skuddlinja

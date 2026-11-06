@@ -34,6 +34,7 @@ button { font: inherit; color: inherit; }
 #clock { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
 #who { font-size: 13px; color: var(--moss); max-width: 34ch; }
 #cold { display: grid; gap: 3px; margin-top: 4px; } #cold .lab { color: #a4ccc6; } #coldFill { background: #7fb0c8; }
+#hp { display: grid; gap: 3px; margin-top: 4px; } #hpFill.low { background: var(--rust); }
 #tr { top: calc(14px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); padding: 8px 12px; display: flex; align-items: center; gap: 12px; }
 #windArrow { width: 28px; height: 28px; transition: transform .6s ease; }
 #windS { font-size: 15px; } #windD { font-size: 13px; color: var(--muted); }
@@ -48,7 +49,7 @@ button { font: inherit; color: inherit; }
 #keys { left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
 kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); background: #26332b; border: 1px solid #3d4f42; border-bottom-width: 3px; padding: 1px 5px; margin-right: 4px; }
 
-#bar { right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(52px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 8px; align-items: stretch; }
+#bar { right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(52px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap-reverse; justify-content: flex-end; gap: 8px; align-items: stretch; max-width: min(calc(100vw - min(520px, 60vw) - 56px), calc(50vw - 140px)); }
 .slot { padding: 8px 10px; display: flex; gap: 10px; align-items: center; position: relative; overflow: hidden; }
 .slot img { width: 36px; height: 36px; }
 .slot .k { position: absolute; top: 3px; right: 4px; }
@@ -57,11 +58,12 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 #ammo { display: flex; gap: 3px; height: 26px; align-items: flex-end; }
 .rnd { width: 7px; height: 22px; background: #3a3426; border: 1px solid #1a1612; }
 .rnd.on { background: linear-gradient(#c8683a 0 30%, #e0aa40 30%); }
-#gunName { padding-right: 20px; } .rnd.sh { width: 9px; } .rnd.sh.on { background: linear-gradient(#c43a2c 0 72%, #d8a840 72%); }
+#gunName, #campN { padding-right: 20px; } .rnd.sh { width: 9px; } .rnd.sh.on { background: linear-gradient(#c43a2c 0 72%, #d8a840 72%); }
 #breath { left: 50%; transform: translateX(-50%); bottom: calc(10vh + env(safe-area-inset-bottom, 0px)); width: 240px; padding: 6px 10px; display: grid; gap: 4px; text-align: center; }
 .meter { height: 8px; background: #1f2a23; border: 1px solid #3a4a3e; }
 .meter i { display: block; height: 100%; background: var(--moss); }
 #breathFill.low { background: var(--rust); }
+#work { left: 50%; transform: translateX(-50%); bottom: calc(26vh + env(safe-area-inset-bottom, 0px)); width: 220px; padding: 6px 10px; display: grid; gap: 4px; text-align: center; }
 #prompt { left: 50%; transform: translateX(-50%); bottom: calc(26vh + env(safe-area-inset-bottom, 0px)); padding: 8px 14px; font-size: 17px; }
 
 /* Bua og jaktboka */
@@ -129,32 +131,34 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 #nameIn:focus { border-color: var(--moss); outline: none; }
 #mpTxt { font-size: 14px; color: var(--muted); max-width: 52ch; line-height: 1.4; text-wrap: balance; }
 #loading { font-family: var(--f-lab); letter-spacing: .14em; font-size: 12px; color: var(--muted); }
-@media (max-width: 900px) { #keys { display: none; } #log { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); } }
+@media (max-width: 900px) { #keys { display: none; } #log { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); } #bar { max-width: none; } }
 @media (prefers-reduced-motion: reduce) { #windArrow, .msg { transition: none; } }
 </style>
 
 <canvas id="cv" aria-label="Skogen sett ovenfra"></canvas>
 
-<div id="tl" class="hud box"><div id="kr">0 kr</div><div id="clock">Dag 1 · 06:30</div><div id="who" hidden></div><div id="cold" hidden><div class="lab" id="coldTxt"></div><div class="meter"><i id="coldFill"></i></div></div></div>
+<div id="tl" class="hud box"><div id="kr">0 kr</div><div id="clock">Dag 1 · 06:30</div><div id="who" hidden></div><div id="hp" hidden><div class="lab" id="hpTxt">Helse</div><div class="meter"><i id="hpFill"></i></div></div><div id="cold" hidden><div class="lab" id="coldTxt"></div><div class="meter"><i id="coldFill"></i></div></div></div>
 <div id="tr" class="hud box"><img id="windArrow" alt="Vindretning"><div><div class="lab">Vind</div><div id="windS">Svak vind</div><div id="windD">fra sørvest</div></div></div>
 <div id="tbtns" class="hud"><button class="tbtn" id="pauseBtn" type="button">Pause (Esc)</button><button class="tbtn" id="bookBtn" type="button">Jaktbok (J)</button><button class="tbtn" id="muteBtn" type="button" aria-pressed="false">Lyd (M)</button></div>
 <div id="log" class="hud" aria-live="polite"></div>
 <div id="prompt" class="hud box" hidden><kbd>F</kbd><span id="promptTxt"></span></div>
+<div id="work" class="hud box" hidden><div class="lab" id="workTxt"></div><div class="meter"><i id="workFill"></i></div></div>
 <div id="breath" class="hud box" hidden><div class="lab" id="breathTxt">Pust · hold Space for å holde pusten</div><div class="meter"><i id="breathFill"></i></div></div>
 <div id="bar" class="hud">
   <div class="slot box"><div><div class="lab" id="gunName">Rifle</div><div id="ammo"></div><div class="slot-s" id="ammoTxt"></div></div><kbd class="k">R</kbd></div>
   <div class="slot box"><img id="callIco" alt=""><div><div class="slot-t" id="callName">Rådyrpipe</div><div class="slot-s">Lokk</div></div><kbd class="k">Q</kbd><div id="callCd"></div></div>
   <div class="slot box"><img id="scentIco" alt=""><div><div class="slot-t" id="scentN">× 2</div><div class="slot-s">Luktstoff</div></div><kbd class="k">E</kbd></div>
+  <div class="slot box"><img id="campIco" alt=""><div><div class="slot-t" id="campN">Ved × 0 · kjøtt × 0</div><div class="slot-s" id="campS">Bål · 0 fyrstikker</div></div><kbd class="k">B</kbd></div>
   <div class="slot box"><img id="treatIco" alt=""><div><div class="slot-t" id="treatN">× 3</div><div class="slot-s" id="dogTxt">Send ut hunden</div></div><kbd class="k">H</kbd></div>
 </div>
-<div id="keys" class="hud"><span><kbd>WASD</kbd>gå</span><span><kbd>Shift</kbd>snik</span><span><kbd>Høyreklikk</kbd>sikt</span><span><kbd>Venstreklikk</kbd>skyt</span><span><kbd>1</kbd><kbd>2</kbd>våpen</span><span><kbd>Space</kbd>spring · hold pusten</span><span><kbd>F</kbd>handling</span><span><kbd>H</kbd>hund</span><span id="goKey" hidden><kbd>T</kbd>til jeger</span><span><kbd>Esc</kbd>pause</span></div>
+<div id="keys" class="hud"><span><kbd>WASD</kbd>gå</span><span><kbd>Shift</kbd>snik</span><span><kbd>Høyreklikk</kbd>sikt</span><span><kbd>Venstreklikk</kbd>skyt</span><span><kbd>1</kbd><kbd>2</kbd>våpen</span><span><kbd>Space</kbd>spring · hold pusten</span><span><kbd>F</kbd>handling</span><span><kbd>H</kbd>hund</span><span><kbd>B</kbd>bål</span><span><kbd>G</kbd>gapahuk</span><span id="goKey" hidden><kbd>T</kbd>til jeger</span><span><kbd>Esc</kbd>pause</span></div>
 
 <div id="shop" class="sheet" hidden>
   <div class="card" role="dialog" aria-label="Jaktbua">
     <div class="card-h"><h2>Jaktbua</h2><span class="money" id="shopKr">0 kr</span><button class="xbtn" type="button" data-close>Gå ut (Esc)</button></div>
     <div class="shop-body">
       <div class="shop-main">
-        <div id="shopTabs" role="tablist"><button type="button" role="tab" data-cat="rifle">Rifla</button><button type="button" role="tab" data-cat="hagle">Hagla</button><button type="button" role="tab" data-cat="lure">Lokking</button><button type="button" role="tab" data-cat="gear">Utstyr</button></div>
+        <div id="shopTabs" role="tablist"><button type="button" role="tab" data-cat="rifle">Rifla</button><button type="button" role="tab" data-cat="hagle">Hagla</button><button type="button" role="tab" data-cat="lure">Lokking</button><button type="button" role="tab" data-cat="gear">Utstyr</button><button type="button" role="tab" data-cat="camp">Leir</button></div>
         <div id="shopList"></div>
       </div>
       <div class="shop-side">
@@ -203,7 +207,8 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
       <div><kbd>Q</kbd>Lokkefløyte</div>
       <div><kbd>E</kbd>Sett ut luktstoff</div>
       <div><kbd>H</kbd>Send ut / kall inn hunden</div>
-      <div><kbd>F</kbd>Ta vare på dyr · bua</div>
+      <div><kbd>F</kbd>Ta vare på dyr · bua · hogg · stek · sov</div>
+      <div><kbd>B</kbd>Tenn bål · <kbd>G</kbd>bygg gapahuk</div>
       <div><kbd>T</kbd>Til en annen jeger</div>
       <div><kbd>J</kbd>Jaktbok · <kbd>M</kbd>lyd</div>
       <div><kbd>Esc</kbd>Pause</div>

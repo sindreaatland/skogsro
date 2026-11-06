@@ -106,6 +106,8 @@ function render3D(dt) {
   // Andre jegere vises bare på kartet, aldri i siktet.
   for (const a of G.animals) add(a.x, a.y, animalSprite(a), Math.cos(a.head) * rx + Math.sin(a.head) * ry < 0, { a, solid: a.state !== 'dead', hz: a.z || 0 });
   for (const so of G.scentObjs) add(so.x, so.y, FX.bottle, false, {});
+  for (const f of G.fires) add(f.x, f.y, fireSpr(f), false, {});
+  for (const h of G.huts) add(h.x, h.y, FX.hut, false, {});
   // bare det skuddet virvler opp; fallende løv, ildfluer og lukt driver ikke forbi i siktet
   for (const p of G.parts) {
     if (p.fly || p.faint || p.glow || p.leaf !== undefined) continue;

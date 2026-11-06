@@ -611,6 +611,36 @@ function genFx() {
     ['..hhhhh..', '.hhowooo.', 'ohoowoooo', 'oooowoooo', 'oooowoooo', 'ooooooooo', '.ooowooo.', '..ooooo..', '...ooo...', '....o....'].forEach((r, j) => r.split('').forEach((b, i) => { if (cl[b]) p.set(1 + i, 1 + j, cl[b]); }));
     p.outlineAuto(0.3); FX.mark = p.canvas(); }
   { const p = new Pix(7, 7); p.set(3, 0, C('#f2efe2')); p.rect(2, 1, 3, 1, C('#f2efe2')); p.rect(1, 2, 5, 1, C('#f2efe2')); p.outlineAuto(0.25); FX.arrow = p.canvas(); }
+  // bål i steinring, tre bilder med flammer som blafrer
+  FX.fire = [0, 1, 2].map(f => {
+    const p = new Pix(17, 19), st = T('#4a4e50', '#6e7472', '#979c94'), wd = T('#3a2618', '#5e3c24', '#84583a'), cx = 8, by = 15;
+    const stones = front => { for (let i = 0; i < 10; i++) { const a = i / 10 * TAU, s = Math.sin(a); if ((s >= 0) !== front) continue; const x = Math.round(cx + Math.cos(a) * 6.5), y = Math.round(by + s * 2.4); p.rect(x - 1, y - 1, 2, 2, st[1]); p.set(x - 1, y - 1, st[2]); p.set(x, y, st[0]); } };
+    stones(false);
+    p.line(cx - 5, by, cx + 4, by - 3, wd[1], 2); p.line(cx - 5, by - 3, cx + 4, by, wd[2], 2);
+    const h = [10, 12, 11][f], top = by - 1 - h;
+    for (let y = top; y <= by - 1; y++) {
+      const t = (y - top) / h, w = Math.sin(t * Math.PI * 0.85) * 3.8 * (0.5 + 0.5 * t), sx = t < 0.45 ? [-1, 0, 1][(f + (y >> 1)) % 3] : 0;
+      for (let x = Math.floor(cx - w); x <= cx + w; x++) {
+        const v = (1 - Math.abs(x - cx) / (w + 0.5)) * 0.75 + t * 0.35 + (hash2(x, y, f + 7) - 0.5) * 0.2;
+        p.set(x + sx, y, C(v > 0.78 ? '#fff0a0' : v > 0.5 ? '#f4a034' : '#d8502a'));
+      }
+    }
+    stones(true);
+    p.outlineAuto(0.4, true);
+    return mkSpr(p, cx, by + 1, { nosh: 1 });
+  });
+  // gapahuk: tak av stokker dekket med granbar, åpen front med granbar på golvet
+  { const p = new Pix(38, 27), wd = T('#3a2618', '#5e3c24', '#84583a', '#a07450'), gr = T('#1d4038', '#295642', '#39704e', '#548c5c'), by = 23;
+    for (let y = 8; y <= by; y++) for (let x = 6; x <= 31; x++) p.set(x, y, y < 11 ? C('#120e0a') : C('#1e1712'));
+    for (const y of [12, 15, 18]) for (let x = 6; x <= 31; x++) p.set(x, y, hash2(x >> 2, y, 3) < 0.5 ? wd[0] : C('#2c2016'));
+    for (let y = by - 3; y <= by; y++) for (let x = 5; x <= 32; x++) p.set(x, y, tone(gr, 0.35 + (y - by + 3) * 0.12 + (hash2(x, y, 5) - 0.5) * 0.5, x, y, 2));
+    p.rect(13, by - 3, 9, 2, C('#b8a488')); p.rect(13, by - 3, 9, 1, C('#d8c8a8'));
+    for (const x of [4, 32]) { p.rect(x, 6, 2, by - 5, wd[1]); p.rect(x, 6, 1, by - 5, wd[2]); }
+    for (let y = 0; y <= 5; y++) for (let x = 1 + (5 - y) * 0.4; x <= 36 - (5 - y) * 0.4; x++) p.set(x, y, tone(gr, 0.85 - y * 0.12 + (hash2(x >> 1, y, 9) - 0.5) * 0.45, x, y, 2));
+    for (let x = 1; x <= 36; x++) { p.set(x, 6, wd[3]); p.set(x, 7, wd[1]); p.set(x, 8, wd[0]); }
+    p.set(0, 7, wd[2]); p.set(37, 7, wd[2]);
+    p.outlineAuto(0.45);
+    FX.hut = mkSpr(p, 19, by, {}); }
   FX.bird = [['101', '010'], ['000', '111']].map(r => { const p = new Pix(3, 2); r.forEach((row, j) => row.split('').forEach((b, i) => { if (b === '1') p.set(i, j, C('#1c2224')); })); return p.canvas(); });
 }
 function genIcons() {
@@ -632,6 +662,9 @@ function genIcons() {
   mk('hagle', p => { for (let i = 0; i < 11; i++) { const x = 6 + i, y = Math.round(11 - i * 0.6); p.set(x, y, st[1]); p.set(x, y - 1, st[2]); } p.rect(4, 10, 3, 2, st[0]); p.line(7, 12, 10, 10, wd[2], 1); p.rect(1, 11, 4, 2, wd[1]); p.rect(1, 13, 2, 1, wd[0]); p.set(1, 11, wd[2]); p.set(5, 12, st[0]); });
   mk('choke', p => { p.rect(3, 7, 12, 4, st[1]); p.rect(3, 7, 12, 1, st[2]); p.rect(3, 10, 12, 1, st[0]); for (let x = 4; x < 9; x += 2) { p.set(x, 8, st[0]); p.set(x, 9, st[0]); } p.rect(12, 6, 3, 6, st[0]); p.rect(13, 7, 1, 4, st[2]); });
   mk('shell', p => { p.rect(6, 3, 6, 10, C('#b8302a')); p.rect(6, 3, 1, 10, C('#d85040')); p.rect(11, 3, 1, 10, C('#8a2020')); p.rect(7, 3, 4, 1, C('#8a2020')); p.rect(5, 13, 8, 3, br[1]); p.rect(5, 13, 1, 3, br[2]); p.rect(12, 13, 1, 3, br[0]); });
+  mk('axe', p => { for (let i = 0; i < 12; i++) { p.set(4 + i * 0.6, 16 - i, wd[1]); p.set(5 + i * 0.6, 16 - i, wd[2]); } p.rect(9, 3, 5, 4, st[1]); p.rect(9, 3, 5, 1, st[2]); p.rect(13, 1, 3, 8, st[2]); p.rect(15, 1, 1, 8, st[3]); p.set(9, 7, st[0]); });
+  mk('match', p => { p.rect(3, 9, 12, 7, C('#d8b048')); p.rect(3, 9, 12, 1, C('#f0d070')); p.rect(5, 11, 8, 3, C('#3a5a8a')); p.rect(3, 15, 12, 1, C('#a07a28')); for (let i = 0; i < 3; i++) { p.line(5 + i * 3, 8, 6 + i * 3, 3, C('#e8d0a0'), 1); p.rect(6 + i * 3, 1, 1, 2, C('#d03a2a')); } });
+  mk('fire', p => { p.line(2, 15, 14, 12, wd[1], 2); p.line(2, 12, 14, 15, wd[2], 2); p.ell(8.5, 8.5, 3.8, 5.2, C('#d8502a')); p.ell(8.5, 9.6, 2.6, 3.8, C('#f4a034')); p.ell(8.5, 10.8, 1.3, 2.2, C('#fff0a0')); p.set(7, 2, C('#d8502a')); p.set(10, 3, C('#f4a034')); });
   mk('treat', p => { const c = T('#9a7a50', '#d2bc90', '#f2e6c8'); p.line(5, 12, 12, 5, c[1], 3); for (const [x, y] of [[3, 12], [5, 14], [12, 3], [14, 5]]) p.ell(x, y, 1.8, 1.8, c[1]); p.line(5, 11, 11, 5, c[2], 1); p.line(6, 13, 13, 6, c[0], 1); });
   mk('boots', p => { p.rect(5, 2, 5, 10, wd[1]); p.rect(5, 2, 1, 10, wd[2]); p.rect(5, 10, 9, 4, wd[1]); p.rect(11, 10, 3, 1, wd[2]); p.rect(4, 14, 11, 2, C('#201814')); p.rect(5, 2, 5, 1, wd[0]); p.set(9, 5, br[2]); p.set(9, 7, br[2]); });
   return I;

@@ -30,6 +30,8 @@ const UPG = [
     d: ['Vid sverm som sprer seg fort. Best på kort hold.', 'Samlet sverm ut på middels hold.', 'Tett sverm som når langt, men du må treffe godt.'] },
   { id: 'shell', cat: 'hagle', icon: 'shell', name: 'Patroner', lv: ['Hagl nr. 7', 'Hagl nr. 5', 'Hagl nr. 3'], price: [0, 300, 800],
     d: ['Små hagl. Nok til rype og hare på kort hold.', 'Kraftigere hagl for orrfugl og rev.', 'Grove hagl som tar tiuren på lengre hold.'] },
+  { id: 'axe', cat: 'camp', icon: 'axe', name: 'Øks', lv: ['Ingen øks', 'Øks'], price: [0, 300],
+    d: ['', 'Hogg ned trær til ved (F ved et tre), og bygg en gapahuk av seks ved (G).'] },
 ];
 const ST = {
   mag: [1.5, 1.9, 2.4, 3.0], fov: [40, 22, 15, 10], spread: [1.1, 0.75, 0.45, 0.25], range: [260, 340, 440, 560], dmg: [40, 70, 100, 145],
@@ -43,6 +45,10 @@ const CALLSP = [['radyr', 'rev'], ['radyr', 'rev', 'hjort', 'rein'], ['radyr', '
 const FLASK_PRICE = 120, M_PER_PX = 0.25;
 // Godbiter til hunden: én går med for hvert dyr hunden står for
 const TREAT_PRICE = 150, TREAT_N = 5, TREAT_START = 3;
+// Friluft: fyrstikker kjøpes i esker; hvert tre gir ved, et bål tar én kubbe og en gapahuk seks.
+// Bålet brenner i FIRE_T sekunder (åtte timer i spillet). Segner du om, koster redningen RESCUE kr
+const MATCH_PRICE = 40, MATCH_N = 10, HUT_WOOD = 6, FIRE_T = 240, RESCUE = 250;
+const CHOP = { spruce: 2, pine: 2, birch: 2, rowan: 1, snag: 1 }, TREE_N = { spruce: 'grana', pine: 'furua', birch: 'bjørka', rowan: 'rogna', snag: 'tørrfuru' };
 // Bøter: vådeskudd er skudd som går av uten at du sikter, bom er siktede skudd som ikke treffer dyr
 // Hagle er bare lov på småvilt og fugl; skyter du storvilt med den, blir det bot
 const FINE = { hip: 200, miss: 50, big: 300 };
@@ -51,11 +57,11 @@ const ZONES = { head: ['Hodeskudd', 2.2, 0.95], vital: ['Hjerte/lunge', 1.6, 1],
 const fmtKg = kg => String(kg).replace('.', ',') + ' kg';
 
 const G = {
-  t: 0, hour: 6.6, day: 1, money: 0, scents: 2, treats: TREAT_START, journal: [], up: {}, started: false, paused: false, panel: null, gun: 'rifle',
+  t: 0, hour: 6.6, day: 1, money: 0, scents: 2, treats: TREAT_START, wood: 0, matches: 0, meat: 0, fires: [], huts: [], cut: new Set(), crackT: 0, journal: [], up: {}, started: false, paused: false, panel: null, gun: 'rifle',
   wind: { a: 0, s: 0.5, x: 1, y: 0 }, animals: [], scentObjs: [], blood: [], parts: [], msgs: [], spawnT: 0, quiet: [], dayl: 1, hunters: [], saveT: 15, pauseT: 0,
 };
 for (const u of UPG) G.up[u.id] = 0;
-const P = { x: 0, y: 30, face: 'down', flip: false, walkT: 0, moving: false, sneak: false, aim: false, breath: 1, hold: false, ammo: 1, ammo2: 0, cycle: 0, reload: 0, callCd: 0, stepT: 0, wet: false, deep: false, cold: 0, chill: false, sway: [0, 0], unrest: 0, winded: false, bph: 0 };
+const P = { x: 0, y: 30, face: 'down', flip: false, walkT: 0, moving: false, sneak: false, aim: false, breath: 1, hold: false, ammo: 1, ammo2: 0, cycle: 0, reload: 0, callCd: 0, stepT: 0, wet: false, deep: false, cold: 0, chill: false, sway: [0, 0], unrest: 0, winded: false, bph: 0, hp: 100, sick: false, risk: 0, warm: false, work: null, sneezeT: 20 };
 const lv = id => G.up[id];
 const hagle = () => G.gun === 'hagle';
 const gunCap = g => (g || G.gun) === 'hagle' ? HST.cap[lv('hagle')] : ST.cap[lv('mag')];
@@ -70,9 +76,23 @@ function switchGun(g) {
 
 // ---------- lagring (localStorage i denne nettleseren) ----------
 const SAVE_KEY = 'skogsro.v1';
-function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ money: G.money, up: G.up, scents: G.scents, treats: G.treats, journal: G.journal, day: G.day, hour: G.hour })); } catch (e) { } }
+function save() {
+  try {
+    // som gjest hos en annen vert er gapahukene og stubbene vertens, så da beholdes de du hadde lagret fra før
+    const old = isAuth() ? null : JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') || {};
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ money: G.money, up: G.up, scents: G.scents, treats: G.treats, journal: G.journal, day: G.day, hour: G.hour,
+      wood: G.wood, matches: G.matches, meat: G.meat, hp: Math.round(P.hp), sick: P.sick,
+      huts: old ? old.huts || [] : G.huts.map(h => [Math.round(h.x), Math.round(h.y)]), cut: old ? old.cut || [] : [...G.cut] }));
+  } catch (e) { }
+}
 function load() {
-  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (!s) return false; G.money = s.money | 0; Object.assign(G.up, s.up || {}); G.scents = s.scents ?? 2; G.treats = s.treats ?? TREAT_START; G.journal = s.journal || []; G.day = s.day || 1; if (typeof s.hour === 'number') G.hour = s.hour; return true; } catch (e) { return false; }
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (!s) return false;
+    G.money = s.money | 0; Object.assign(G.up, s.up || {}); G.scents = s.scents ?? 2; G.treats = s.treats ?? TREAT_START; G.journal = s.journal || []; G.day = s.day || 1; if (typeof s.hour === 'number') G.hour = s.hour;
+    G.wood = s.wood | 0; G.matches = s.matches | 0; G.meat = s.meat | 0; P.hp = clamp(s.hp ?? 100, 1, 100); P.sick = !!s.sick;
+    G.huts = (s.huts || []).map(([x, y]) => ({ id: Math.random(), x, y })); G.cut = new Set(s.cut || []);
+    return true;
+  } catch (e) { return false; }
 }
 
 // ---------- meldinger ----------
@@ -402,17 +422,27 @@ function collect(a) {
 }
 function credit(a) {
   const A = SPEC[a.sp], Z = ZONES[a.lastZone || 'body'], mean = (A.kg[a.sex][0] + A.kg[a.sex][1]) / 2;
-  const kr = Math.round(A.value * (a.kg / mean) * Z[2] * (a.sex === 'm' ? 1.25 : 1) / 5) * 5;
-  G.money += kr;
+  const kr = Math.round(A.value * (a.kg / mean) * Z[2] * (a.sex === 'm' ? 1.25 : 1) / 5) * 5, meat = a.kg >= 100 ? 3 : a.kg >= 20 ? 2 : 1;
+  G.money += kr; G.meat += meat;
   G.journal.unshift({ sp: a.sp, sex: a.sex, kg: a.kg, m: Math.round((a.shotDist || 0) * M_PER_PX), zone: a.lastZone || 'body', kr, day: G.day, h: G.hour });
-  sfx.coin(); msg('+' + kr + ' kr · ' + A.name + ', ' + A.sexn[a.sex] + ', ' + fmtKg(a.kg), 'money');
+  sfx.coin(); msg('+' + kr + ' kr · ' + A.name + ', ' + A.sexn[a.sex] + ', ' + fmtKg(a.kg) + ' · +' + meat + ' kjøtt', 'money');
   save();
 }
-function interact() {
-  if (!G.started || G.paused) return;
-  const a = nearestDead(); if (a) { collect(a); return; }
+// Hva F gjør der du står: [tekst til hjelpelinja, handling]
+function action() {
+  const a = nearestDead(); if (a) return ['Ta vare på ' + SPEC[a.sp].name.toLowerCase() + ' (' + SPEC[a.sp].sexn[a.sex] + ')', () => collect(a)];
   const c = nearestCabin(P.x, P.y);
-  if (hyp(P.x - (c.x - 13), P.y - (c.y + 6)) < 26) openShop();
+  if (hyp(P.x - (c.x - 13), P.y - (c.y + 6)) < 26) return ['Gå inn i bua', openShop];
+  // i åpningen av gapahuken sover du; ellers ved bålet steker du
+  const h = nearHut(P.x, P.y, 18);
+  if (h) return nearFire(h.x, h.y, 60) ? ['Sov i gapahuken', sleepHut] : ['Tenn bål foran gapahuken (B) for å sove her', () => msg('Du trenger et bål foran gapahuken for å holde varmen i natt. Trykk B.')];
+  if (G.meat > 0 && P.hp < 99.5 && nearFire(P.x, P.y, 30)) return ['Stek kjøtt over bålet og spis', cook];
+  const t = lv('axe') && nearTree(); if (t) return ['Hogg ned ' + TREE_N[t.k], () => chop(t)];
+  return null;
+}
+function interact() {
+  if (!G.started || G.paused || P.work) return;
+  const ac = action(); if (ac) ac[1]();
 }
 
 // ---------- jakthunden ----------
@@ -483,6 +513,124 @@ function dogSprite(d) {
   return d.spd > 60 ? DOGSPR.run[(d.anim | 0) & 3] : d.spd > 3 ? DOGSPR.walk[(d.anim | 0) & 3] : DOGSPR.stand[0];
 }
 
+// ---------- friluft: øks, ved, bål, gapahuk og helse ----------
+// Arbeid (hogge, bygge, steke) tar litt tid og avbrytes hvis du går eller sikter
+function startWork(kind, dur, done) { if (!P.work) P.work = { kind, t: 0, dur, done, beat: 0 }; }
+function workUpdate(dt) {
+  const w = P.work; if (!w) return;
+  if (P.moving || P.aim || G.panel) { P.work = null; return; }
+  w.t += dt; w.beat -= dt;
+  if (w.beat <= 0) {
+    w.beat = w.kind === 'cook' ? 1.1 : 0.55;
+    if (w.kind === 'cook') sfx.sizzle();
+    else { sfx.chop(); for (let i = 0; i < 3; i++) G.parts.push({ x: P.x + (P.flip ? -6 : 6), y: P.y - 1, z: rnd(4, 9), vx: rnd(-18, 18), vy: rnd(-5, 5), vz: rnd(6, 16), life: rnd(0.3, 0.6), col: '#d8c090', grav: 1 }); }
+  }
+  if (w.t >= w.dur) { P.work = null; w.done(); }
+}
+function nearTree() {
+  let best = null, bd = 16;
+  for (let cy = Math.floor((P.y - 16) / CS); cy <= Math.floor((P.y + 16) / CS); cy++) for (let cx = Math.floor((P.x - 16) / CS); cx <= Math.floor((P.x + 16) / CS); cx++)
+    for (const o of getChunk(cx, cy).objs) if (CHOP[o.k]) { const d = hyp(o.x - P.x, o.y - P.y); if (d < bd) { bd = d; best = o; } }
+  return best;
+}
+// Fallet bråker: vilt i nærheten flykter, og lenger unna blir de urolige
+function scare(x, y, r) {
+  for (const a of G.animals) {
+    if (a.state === 'dead' || a.state === 'flee') continue;
+    const d = hyp(a.x - x, a.y - y);
+    if (d < r * 0.5) { a.aware = 1.5; startFlee(a, x, y); } else if (d < r) a.aware = Math.max(a.aware, 0.6);
+  }
+}
+function chop(o) {
+  P.face = 'side'; P.flip = o.x < P.x;
+  startWork('chop', 3.2, () => {
+    const n = CHOP[o.k]; if (!n) return; // en annen rakk å felle det
+    for (let i = 0; i < 12; i++) G.parts.push({ x: o.x + rnd(-6, 6), y: o.y, z: rnd(8, 40), vx: rnd(-20, 20), vy: rnd(-6, 6), vz: rnd(0, 10), life: rnd(0.6, 1.4), col: i & 1 ? '#c8a474' : o.k === 'birch' ? '#e6bd52' : '#3d6a44', grav: 1 });
+    cutTree(o.x, o.y); netSend({ t: 'cut', x: o.x, y: o.y }); if (isAuth()) scare(o.x, o.y, 420);
+    G.wood += n; sfx.fall(); msg('Treet falt. +' + n + ' ved (' + G.wood + ' i alt).', 'good'); save();
+  });
+}
+const fireSpr = f => FX.fire[((G.t * 8 + f.id * 7) | 0) % 3];
+const nearFire = (x, y, r) => G.fires.find(f => f.t > 0 && hyp(f.x - x, f.y - y) < r);
+const nearHut = (x, y, r) => G.huts.find(h => hyp(h.x - x, h.y - y) < r);
+function addFire(f) { G.fires.push({ id: Math.random(), x: +f.x, y: +f.y, t: FIRE_T, pt: 0 }); }
+function addHut(h) { G.huts.push({ id: Math.random(), x: +h.x, y: +h.y }); }
+// B: bålet tennes foran deg (ved en gapahuk: foran åpningen) og tar én ved og én fyrstikk
+function lightFire() {
+  if (!G.started || G.paused || P.aim || P.work) return;
+  if (G.wood < 1) { sfx.deny(); msg(lv('axe') ? 'Du har ingen ved. Hogg et tre (F).' : 'Du har ingen ved. Kjøp en øks i bua og hogg et tre.'); return; }
+  if (G.matches < 1) { sfx.deny(); msg('Du har ingen fyrstikker. Kjøp en eske i bua.'); return; }
+  const h = nearHut(P.x, P.y, 30);
+  const x = h ? h.x : Math.round(P.x + (P.face === 'side' ? (P.flip ? -12 : 12) : 0)), y = h ? h.y + 16 : Math.round(P.y + (P.face === 'down' ? 12 : P.face === 'up' ? -10 : 2));
+  if (isWater(x, y)) { sfx.deny(); msg('Du kan ikke tenne bål i vannet.'); return; }
+  if (nearFire(x, y, 24)) { sfx.deny(); msg('Det brenner allerede et bål her.'); return; }
+  G.wood--; G.matches--; sfx.strike(); save();
+  if (isAuth()) addFire({ x, y }); else netSend({ t: 'fire', to: NET.host, x, y });
+  msg('Bålet brenner. Det tørker og varmer, og du kan steke kjøtt over det (F).', 'good');
+}
+// G: gapahuken bygges like bak deg, så du står foran åpningen
+function buildHut() {
+  if (!G.started || G.paused || P.aim || P.work) return;
+  if (!lv('axe')) { sfx.deny(); msg('Du trenger en øks for å bygge gapahuk. Kjøp en i bua.'); return; }
+  if (G.wood < HUT_WOOD) { sfx.deny(); msg('En gapahuk trenger ' + HUT_WOOD + ' ved. Du har ' + G.wood + '.'); return; }
+  const x = Math.round(P.x), y = Math.round(P.y - 6), c = collide(x, y - 8, 14);
+  if (hyp(c.x - x, c.y - (y - 8)) > 0.5 || isWater(x, y) || isWater(x, y - 12) || nearestCabin(x, y).d < 90) { sfx.deny(); msg('Finn en tørr og åpen plass til gapahuken.'); return; }
+  P.face = 'up';
+  startWork('build', 6, () => {
+    if (G.wood < HUT_WOOD) return;
+    G.wood -= HUT_WOOD; if (isAuth()) addHut({ x, y }); else netSend({ t: 'hut', to: NET.host, x, y });
+    sfx.fall(); msg('Gapahuken står ferdig. Tenn et bål foran den (B), så kan du sove her (F).', 'good'); save();
+  });
+}
+function cook() {
+  startWork('cook', 4, () => {
+    if (G.meat < 1) return;
+    G.meat--; P.hp = Math.min(100, P.hp + 25); msg('Du stekte et kjøttstykke over bålet og spiste det. +25 helse.', 'good'); save();
+  });
+}
+function healFull() { P.hp = 100; P.sick = false; P.risk = 0; P.cold = 0; P.chill = false; }
+// Søvn til morgengry (alene): natta går, dyr og bål er borte, og du våkner uthvilt
+function sleepToDawn(text) {
+  if (G.hour > 5.5) G.day++;
+  G.hour = 5.5; G.animals = []; G.scentObjs = []; G.fires = []; dogReset(); healFull(); msg(text, 'good'); save();
+}
+function sleepHut() {
+  if (mp()) { healFull(); msg('Du hvilte i gapahuken ved bålet. Du er varm og frisk igjen.', 'good'); save(); return; }
+  sleepToDawn('Du sov godt i gapahuken ved bålet. Det lysner over skogen, og du er frisk igjen.');
+}
+// Helse: våt og kald tærer på kroppen, og er du kald lenge nok, blir du forkjølet. Forkjølelsen trekker
+// helsa jevnt ned til du kommer deg i bua eller sover i en gapahuk ved bål. Ved bålet tørker du fort
+function healthUpdate(dt) {
+  if (!G.started || G.panel === 'shop') return;
+  P.warm = !P.wet && !!nearFire(P.x, P.y, 44);
+  if (P.warm) P.cold = Math.max(0, P.cold - dt / 8);
+  if (P.cold > 0.05) { P.hp -= dt * P.cold * (P.wet ? 1.2 : 0.5); P.risk += dt * P.cold * 0.04; }
+  else P.risk = Math.max(0, P.risk - dt * (P.warm ? 0.05 : 0.01));
+  if (!P.sick && P.risk >= 1) { P.sick = true; P.risk = 0; P.sneezeT = rnd(3, 6); msg('Du har blitt forkjølet. Helsa synker til du kommer deg i bua eller sover i en gapahuk ved bål.', 'warn'); }
+  if (P.sick) { P.hp -= dt * 0.2; if ((P.sneezeT -= dt) <= 0) { P.sneezeT = rnd(18, 40); sfx.sneeze(); } }
+  if (P.hp <= 0) collapse();
+}
+// Helsa er brukt opp: du blir båret til nærmeste bu og må betale for redningen
+function collapse() {
+  const c = nearestCabin(P.x, P.y);
+  P.x = c.x - 13; P.y = c.y + 16; CAM.x = P.x; CAM.y = P.y - 10; P.aim = false; P.work = null;
+  healFull(); P.hp = 40; dogReset();
+  fine(RESCUE, 'Du segnet om av kulde og sykdom og ble båret til bua.');
+}
+// Bålet: røyk og gnister, knitring når du er i nærheten, og det brenner ned etter en stund
+function fireUpdate(dt) {
+  for (const f of G.fires) {
+    f.t -= dt; f.pt -= dt;
+    if (f.pt <= 0) {
+      f.pt = 0.12;
+      G.parts.push({ x: f.x + rnd(-2, 2), y: f.y, z: 12, vx: G.wind.x * 6 * G.wind.s + rnd(-2, 2), vy: G.wind.y * 4 * G.wind.s, vz: rnd(6, 10), life: rnd(1.5, 3), col: '#b8b4a8', smoke: 1 });
+      if (Math.random() < 0.4) G.parts.push({ x: f.x + rnd(-3, 3), y: f.y, z: 8, vx: rnd(-6, 6), vy: rnd(-2, 2), vz: rnd(12, 24), life: rnd(0.4, 0.9), col: '#ffd060', glow: 1 });
+    }
+  }
+  if (isAuth()) G.fires = G.fires.filter(f => f.t > 0);
+  if ((G.crackT -= dt) <= 0) { G.crackT = rnd(0.3, 0.9); const f = G.started && nearFire(P.x, P.y, 300); if (f) sfx.crackle(1 - hyp(f.x - P.x, f.y - P.y) / 300); }
+}
+
 // ---------- oppdatering ----------
 const KEYS = {}, MOUSE = { x: 0, y: 0, wx: 0, wy: 0, locked: false };
 function playerUpdate(dt) {
@@ -499,7 +647,7 @@ function playerUpdate(dt) {
   // vassing gjør deg våt og kald, svømming enda mer; på land tørker klærne sakte
   if (P.wet) P.cold = Math.max(P.cold, Math.min(P.deep ? 1 : 0.6, P.cold + dt * 0.6));
   else P.cold = Math.max(0, P.cold - dt / 80);
-  if (G.started && !P.chill && P.cold >= 0.3) { P.chill = true; msg('Du er våt og kald. Siktet skjelver til klærne har tørket.', 'warn'); }
+  if (G.started && !P.chill && P.cold >= 0.3) { P.chill = true; msg('Du er våt og kald. Helsa synker og siktet skjelver til klærne har tørket. Et bål tørker deg fort.', 'warn'); }
   else if (P.chill && P.cold === 0) { P.chill = false; msg('Klærne har tørket. Du er varm igjen.', 'good'); }
   P.moving = mx !== 0 || my !== 0;
   // Space mens du går: spring. Det går fort, men bråker og tar pusten, og er lufta tom, må du hente deg inn
@@ -559,6 +707,8 @@ function update(dt) {
   if (frozen) return;
   G.hunters = hunters();
   playerUpdate(dt);
+  workUpdate(dt);
+  healthUpdate(dt);
   dogUpdate(dt);
   netUpdate(dt);
   if (isAuth()) {
@@ -586,6 +736,7 @@ function update(dt) {
     }
   }
   G.scentObjs = G.scentObjs.filter(s => s.t > 0);
+  fireUpdate(dt);
   for (const b of G.blood) b.t += dt;
   G.blood = G.blood.filter(b => b.t < 240);
   // jegerens lukt, synlig som svake fnugg i vinden

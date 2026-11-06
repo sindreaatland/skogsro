@@ -85,7 +85,10 @@ function render(dt) {
   const dogs = G.started ? [D] : [];
   for (const r of NET.peers.values()) if (r.started && !r.in && r.dog) dogs.push(r.dog);
   for (const d of dogs) if (d.x + 30 > ox && d.x - 30 < ox + bw && d.y - 40 < oy + bh && d.y + 10 > oy) items.push({ y: d.y, dog: d, s: dogSprite(d) });
-  for (const so of G.scentObjs) items.push({ y: so.y, bottle: so, s: FX.bottle });
+  // ting som står stille på bakken: luktflasker, bål og gapahuker
+  for (const so of G.scentObjs) items.push({ y: so.y, at: so, s: FX.bottle });
+  for (const f of G.fires) items.push({ y: f.y, at: f, s: fireSpr(f) });
+  for (const h of G.huts) if (h.x + 24 > ox && h.x - 24 < ox + bw && h.y - 30 < oy + bh && h.y + 6 > oy) items.push({ y: h.y, at: h, s: FX.hut });
   items.sort((p, q) => p.y - q.y);
   // skygger (silhuetter skjøvet bort fra sola)
   const h = G.hour, sunT = clamp((h - 6) / 13, 0, 1), dayl = G.dayl;
@@ -95,7 +98,7 @@ function render(dt) {
     if (it.s.nosh || it.o && (it.o.k === 'fern' || it.o.k === 'grassT' || it.o.k === 'reed') || it.hunter && P.deep) continue;
     // fugl i lufta kaster bare en liten flekk på bakken under seg
     if (it.a && it.a.z > 1) { sh.setTransform(1, 0, 0, 1, 0, 0); sh.fillStyle = '#0b1a1c'; sh.fillRect(Math.round(it.a.x - ox) - 3, Math.round(it.a.y - oy) - 1, 6, 2); continue; }
-    const ent = it.o || it.a || it.peer || it.dog || P, flip = it.a || it.dog ? ent.face < 0 : it.hunter ? P.flip && P.face === 'side' : it.peer ? it.peer.flip && it.peer.face === 'side' : false;
+    const ent = it.o || it.a || it.peer || it.dog || it.at || P, flip = it.a || it.dog ? ent.face < 0 : it.hunter ? P.flip && P.face === 'side' : it.peer ? it.peer.flip && it.peer.face === 'side' : false;
     sh.setTransform(flip ? -1 : 1, 0, -sdx, -sls * 0.5, Math.round(ent.x - ox), Math.round(ent.y - oy) + 1);
     sh.drawImage(it.s.sil, -it.s.ax, -it.s.ay);
   }
@@ -146,7 +149,7 @@ function render(dt) {
       else b.drawImage(s.c, X - s.ax, Y - s.ay);
       // står hunden for vilt, hopper en oransje nål over den
       if (d.st === 'mark') icons.push([FX.mark, X - 5, Y - 34 - Math.round(Math.abs(Math.sin(G.t * 5)) * 3)]);
-    } else if (it.bottle) b.drawImage(it.s.c, Math.round(it.bottle.x - ox) - it.s.ax, Math.round(it.bottle.y - oy) - it.s.ay);
+    } else if (it.at) b.drawImage(it.s.c, Math.round(it.at.x - ox) - it.s.ax, Math.round(it.at.y - oy) - it.s.ay);
   }
   // partikler
   for (const p of G.parts) {
@@ -178,6 +181,8 @@ function render(dt) {
     for (const p of G.parts) if (p.fly) { const a = clamp(p.life, 0, 1) * (0.5 + 0.5 * Math.sin(G.t * 5 + p.x)); b.globalAlpha = a * night; b.drawImage(FX.glowS, Math.round(p.x - ox) - 4, Math.round(p.y - p.z - oy) - 4); b.fillStyle = '#f4ffb0'; b.fillRect(Math.round(p.x - ox), Math.round(p.y - p.z - oy), 1, 1); }
   }
   for (const p of G.parts) if (p.glow) { b.globalAlpha = clamp(p.life, 0, 1) * 0.35; b.fillStyle = p.col; b.fillRect(Math.round(p.x - ox), Math.round(p.y - p.z - oy), 1, 1); }
+  // bålet lyser opp rundt seg og blafrer, mest om natta
+  for (const f of G.fires) { b.globalAlpha = (0.1 + 0.3 * night) * (0.85 + 0.15 * Math.sin(G.t * 9 + f.id * 50)); b.drawImage(FX.glow, Math.round(f.x - ox) - 36, Math.round(f.y - oy) - 42); }
   // felte dyr du kan hente lyser svakt om natta, så de er lette å finne igjen i mørket
   if (night > 0.05) for (const a of G.animals) if (a.state === 'dead' && canTake(a, NET.id)) { b.globalAlpha = night * (0.2 + 0.08 * Math.sin(G.t * 3)); b.drawImage(FX.glow, Math.round(a.x - ox) - 36, Math.round(a.y - oy) - 39); }
   if (dayl > 0.2) {
@@ -186,6 +191,9 @@ function render(dt) {
     for (let y = sy; y < bh; y += 256) for (let x = sx; x < bw; x += 256) b.drawImage(FX.rays, x, y);
   }
   b.globalCompositeOperation = 'source-over'; b.globalAlpha = 1;
+  // flammene lyser selv, så om natta tegnes de på nytt over mørket
+  if (night > 0.05) for (const f of G.fires) { const s = fireSpr(f); b.globalAlpha = night; b.drawImage(s.c, Math.round(f.x - ox) - s.ax, Math.round(f.y - oy) - s.ay); }
+  b.globalAlpha = 1;
   // hvit sirkel rundt hunden din når den er ute, tegnet over skogen og lyset så den alltid synes
   if (G.started && D.st !== 'heel') ring(D.x - ox - 1, D.y - oy - 7, 14, 14, 20, 2);
   for (const ic of icons) b.drawImage(ic[0], ic[1], ic[2]);

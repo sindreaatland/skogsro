@@ -44,6 +44,9 @@ function applySnap(m) {
   });
   const os = new Map(G.scentObjs.map(s => [s.id, s]));
   G.scentObjs = (m.sc || []).map(s => Object.assign(os.get(s.id) || { pt: 0 }, s));
+  const ofi = new Map(G.fires.map(f => [f.id, f]));
+  G.fires = (m.fi || []).map(f => Object.assign(ofi.get(f.id) || { pt: 0 }, f));
+  G.huts = (m.hu || []).map(h => ({ id: h.id, x: +h.x, y: +h.y }));
 }
 // Speilede dyr glir mot siste kjente posisjon og fortsetter i farta mellom oppdateringene
 function mirrorAnimal(a, dt) {
@@ -125,6 +128,9 @@ function netMsg(m) {
       break;
     }
     case 'scent': if (isAuth()) addScent(m); break;
+    case 'fire': if (isAuth()) addFire(m); break;
+    case 'hut': if (isAuth()) addHut(m); break;
+    case 'cut': cutTree(m.x | 0, m.y | 0); if (isAuth()) scare(+m.x, +m.y, 420); break;
     case 'bay': { const a = isAuth() && G.animals.find(x => x.id === m.id); if (a) holdAnimal(a, +m.x || a.x); break; }
     case 'collect': {
       if (!isAuth()) break;
@@ -171,7 +177,8 @@ function netUpdate(dt) {
     NET.snapT -= dt;
     if (NET.snapT <= 0) {
       NET.snapT = 0.1;
-      netSend({ t: 'snap', T: Math.round(G.t * 100) / 100, h: Math.round(G.hour * 1000) / 1000, d: G.day, an: G.animals.map(packA), sc: G.scentObjs.map(s => ({ id: s.id, x: s.x, y: s.y, r: s.r, t: Math.round(s.t * 10) / 10 })) });
+      netSend({ t: 'snap', T: Math.round(G.t * 100) / 100, h: Math.round(G.hour * 1000) / 1000, d: G.day, an: G.animals.map(packA), sc: G.scentObjs.map(s => ({ id: s.id, x: s.x, y: s.y, r: s.r, t: Math.round(s.t * 10) / 10 })),
+        fi: G.fires.map(f => ({ id: f.id, x: f.x, y: f.y, t: Math.round(f.t) })), hu: G.huts.map(h => ({ id: h.id, x: h.x, y: h.y })) });
     }
   }
 }

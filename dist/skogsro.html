@@ -34,6 +34,7 @@ button { font: inherit; color: inherit; }
 #clock { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
 #who { font-size: 13px; color: var(--moss); max-width: 34ch; }
 #cold { display: grid; gap: 3px; margin-top: 4px; } #cold .lab { color: #a4ccc6; } #coldFill { background: #7fb0c8; }
+#hp { display: grid; gap: 3px; margin-top: 4px; } #hpFill.low { background: var(--rust); }
 #tr { top: calc(14px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); padding: 8px 12px; display: flex; align-items: center; gap: 12px; }
 #windArrow { width: 28px; height: 28px; transition: transform .6s ease; }
 #windS { font-size: 15px; } #windD { font-size: 13px; color: var(--muted); }
@@ -48,7 +49,7 @@ button { font: inherit; color: inherit; }
 #keys { left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
 kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); background: #26332b; border: 1px solid #3d4f42; border-bottom-width: 3px; padding: 1px 5px; margin-right: 4px; }
 
-#bar { right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(52px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 8px; align-items: stretch; }
+#bar { right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(52px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap-reverse; justify-content: flex-end; gap: 8px; align-items: stretch; max-width: min(calc(100vw - min(520px, 60vw) - 56px), calc(50vw - 140px)); }
 .slot { padding: 8px 10px; display: flex; gap: 10px; align-items: center; position: relative; overflow: hidden; }
 .slot img { width: 36px; height: 36px; }
 .slot .k { position: absolute; top: 3px; right: 4px; }
@@ -57,11 +58,12 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 #ammo { display: flex; gap: 3px; height: 26px; align-items: flex-end; }
 .rnd { width: 7px; height: 22px; background: #3a3426; border: 1px solid #1a1612; }
 .rnd.on { background: linear-gradient(#c8683a 0 30%, #e0aa40 30%); }
-#gunName { padding-right: 20px; } .rnd.sh { width: 9px; } .rnd.sh.on { background: linear-gradient(#c43a2c 0 72%, #d8a840 72%); }
+#gunName, #campN { padding-right: 20px; } .rnd.sh { width: 9px; } .rnd.sh.on { background: linear-gradient(#c43a2c 0 72%, #d8a840 72%); }
 #breath { left: 50%; transform: translateX(-50%); bottom: calc(10vh + env(safe-area-inset-bottom, 0px)); width: 240px; padding: 6px 10px; display: grid; gap: 4px; text-align: center; }
 .meter { height: 8px; background: #1f2a23; border: 1px solid #3a4a3e; }
 .meter i { display: block; height: 100%; background: var(--moss); }
 #breathFill.low { background: var(--rust); }
+#work { left: 50%; transform: translateX(-50%); bottom: calc(26vh + env(safe-area-inset-bottom, 0px)); width: 220px; padding: 6px 10px; display: grid; gap: 4px; text-align: center; }
 #prompt { left: 50%; transform: translateX(-50%); bottom: calc(26vh + env(safe-area-inset-bottom, 0px)); padding: 8px 14px; font-size: 17px; }
 
 /* Bua og jaktboka */
@@ -129,32 +131,34 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 #nameIn:focus { border-color: var(--moss); outline: none; }
 #mpTxt { font-size: 14px; color: var(--muted); max-width: 52ch; line-height: 1.4; text-wrap: balance; }
 #loading { font-family: var(--f-lab); letter-spacing: .14em; font-size: 12px; color: var(--muted); }
-@media (max-width: 900px) { #keys { display: none; } #log { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); } }
+@media (max-width: 900px) { #keys { display: none; } #log { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); } #bar { max-width: none; } }
 @media (prefers-reduced-motion: reduce) { #windArrow, .msg { transition: none; } }
 </style>
 
 <canvas id="cv" aria-label="Skogen sett ovenfra"></canvas>
 
-<div id="tl" class="hud box"><div id="kr">0 kr</div><div id="clock">Dag 1 · 06:30</div><div id="who" hidden></div><div id="cold" hidden><div class="lab" id="coldTxt"></div><div class="meter"><i id="coldFill"></i></div></div></div>
+<div id="tl" class="hud box"><div id="kr">0 kr</div><div id="clock">Dag 1 · 06:30</div><div id="who" hidden></div><div id="hp" hidden><div class="lab" id="hpTxt">Helse</div><div class="meter"><i id="hpFill"></i></div></div><div id="cold" hidden><div class="lab" id="coldTxt"></div><div class="meter"><i id="coldFill"></i></div></div></div>
 <div id="tr" class="hud box"><img id="windArrow" alt="Vindretning"><div><div class="lab">Vind</div><div id="windS">Svak vind</div><div id="windD">fra sørvest</div></div></div>
 <div id="tbtns" class="hud"><button class="tbtn" id="pauseBtn" type="button">Pause (Esc)</button><button class="tbtn" id="bookBtn" type="button">Jaktbok (J)</button><button class="tbtn" id="muteBtn" type="button" aria-pressed="false">Lyd (M)</button></div>
 <div id="log" class="hud" aria-live="polite"></div>
 <div id="prompt" class="hud box" hidden><kbd>F</kbd><span id="promptTxt"></span></div>
+<div id="work" class="hud box" hidden><div class="lab" id="workTxt"></div><div class="meter"><i id="workFill"></i></div></div>
 <div id="breath" class="hud box" hidden><div class="lab" id="breathTxt">Pust · hold Space for å holde pusten</div><div class="meter"><i id="breathFill"></i></div></div>
 <div id="bar" class="hud">
   <div class="slot box"><div><div class="lab" id="gunName">Rifle</div><div id="ammo"></div><div class="slot-s" id="ammoTxt"></div></div><kbd class="k">R</kbd></div>
   <div class="slot box"><img id="callIco" alt=""><div><div class="slot-t" id="callName">Rådyrpipe</div><div class="slot-s">Lokk</div></div><kbd class="k">Q</kbd><div id="callCd"></div></div>
   <div class="slot box"><img id="scentIco" alt=""><div><div class="slot-t" id="scentN">× 2</div><div class="slot-s">Luktstoff</div></div><kbd class="k">E</kbd></div>
+  <div class="slot box"><img id="campIco" alt=""><div><div class="slot-t" id="campN">Ved × 0 · kjøtt × 0</div><div class="slot-s" id="campS">Bål · 0 fyrstikker</div></div><kbd class="k">B</kbd></div>
   <div class="slot box"><img id="treatIco" alt=""><div><div class="slot-t" id="treatN">× 3</div><div class="slot-s" id="dogTxt">Send ut hunden</div></div><kbd class="k">H</kbd></div>
 </div>
-<div id="keys" class="hud"><span><kbd>WASD</kbd>gå</span><span><kbd>Shift</kbd>snik</span><span><kbd>Høyreklikk</kbd>sikt</span><span><kbd>Venstreklikk</kbd>skyt</span><span><kbd>1</kbd><kbd>2</kbd>våpen</span><span><kbd>Space</kbd>spring · hold pusten</span><span><kbd>F</kbd>handling</span><span><kbd>H</kbd>hund</span><span id="goKey" hidden><kbd>T</kbd>til jeger</span><span><kbd>Esc</kbd>pause</span></div>
+<div id="keys" class="hud"><span><kbd>WASD</kbd>gå</span><span><kbd>Shift</kbd>snik</span><span><kbd>Høyreklikk</kbd>sikt</span><span><kbd>Venstreklikk</kbd>skyt</span><span><kbd>1</kbd><kbd>2</kbd>våpen</span><span><kbd>Space</kbd>spring · hold pusten</span><span><kbd>F</kbd>handling</span><span><kbd>H</kbd>hund</span><span><kbd>B</kbd>bål</span><span><kbd>G</kbd>gapahuk</span><span id="goKey" hidden><kbd>T</kbd>til jeger</span><span><kbd>Esc</kbd>pause</span></div>
 
 <div id="shop" class="sheet" hidden>
   <div class="card" role="dialog" aria-label="Jaktbua">
     <div class="card-h"><h2>Jaktbua</h2><span class="money" id="shopKr">0 kr</span><button class="xbtn" type="button" data-close>Gå ut (Esc)</button></div>
     <div class="shop-body">
       <div class="shop-main">
-        <div id="shopTabs" role="tablist"><button type="button" role="tab" data-cat="rifle">Rifla</button><button type="button" role="tab" data-cat="hagle">Hagla</button><button type="button" role="tab" data-cat="lure">Lokking</button><button type="button" role="tab" data-cat="gear">Utstyr</button></div>
+        <div id="shopTabs" role="tablist"><button type="button" role="tab" data-cat="rifle">Rifla</button><button type="button" role="tab" data-cat="hagle">Hagla</button><button type="button" role="tab" data-cat="lure">Lokking</button><button type="button" role="tab" data-cat="gear">Utstyr</button><button type="button" role="tab" data-cat="camp">Leir</button></div>
         <div id="shopList"></div>
       </div>
       <div class="shop-side">
@@ -203,7 +207,8 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
       <div><kbd>Q</kbd>Lokkefløyte</div>
       <div><kbd>E</kbd>Sett ut luktstoff</div>
       <div><kbd>H</kbd>Send ut / kall inn hunden</div>
-      <div><kbd>F</kbd>Ta vare på dyr · bua</div>
+      <div><kbd>F</kbd>Ta vare på dyr · bua · hogg · stek · sov</div>
+      <div><kbd>B</kbd>Tenn bål · <kbd>G</kbd>bygg gapahuk</div>
       <div><kbd>T</kbd>Til en annen jeger</div>
       <div><kbd>J</kbd>Jaktbok · <kbd>M</kbd>lyd</div>
       <div><kbd>Esc</kbd>Pause</div>
@@ -945,6 +950,36 @@ function genFx() {
     ['..hhhhh..', '.hhowooo.', 'ohoowoooo', 'oooowoooo', 'oooowoooo', 'ooooooooo', '.ooowooo.', '..ooooo..', '...ooo...', '....o....'].forEach((r, j) => r.split('').forEach((b, i) => { if (cl[b]) p.set(1 + i, 1 + j, cl[b]); }));
     p.outlineAuto(0.3); FX.mark = p.canvas(); }
   { const p = new Pix(7, 7); p.set(3, 0, C('#f2efe2')); p.rect(2, 1, 3, 1, C('#f2efe2')); p.rect(1, 2, 5, 1, C('#f2efe2')); p.outlineAuto(0.25); FX.arrow = p.canvas(); }
+  // bål i steinring, tre bilder med flammer som blafrer
+  FX.fire = [0, 1, 2].map(f => {
+    const p = new Pix(17, 19), st = T('#4a4e50', '#6e7472', '#979c94'), wd = T('#3a2618', '#5e3c24', '#84583a'), cx = 8, by = 15;
+    const stones = front => { for (let i = 0; i < 10; i++) { const a = i / 10 * TAU, s = Math.sin(a); if ((s >= 0) !== front) continue; const x = Math.round(cx + Math.cos(a) * 6.5), y = Math.round(by + s * 2.4); p.rect(x - 1, y - 1, 2, 2, st[1]); p.set(x - 1, y - 1, st[2]); p.set(x, y, st[0]); } };
+    stones(false);
+    p.line(cx - 5, by, cx + 4, by - 3, wd[1], 2); p.line(cx - 5, by - 3, cx + 4, by, wd[2], 2);
+    const h = [10, 12, 11][f], top = by - 1 - h;
+    for (let y = top; y <= by - 1; y++) {
+      const t = (y - top) / h, w = Math.sin(t * Math.PI * 0.85) * 3.8 * (0.5 + 0.5 * t), sx = t < 0.45 ? [-1, 0, 1][(f + (y >> 1)) % 3] : 0;
+      for (let x = Math.floor(cx - w); x <= cx + w; x++) {
+        const v = (1 - Math.abs(x - cx) / (w + 0.5)) * 0.75 + t * 0.35 + (hash2(x, y, f + 7) - 0.5) * 0.2;
+        p.set(x + sx, y, C(v > 0.78 ? '#fff0a0' : v > 0.5 ? '#f4a034' : '#d8502a'));
+      }
+    }
+    stones(true);
+    p.outlineAuto(0.4, true);
+    return mkSpr(p, cx, by + 1, { nosh: 1 });
+  });
+  // gapahuk: tak av stokker dekket med granbar, åpen front med granbar på golvet
+  { const p = new Pix(38, 27), wd = T('#3a2618', '#5e3c24', '#84583a', '#a07450'), gr = T('#1d4038', '#295642', '#39704e', '#548c5c'), by = 23;
+    for (let y = 8; y <= by; y++) for (let x = 6; x <= 31; x++) p.set(x, y, y < 11 ? C('#120e0a') : C('#1e1712'));
+    for (const y of [12, 15, 18]) for (let x = 6; x <= 31; x++) p.set(x, y, hash2(x >> 2, y, 3) < 0.5 ? wd[0] : C('#2c2016'));
+    for (let y = by - 3; y <= by; y++) for (let x = 5; x <= 32; x++) p.set(x, y, tone(gr, 0.35 + (y - by + 3) * 0.12 + (hash2(x, y, 5) - 0.5) * 0.5, x, y, 2));
+    p.rect(13, by - 3, 9, 2, C('#b8a488')); p.rect(13, by - 3, 9, 1, C('#d8c8a8'));
+    for (const x of [4, 32]) { p.rect(x, 6, 2, by - 5, wd[1]); p.rect(x, 6, 1, by - 5, wd[2]); }
+    for (let y = 0; y <= 5; y++) for (let x = 1 + (5 - y) * 0.4; x <= 36 - (5 - y) * 0.4; x++) p.set(x, y, tone(gr, 0.85 - y * 0.12 + (hash2(x >> 1, y, 9) - 0.5) * 0.45, x, y, 2));
+    for (let x = 1; x <= 36; x++) { p.set(x, 6, wd[3]); p.set(x, 7, wd[1]); p.set(x, 8, wd[0]); }
+    p.set(0, 7, wd[2]); p.set(37, 7, wd[2]);
+    p.outlineAuto(0.45);
+    FX.hut = mkSpr(p, 19, by, {}); }
   FX.bird = [['101', '010'], ['000', '111']].map(r => { const p = new Pix(3, 2); r.forEach((row, j) => row.split('').forEach((b, i) => { if (b === '1') p.set(i, j, C('#1c2224')); })); return p.canvas(); });
 }
 function genIcons() {
@@ -966,6 +1001,9 @@ function genIcons() {
   mk('hagle', p => { for (let i = 0; i < 11; i++) { const x = 6 + i, y = Math.round(11 - i * 0.6); p.set(x, y, st[1]); p.set(x, y - 1, st[2]); } p.rect(4, 10, 3, 2, st[0]); p.line(7, 12, 10, 10, wd[2], 1); p.rect(1, 11, 4, 2, wd[1]); p.rect(1, 13, 2, 1, wd[0]); p.set(1, 11, wd[2]); p.set(5, 12, st[0]); });
   mk('choke', p => { p.rect(3, 7, 12, 4, st[1]); p.rect(3, 7, 12, 1, st[2]); p.rect(3, 10, 12, 1, st[0]); for (let x = 4; x < 9; x += 2) { p.set(x, 8, st[0]); p.set(x, 9, st[0]); } p.rect(12, 6, 3, 6, st[0]); p.rect(13, 7, 1, 4, st[2]); });
   mk('shell', p => { p.rect(6, 3, 6, 10, C('#b8302a')); p.rect(6, 3, 1, 10, C('#d85040')); p.rect(11, 3, 1, 10, C('#8a2020')); p.rect(7, 3, 4, 1, C('#8a2020')); p.rect(5, 13, 8, 3, br[1]); p.rect(5, 13, 1, 3, br[2]); p.rect(12, 13, 1, 3, br[0]); });
+  mk('axe', p => { for (let i = 0; i < 12; i++) { p.set(4 + i * 0.6, 16 - i, wd[1]); p.set(5 + i * 0.6, 16 - i, wd[2]); } p.rect(9, 3, 5, 4, st[1]); p.rect(9, 3, 5, 1, st[2]); p.rect(13, 1, 3, 8, st[2]); p.rect(15, 1, 1, 8, st[3]); p.set(9, 7, st[0]); });
+  mk('match', p => { p.rect(3, 9, 12, 7, C('#d8b048')); p.rect(3, 9, 12, 1, C('#f0d070')); p.rect(5, 11, 8, 3, C('#3a5a8a')); p.rect(3, 15, 12, 1, C('#a07a28')); for (let i = 0; i < 3; i++) { p.line(5 + i * 3, 8, 6 + i * 3, 3, C('#e8d0a0'), 1); p.rect(6 + i * 3, 1, 1, 2, C('#d03a2a')); } });
+  mk('fire', p => { p.line(2, 15, 14, 12, wd[1], 2); p.line(2, 12, 14, 15, wd[2], 2); p.ell(8.5, 8.5, 3.8, 5.2, C('#d8502a')); p.ell(8.5, 9.6, 2.6, 3.8, C('#f4a034')); p.ell(8.5, 10.8, 1.3, 2.2, C('#fff0a0')); p.set(7, 2, C('#d8502a')); p.set(10, 3, C('#f4a034')); });
   mk('treat', p => { const c = T('#9a7a50', '#d2bc90', '#f2e6c8'); p.line(5, 12, 12, 5, c[1], 3); for (const [x, y] of [[3, 12], [5, 14], [12, 3], [14, 5]]) p.ell(x, y, 1.8, 1.8, c[1]); p.line(5, 11, 11, 5, c[2], 1); p.line(6, 13, 13, 6, c[0], 1); });
   mk('boots', p => { p.rect(5, 2, 5, 10, wd[1]); p.rect(5, 2, 1, 10, wd[2]); p.rect(5, 10, 9, 4, wd[1]); p.rect(11, 10, 3, 1, wd[2]); p.rect(4, 14, 11, 2, C('#201814')); p.rect(5, 2, 5, 1, wd[0]); p.set(9, 5, br[2]); p.set(9, 7, br[2]); });
   return I;
@@ -1199,6 +1237,7 @@ function genChunk(cx, cy) {
     else if (cn > 0.36) k = t < 0.26 ? 'spruce' : t < 0.62 ? 'pine' : t < 0.92 ? 'birch' : t < 0.98 ? 'rowan' : 'snag';
     else k = t < 0.7 ? 'birch' : t < 0.82 ? 'rowan' : t < 0.93 ? 'pine' : 'spruce';
     const o = { k, x, y, v: (hash2(gx, gy, 105) * SPR[k].length) | 0, ph: hash2(gx, gy, 106) * TAU, a: 1, r: SPR[k][0].r || 0 };
+    if (G.cut.has(x + ',' + y)) toStump(o);
     ch.objs.push(o); ch.col.push(o);
   }
   // undervegetasjon
@@ -1270,19 +1309,32 @@ function evictChunks(pts) {
   for (const [k, ch] of chunks) if (!pts.some(p => Math.abs(ch.cx - Math.floor(p.x / CS)) <= 5 && Math.abs(ch.cy - Math.floor(p.y / CS)) <= 5)) chunks.delete(k);
 }
 
-// Kollisjon mot stammer, stein og hytte
+// ---------- hogde trær ----------
+// Et felt tre blir en stubbe. Nøkkelen er treets faste posisjon, så biten blir lik når den lages på nytt
+function toStump(o) { o.v = (hash2(o.x, o.y, 9) * SPR.stump.length) | 0; o.k = 'stump'; o.r = SPR.stump[o.v].r; o.a = 1; }
+function cutTree(x, y) {
+  G.cut.add(x + ',' + y);
+  const ch = chunks.get(Math.floor(x / CS) + ',' + Math.floor(y / CS)), o = ch && ch.objs.find(o => o.x === x && o.y === y && CHOP[o.k]);
+  if (o) toStump(o);
+}
+
+// Kollisjon mot stammer, stein, hytte og bakveggen i gapahuker
 const COL = { x: 0, y: 0 };
+// skyver punktet ut av rektangelet langs korteste vei
+function outOfRect(x, y, x0, y0, x1, y1) {
+  if (x > x0 && x < x1 && y > y0 && y < y1) { const dl = x - x0, dr = x1 - x, dt = y - y0, db = y1 - y, m = Math.min(dl, dr, dt, db); if (m === dl) x = x0; else if (m === dr) x = x1; else if (m === dt) y = y0; else y = y1; }
+  COL.x = x; COL.y = y;
+}
 function collide(x, y, r) {
   const cx0 = Math.floor((x - 40) / CS), cx1 = Math.floor((x + 40) / CS), cy0 = Math.floor((y - 24) / CS), cy1 = Math.floor((y + 24) / CS);
   for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) for (const o of getChunk(cx, cy).col) {
-    if (o.rect) {
-      const rx0 = o.x + o.rect[0] - r, ry0 = o.y + o.rect[1] - r, rx1 = o.x + o.rect[2] + r, ry1 = o.y + o.rect[3] + r;
-      if (x > rx0 && x < rx1 && y > ry0 && y < ry1) { const dl = x - rx0, dr = rx1 - x, dt = y - ry0, db = ry1 - y, m = Math.min(dl, dr, dt, db); if (m === dl) x = rx0; else if (m === dr) x = rx1; else if (m === dt) y = ry0; else y = ry1; }
-    } else {
+    if (o.rect) { outOfRect(x, y, o.x + o.rect[0] - r, o.y + o.rect[1] - r, o.x + o.rect[2] + r, o.y + o.rect[3] + r); x = COL.x; y = COL.y; }
+    else {
       const dx = x - o.x, dy = y - o.y, rr = o.r + r, d2 = dx * dx + dy * dy;
       if (d2 < rr * rr && d2 > 1e-4) { const d = Math.sqrt(d2); x = o.x + dx / d * rr; y = o.y + dy / d * rr; }
     }
   }
+  for (const h of G.huts) { outOfRect(x, y, h.x - 16 - r, h.y - 14 - r, h.x + 16 + r, h.y - 1 + r); x = COL.x; y = COL.y; }
   COL.x = x; COL.y = y; return COL;
 }
 // Stammer som står i skuddlinja
@@ -1368,6 +1420,13 @@ const sfx = {
   bark() { auNoise(0.07, 0.3, 'bandpass', 800, 300, 1.4, { echo: true }); },
   // los fra jakthunden: to korte bjeff, svakere og mer til siden jo lenger unna den står
   woof(k = 1, pan = 0) { for (let i = 0; i < 2; i++) { auTone('triangle', 520, 280, 0.08, 0.14 * k, { delay: i * 0.2, pan, echo: true, att: 0.006 }); auNoise(0.07, 0.12 * k, 'bandpass', 1100, 500, 1.4, { delay: i * 0.2, pan }); } },
+  // friluft: øksehogg, tre som faller, knitring fra bålet, steking, fyrstikk og nys
+  chop() { auNoise(0.05, 0.3, 'bandpass', 900, 400, 1.5, { echo: true }); auTone('triangle', 220, 140, 0.06, 0.15); },
+  fall() { auNoise(0.5, 0.2, 'highpass', 2500, 800, 0.6); auNoise(0.5, 0.4, 'lowpass', 600, 120, 0.7, { delay: 0.45, echo: true }); auTone('sine', 90, 40, 0.3, 0.5, { delay: 0.45 }); },
+  crackle(k = 1) { for (let i = 0; i < 3; i++) auNoise(0.015, 0.12 * k * Math.random(), 'highpass', 2500 + Math.random() * 2000, 0, 1, { delay: Math.random() * 0.3 }); },
+  sizzle() { auNoise(1, 0.05, 'highpass', 5000, 3500, 0.5, { att: 0.1 }); },
+  strike() { auNoise(0.12, 0.2, 'bandpass', 3000, 1200, 1); auNoise(0.5, 0.06, 'lowpass', 900, 300, 0.5, { delay: 0.1, att: 0.1 }); },
+  sneeze() { auNoise(0.12, 0.08, 'bandpass', 1400, 2600, 1.2, { att: 0.08 }); auNoise(0.18, 0.22, 'bandpass', 2600, 900, 1, { delay: 0.22, att: 0.01 }); },
   // plystring når hunden sendes ut eller kalles inn (lavere og kortere enn rådyrpipa)
   whistle() { auTone('sine', 1250, 1650, 0.12, 0.06, { att: 0.02 }); auTone('sine', 1650, 1150, 0.18, 0.06, { delay: 0.18, att: 0.02 }); },
   // vingesus: rask serie med korte støyslag når fugl letter
@@ -1455,6 +1514,8 @@ const UPG = [
     d: ['Vid sverm som sprer seg fort. Best på kort hold.', 'Samlet sverm ut på middels hold.', 'Tett sverm som når langt, men du må treffe godt.'] },
   { id: 'shell', cat: 'hagle', icon: 'shell', name: 'Patroner', lv: ['Hagl nr. 7', 'Hagl nr. 5', 'Hagl nr. 3'], price: [0, 300, 800],
     d: ['Små hagl. Nok til rype og hare på kort hold.', 'Kraftigere hagl for orrfugl og rev.', 'Grove hagl som tar tiuren på lengre hold.'] },
+  { id: 'axe', cat: 'camp', icon: 'axe', name: 'Øks', lv: ['Ingen øks', 'Øks'], price: [0, 300],
+    d: ['', 'Hogg ned trær til ved (F ved et tre), og bygg en gapahuk av seks ved (G).'] },
 ];
 const ST = {
   mag: [1.5, 1.9, 2.4, 3.0], fov: [40, 22, 15, 10], spread: [1.1, 0.75, 0.45, 0.25], range: [260, 340, 440, 560], dmg: [40, 70, 100, 145],
@@ -1468,6 +1529,10 @@ const CALLSP = [['radyr', 'rev'], ['radyr', 'rev', 'hjort', 'rein'], ['radyr', '
 const FLASK_PRICE = 120, M_PER_PX = 0.25;
 // Godbiter til hunden: én går med for hvert dyr hunden står for
 const TREAT_PRICE = 150, TREAT_N = 5, TREAT_START = 3;
+// Friluft: fyrstikker kjøpes i esker; hvert tre gir ved, et bål tar én kubbe og en gapahuk seks.
+// Bålet brenner i FIRE_T sekunder (åtte timer i spillet). Segner du om, koster redningen RESCUE kr
+const MATCH_PRICE = 40, MATCH_N = 10, HUT_WOOD = 6, FIRE_T = 240, RESCUE = 250;
+const CHOP = { spruce: 2, pine: 2, birch: 2, rowan: 1, snag: 1 }, TREE_N = { spruce: 'grana', pine: 'furua', birch: 'bjørka', rowan: 'rogna', snag: 'tørrfuru' };
 // Bøter: vådeskudd er skudd som går av uten at du sikter, bom er siktede skudd som ikke treffer dyr
 // Hagle er bare lov på småvilt og fugl; skyter du storvilt med den, blir det bot
 const FINE = { hip: 200, miss: 50, big: 300 };
@@ -1476,11 +1541,11 @@ const ZONES = { head: ['Hodeskudd', 2.2, 0.95], vital: ['Hjerte/lunge', 1.6, 1],
 const fmtKg = kg => String(kg).replace('.', ',') + ' kg';
 
 const G = {
-  t: 0, hour: 6.6, day: 1, money: 0, scents: 2, treats: TREAT_START, journal: [], up: {}, started: false, paused: false, panel: null, gun: 'rifle',
+  t: 0, hour: 6.6, day: 1, money: 0, scents: 2, treats: TREAT_START, wood: 0, matches: 0, meat: 0, fires: [], huts: [], cut: new Set(), crackT: 0, journal: [], up: {}, started: false, paused: false, panel: null, gun: 'rifle',
   wind: { a: 0, s: 0.5, x: 1, y: 0 }, animals: [], scentObjs: [], blood: [], parts: [], msgs: [], spawnT: 0, quiet: [], dayl: 1, hunters: [], saveT: 15, pauseT: 0,
 };
 for (const u of UPG) G.up[u.id] = 0;
-const P = { x: 0, y: 30, face: 'down', flip: false, walkT: 0, moving: false, sneak: false, aim: false, breath: 1, hold: false, ammo: 1, ammo2: 0, cycle: 0, reload: 0, callCd: 0, stepT: 0, wet: false, deep: false, cold: 0, chill: false, sway: [0, 0], unrest: 0, winded: false, bph: 0 };
+const P = { x: 0, y: 30, face: 'down', flip: false, walkT: 0, moving: false, sneak: false, aim: false, breath: 1, hold: false, ammo: 1, ammo2: 0, cycle: 0, reload: 0, callCd: 0, stepT: 0, wet: false, deep: false, cold: 0, chill: false, sway: [0, 0], unrest: 0, winded: false, bph: 0, hp: 100, sick: false, risk: 0, warm: false, work: null, sneezeT: 20 };
 const lv = id => G.up[id];
 const hagle = () => G.gun === 'hagle';
 const gunCap = g => (g || G.gun) === 'hagle' ? HST.cap[lv('hagle')] : ST.cap[lv('mag')];
@@ -1495,9 +1560,23 @@ function switchGun(g) {
 
 // ---------- lagring (localStorage i denne nettleseren) ----------
 const SAVE_KEY = 'skogsro.v1';
-function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ money: G.money, up: G.up, scents: G.scents, treats: G.treats, journal: G.journal, day: G.day, hour: G.hour })); } catch (e) { } }
+function save() {
+  try {
+    // som gjest hos en annen vert er gapahukene og stubbene vertens, så da beholdes de du hadde lagret fra før
+    const old = isAuth() ? null : JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') || {};
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ money: G.money, up: G.up, scents: G.scents, treats: G.treats, journal: G.journal, day: G.day, hour: G.hour,
+      wood: G.wood, matches: G.matches, meat: G.meat, hp: Math.round(P.hp), sick: P.sick,
+      huts: old ? old.huts || [] : G.huts.map(h => [Math.round(h.x), Math.round(h.y)]), cut: old ? old.cut || [] : [...G.cut] }));
+  } catch (e) { }
+}
 function load() {
-  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (!s) return false; G.money = s.money | 0; Object.assign(G.up, s.up || {}); G.scents = s.scents ?? 2; G.treats = s.treats ?? TREAT_START; G.journal = s.journal || []; G.day = s.day || 1; if (typeof s.hour === 'number') G.hour = s.hour; return true; } catch (e) { return false; }
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (!s) return false;
+    G.money = s.money | 0; Object.assign(G.up, s.up || {}); G.scents = s.scents ?? 2; G.treats = s.treats ?? TREAT_START; G.journal = s.journal || []; G.day = s.day || 1; if (typeof s.hour === 'number') G.hour = s.hour;
+    G.wood = s.wood | 0; G.matches = s.matches | 0; G.meat = s.meat | 0; P.hp = clamp(s.hp ?? 100, 1, 100); P.sick = !!s.sick;
+    G.huts = (s.huts || []).map(([x, y]) => ({ id: Math.random(), x, y })); G.cut = new Set(s.cut || []);
+    return true;
+  } catch (e) { return false; }
 }
 
 // ---------- meldinger ----------
@@ -1827,17 +1906,27 @@ function collect(a) {
 }
 function credit(a) {
   const A = SPEC[a.sp], Z = ZONES[a.lastZone || 'body'], mean = (A.kg[a.sex][0] + A.kg[a.sex][1]) / 2;
-  const kr = Math.round(A.value * (a.kg / mean) * Z[2] * (a.sex === 'm' ? 1.25 : 1) / 5) * 5;
-  G.money += kr;
+  const kr = Math.round(A.value * (a.kg / mean) * Z[2] * (a.sex === 'm' ? 1.25 : 1) / 5) * 5, meat = a.kg >= 100 ? 3 : a.kg >= 20 ? 2 : 1;
+  G.money += kr; G.meat += meat;
   G.journal.unshift({ sp: a.sp, sex: a.sex, kg: a.kg, m: Math.round((a.shotDist || 0) * M_PER_PX), zone: a.lastZone || 'body', kr, day: G.day, h: G.hour });
-  sfx.coin(); msg('+' + kr + ' kr · ' + A.name + ', ' + A.sexn[a.sex] + ', ' + fmtKg(a.kg), 'money');
+  sfx.coin(); msg('+' + kr + ' kr · ' + A.name + ', ' + A.sexn[a.sex] + ', ' + fmtKg(a.kg) + ' · +' + meat + ' kjøtt', 'money');
   save();
 }
-function interact() {
-  if (!G.started || G.paused) return;
-  const a = nearestDead(); if (a) { collect(a); return; }
+// Hva F gjør der du står: [tekst til hjelpelinja, handling]
+function action() {
+  const a = nearestDead(); if (a) return ['Ta vare på ' + SPEC[a.sp].name.toLowerCase() + ' (' + SPEC[a.sp].sexn[a.sex] + ')', () => collect(a)];
   const c = nearestCabin(P.x, P.y);
-  if (hyp(P.x - (c.x - 13), P.y - (c.y + 6)) < 26) openShop();
+  if (hyp(P.x - (c.x - 13), P.y - (c.y + 6)) < 26) return ['Gå inn i bua', openShop];
+  // i åpningen av gapahuken sover du; ellers ved bålet steker du
+  const h = nearHut(P.x, P.y, 18);
+  if (h) return nearFire(h.x, h.y, 60) ? ['Sov i gapahuken', sleepHut] : ['Tenn bål foran gapahuken (B) for å sove her', () => msg('Du trenger et bål foran gapahuken for å holde varmen i natt. Trykk B.')];
+  if (G.meat > 0 && P.hp < 99.5 && nearFire(P.x, P.y, 30)) return ['Stek kjøtt over bålet og spis', cook];
+  const t = lv('axe') && nearTree(); if (t) return ['Hogg ned ' + TREE_N[t.k], () => chop(t)];
+  return null;
+}
+function interact() {
+  if (!G.started || G.paused || P.work) return;
+  const ac = action(); if (ac) ac[1]();
 }
 
 // ---------- jakthunden ----------
@@ -1908,6 +1997,124 @@ function dogSprite(d) {
   return d.spd > 60 ? DOGSPR.run[(d.anim | 0) & 3] : d.spd > 3 ? DOGSPR.walk[(d.anim | 0) & 3] : DOGSPR.stand[0];
 }
 
+// ---------- friluft: øks, ved, bål, gapahuk og helse ----------
+// Arbeid (hogge, bygge, steke) tar litt tid og avbrytes hvis du går eller sikter
+function startWork(kind, dur, done) { if (!P.work) P.work = { kind, t: 0, dur, done, beat: 0 }; }
+function workUpdate(dt) {
+  const w = P.work; if (!w) return;
+  if (P.moving || P.aim || G.panel) { P.work = null; return; }
+  w.t += dt; w.beat -= dt;
+  if (w.beat <= 0) {
+    w.beat = w.kind === 'cook' ? 1.1 : 0.55;
+    if (w.kind === 'cook') sfx.sizzle();
+    else { sfx.chop(); for (let i = 0; i < 3; i++) G.parts.push({ x: P.x + (P.flip ? -6 : 6), y: P.y - 1, z: rnd(4, 9), vx: rnd(-18, 18), vy: rnd(-5, 5), vz: rnd(6, 16), life: rnd(0.3, 0.6), col: '#d8c090', grav: 1 }); }
+  }
+  if (w.t >= w.dur) { P.work = null; w.done(); }
+}
+function nearTree() {
+  let best = null, bd = 16;
+  for (let cy = Math.floor((P.y - 16) / CS); cy <= Math.floor((P.y + 16) / CS); cy++) for (let cx = Math.floor((P.x - 16) / CS); cx <= Math.floor((P.x + 16) / CS); cx++)
+    for (const o of getChunk(cx, cy).objs) if (CHOP[o.k]) { const d = hyp(o.x - P.x, o.y - P.y); if (d < bd) { bd = d; best = o; } }
+  return best;
+}
+// Fallet bråker: vilt i nærheten flykter, og lenger unna blir de urolige
+function scare(x, y, r) {
+  for (const a of G.animals) {
+    if (a.state === 'dead' || a.state === 'flee') continue;
+    const d = hyp(a.x - x, a.y - y);
+    if (d < r * 0.5) { a.aware = 1.5; startFlee(a, x, y); } else if (d < r) a.aware = Math.max(a.aware, 0.6);
+  }
+}
+function chop(o) {
+  P.face = 'side'; P.flip = o.x < P.x;
+  startWork('chop', 3.2, () => {
+    const n = CHOP[o.k]; if (!n) return; // en annen rakk å felle det
+    for (let i = 0; i < 12; i++) G.parts.push({ x: o.x + rnd(-6, 6), y: o.y, z: rnd(8, 40), vx: rnd(-20, 20), vy: rnd(-6, 6), vz: rnd(0, 10), life: rnd(0.6, 1.4), col: i & 1 ? '#c8a474' : o.k === 'birch' ? '#e6bd52' : '#3d6a44', grav: 1 });
+    cutTree(o.x, o.y); netSend({ t: 'cut', x: o.x, y: o.y }); if (isAuth()) scare(o.x, o.y, 420);
+    G.wood += n; sfx.fall(); msg('Treet falt. +' + n + ' ved (' + G.wood + ' i alt).', 'good'); save();
+  });
+}
+const fireSpr = f => FX.fire[((G.t * 8 + f.id * 7) | 0) % 3];
+const nearFire = (x, y, r) => G.fires.find(f => f.t > 0 && hyp(f.x - x, f.y - y) < r);
+const nearHut = (x, y, r) => G.huts.find(h => hyp(h.x - x, h.y - y) < r);
+function addFire(f) { G.fires.push({ id: Math.random(), x: +f.x, y: +f.y, t: FIRE_T, pt: 0 }); }
+function addHut(h) { G.huts.push({ id: Math.random(), x: +h.x, y: +h.y }); }
+// B: bålet tennes foran deg (ved en gapahuk: foran åpningen) og tar én ved og én fyrstikk
+function lightFire() {
+  if (!G.started || G.paused || P.aim || P.work) return;
+  if (G.wood < 1) { sfx.deny(); msg(lv('axe') ? 'Du har ingen ved. Hogg et tre (F).' : 'Du har ingen ved. Kjøp en øks i bua og hogg et tre.'); return; }
+  if (G.matches < 1) { sfx.deny(); msg('Du har ingen fyrstikker. Kjøp en eske i bua.'); return; }
+  const h = nearHut(P.x, P.y, 30);
+  const x = h ? h.x : Math.round(P.x + (P.face === 'side' ? (P.flip ? -12 : 12) : 0)), y = h ? h.y + 16 : Math.round(P.y + (P.face === 'down' ? 12 : P.face === 'up' ? -10 : 2));
+  if (isWater(x, y)) { sfx.deny(); msg('Du kan ikke tenne bål i vannet.'); return; }
+  if (nearFire(x, y, 24)) { sfx.deny(); msg('Det brenner allerede et bål her.'); return; }
+  G.wood--; G.matches--; sfx.strike(); save();
+  if (isAuth()) addFire({ x, y }); else netSend({ t: 'fire', to: NET.host, x, y });
+  msg('Bålet brenner. Det tørker og varmer, og du kan steke kjøtt over det (F).', 'good');
+}
+// G: gapahuken bygges like bak deg, så du står foran åpningen
+function buildHut() {
+  if (!G.started || G.paused || P.aim || P.work) return;
+  if (!lv('axe')) { sfx.deny(); msg('Du trenger en øks for å bygge gapahuk. Kjøp en i bua.'); return; }
+  if (G.wood < HUT_WOOD) { sfx.deny(); msg('En gapahuk trenger ' + HUT_WOOD + ' ved. Du har ' + G.wood + '.'); return; }
+  const x = Math.round(P.x), y = Math.round(P.y - 6), c = collide(x, y - 8, 14);
+  if (hyp(c.x - x, c.y - (y - 8)) > 0.5 || isWater(x, y) || isWater(x, y - 12) || nearestCabin(x, y).d < 90) { sfx.deny(); msg('Finn en tørr og åpen plass til gapahuken.'); return; }
+  P.face = 'up';
+  startWork('build', 6, () => {
+    if (G.wood < HUT_WOOD) return;
+    G.wood -= HUT_WOOD; if (isAuth()) addHut({ x, y }); else netSend({ t: 'hut', to: NET.host, x, y });
+    sfx.fall(); msg('Gapahuken står ferdig. Tenn et bål foran den (B), så kan du sove her (F).', 'good'); save();
+  });
+}
+function cook() {
+  startWork('cook', 4, () => {
+    if (G.meat < 1) return;
+    G.meat--; P.hp = Math.min(100, P.hp + 25); msg('Du stekte et kjøttstykke over bålet og spiste det. +25 helse.', 'good'); save();
+  });
+}
+function healFull() { P.hp = 100; P.sick = false; P.risk = 0; P.cold = 0; P.chill = false; }
+// Søvn til morgengry (alene): natta går, dyr og bål er borte, og du våkner uthvilt
+function sleepToDawn(text) {
+  if (G.hour > 5.5) G.day++;
+  G.hour = 5.5; G.animals = []; G.scentObjs = []; G.fires = []; dogReset(); healFull(); msg(text, 'good'); save();
+}
+function sleepHut() {
+  if (mp()) { healFull(); msg('Du hvilte i gapahuken ved bålet. Du er varm og frisk igjen.', 'good'); save(); return; }
+  sleepToDawn('Du sov godt i gapahuken ved bålet. Det lysner over skogen, og du er frisk igjen.');
+}
+// Helse: våt og kald tærer på kroppen, og er du kald lenge nok, blir du forkjølet. Forkjølelsen trekker
+// helsa jevnt ned til du kommer deg i bua eller sover i en gapahuk ved bål. Ved bålet tørker du fort
+function healthUpdate(dt) {
+  if (!G.started || G.panel === 'shop') return;
+  P.warm = !P.wet && !!nearFire(P.x, P.y, 44);
+  if (P.warm) P.cold = Math.max(0, P.cold - dt / 8);
+  if (P.cold > 0.05) { P.hp -= dt * P.cold * (P.wet ? 1.2 : 0.5); P.risk += dt * P.cold * 0.04; }
+  else P.risk = Math.max(0, P.risk - dt * (P.warm ? 0.05 : 0.01));
+  if (!P.sick && P.risk >= 1) { P.sick = true; P.risk = 0; P.sneezeT = rnd(3, 6); msg('Du har blitt forkjølet. Helsa synker til du kommer deg i bua eller sover i en gapahuk ved bål.', 'warn'); }
+  if (P.sick) { P.hp -= dt * 0.2; if ((P.sneezeT -= dt) <= 0) { P.sneezeT = rnd(18, 40); sfx.sneeze(); } }
+  if (P.hp <= 0) collapse();
+}
+// Helsa er brukt opp: du blir båret til nærmeste bu og må betale for redningen
+function collapse() {
+  const c = nearestCabin(P.x, P.y);
+  P.x = c.x - 13; P.y = c.y + 16; CAM.x = P.x; CAM.y = P.y - 10; P.aim = false; P.work = null;
+  healFull(); P.hp = 40; dogReset();
+  fine(RESCUE, 'Du segnet om av kulde og sykdom og ble båret til bua.');
+}
+// Bålet: røyk og gnister, knitring når du er i nærheten, og det brenner ned etter en stund
+function fireUpdate(dt) {
+  for (const f of G.fires) {
+    f.t -= dt; f.pt -= dt;
+    if (f.pt <= 0) {
+      f.pt = 0.12;
+      G.parts.push({ x: f.x + rnd(-2, 2), y: f.y, z: 12, vx: G.wind.x * 6 * G.wind.s + rnd(-2, 2), vy: G.wind.y * 4 * G.wind.s, vz: rnd(6, 10), life: rnd(1.5, 3), col: '#b8b4a8', smoke: 1 });
+      if (Math.random() < 0.4) G.parts.push({ x: f.x + rnd(-3, 3), y: f.y, z: 8, vx: rnd(-6, 6), vy: rnd(-2, 2), vz: rnd(12, 24), life: rnd(0.4, 0.9), col: '#ffd060', glow: 1 });
+    }
+  }
+  if (isAuth()) G.fires = G.fires.filter(f => f.t > 0);
+  if ((G.crackT -= dt) <= 0) { G.crackT = rnd(0.3, 0.9); const f = G.started && nearFire(P.x, P.y, 300); if (f) sfx.crackle(1 - hyp(f.x - P.x, f.y - P.y) / 300); }
+}
+
 // ---------- oppdatering ----------
 const KEYS = {}, MOUSE = { x: 0, y: 0, wx: 0, wy: 0, locked: false };
 function playerUpdate(dt) {
@@ -1924,7 +2131,7 @@ function playerUpdate(dt) {
   // vassing gjør deg våt og kald, svømming enda mer; på land tørker klærne sakte
   if (P.wet) P.cold = Math.max(P.cold, Math.min(P.deep ? 1 : 0.6, P.cold + dt * 0.6));
   else P.cold = Math.max(0, P.cold - dt / 80);
-  if (G.started && !P.chill && P.cold >= 0.3) { P.chill = true; msg('Du er våt og kald. Siktet skjelver til klærne har tørket.', 'warn'); }
+  if (G.started && !P.chill && P.cold >= 0.3) { P.chill = true; msg('Du er våt og kald. Helsa synker og siktet skjelver til klærne har tørket. Et bål tørker deg fort.', 'warn'); }
   else if (P.chill && P.cold === 0) { P.chill = false; msg('Klærne har tørket. Du er varm igjen.', 'good'); }
   P.moving = mx !== 0 || my !== 0;
   // Space mens du går: spring. Det går fort, men bråker og tar pusten, og er lufta tom, må du hente deg inn
@@ -1984,6 +2191,8 @@ function update(dt) {
   if (frozen) return;
   G.hunters = hunters();
   playerUpdate(dt);
+  workUpdate(dt);
+  healthUpdate(dt);
   dogUpdate(dt);
   netUpdate(dt);
   if (isAuth()) {
@@ -2011,6 +2220,7 @@ function update(dt) {
     }
   }
   G.scentObjs = G.scentObjs.filter(s => s.t > 0);
+  fireUpdate(dt);
   for (const b of G.blood) b.t += dt;
   G.blood = G.blood.filter(b => b.t < 240);
   // jegerens lukt, synlig som svake fnugg i vinden
@@ -2118,7 +2328,10 @@ function render(dt) {
   const dogs = G.started ? [D] : [];
   for (const r of NET.peers.values()) if (r.started && !r.in && r.dog) dogs.push(r.dog);
   for (const d of dogs) if (d.x + 30 > ox && d.x - 30 < ox + bw && d.y - 40 < oy + bh && d.y + 10 > oy) items.push({ y: d.y, dog: d, s: dogSprite(d) });
-  for (const so of G.scentObjs) items.push({ y: so.y, bottle: so, s: FX.bottle });
+  // ting som står stille på bakken: luktflasker, bål og gapahuker
+  for (const so of G.scentObjs) items.push({ y: so.y, at: so, s: FX.bottle });
+  for (const f of G.fires) items.push({ y: f.y, at: f, s: fireSpr(f) });
+  for (const h of G.huts) if (h.x + 24 > ox && h.x - 24 < ox + bw && h.y - 30 < oy + bh && h.y + 6 > oy) items.push({ y: h.y, at: h, s: FX.hut });
   items.sort((p, q) => p.y - q.y);
   // skygger (silhuetter skjøvet bort fra sola)
   const h = G.hour, sunT = clamp((h - 6) / 13, 0, 1), dayl = G.dayl;
@@ -2128,7 +2341,7 @@ function render(dt) {
     if (it.s.nosh || it.o && (it.o.k === 'fern' || it.o.k === 'grassT' || it.o.k === 'reed') || it.hunter && P.deep) continue;
     // fugl i lufta kaster bare en liten flekk på bakken under seg
     if (it.a && it.a.z > 1) { sh.setTransform(1, 0, 0, 1, 0, 0); sh.fillStyle = '#0b1a1c'; sh.fillRect(Math.round(it.a.x - ox) - 3, Math.round(it.a.y - oy) - 1, 6, 2); continue; }
-    const ent = it.o || it.a || it.peer || it.dog || P, flip = it.a || it.dog ? ent.face < 0 : it.hunter ? P.flip && P.face === 'side' : it.peer ? it.peer.flip && it.peer.face === 'side' : false;
+    const ent = it.o || it.a || it.peer || it.dog || it.at || P, flip = it.a || it.dog ? ent.face < 0 : it.hunter ? P.flip && P.face === 'side' : it.peer ? it.peer.flip && it.peer.face === 'side' : false;
     sh.setTransform(flip ? -1 : 1, 0, -sdx, -sls * 0.5, Math.round(ent.x - ox), Math.round(ent.y - oy) + 1);
     sh.drawImage(it.s.sil, -it.s.ax, -it.s.ay);
   }
@@ -2179,7 +2392,7 @@ function render(dt) {
       else b.drawImage(s.c, X - s.ax, Y - s.ay);
       // står hunden for vilt, hopper en oransje nål over den
       if (d.st === 'mark') icons.push([FX.mark, X - 5, Y - 34 - Math.round(Math.abs(Math.sin(G.t * 5)) * 3)]);
-    } else if (it.bottle) b.drawImage(it.s.c, Math.round(it.bottle.x - ox) - it.s.ax, Math.round(it.bottle.y - oy) - it.s.ay);
+    } else if (it.at) b.drawImage(it.s.c, Math.round(it.at.x - ox) - it.s.ax, Math.round(it.at.y - oy) - it.s.ay);
   }
   // partikler
   for (const p of G.parts) {
@@ -2211,6 +2424,8 @@ function render(dt) {
     for (const p of G.parts) if (p.fly) { const a = clamp(p.life, 0, 1) * (0.5 + 0.5 * Math.sin(G.t * 5 + p.x)); b.globalAlpha = a * night; b.drawImage(FX.glowS, Math.round(p.x - ox) - 4, Math.round(p.y - p.z - oy) - 4); b.fillStyle = '#f4ffb0'; b.fillRect(Math.round(p.x - ox), Math.round(p.y - p.z - oy), 1, 1); }
   }
   for (const p of G.parts) if (p.glow) { b.globalAlpha = clamp(p.life, 0, 1) * 0.35; b.fillStyle = p.col; b.fillRect(Math.round(p.x - ox), Math.round(p.y - p.z - oy), 1, 1); }
+  // bålet lyser opp rundt seg og blafrer, mest om natta
+  for (const f of G.fires) { b.globalAlpha = (0.1 + 0.3 * night) * (0.85 + 0.15 * Math.sin(G.t * 9 + f.id * 50)); b.drawImage(FX.glow, Math.round(f.x - ox) - 36, Math.round(f.y - oy) - 42); }
   // felte dyr du kan hente lyser svakt om natta, så de er lette å finne igjen i mørket
   if (night > 0.05) for (const a of G.animals) if (a.state === 'dead' && canTake(a, NET.id)) { b.globalAlpha = night * (0.2 + 0.08 * Math.sin(G.t * 3)); b.drawImage(FX.glow, Math.round(a.x - ox) - 36, Math.round(a.y - oy) - 39); }
   if (dayl > 0.2) {
@@ -2219,6 +2434,9 @@ function render(dt) {
     for (let y = sy; y < bh; y += 256) for (let x = sx; x < bw; x += 256) b.drawImage(FX.rays, x, y);
   }
   b.globalCompositeOperation = 'source-over'; b.globalAlpha = 1;
+  // flammene lyser selv, så om natta tegnes de på nytt over mørket
+  if (night > 0.05) for (const f of G.fires) { const s = fireSpr(f); b.globalAlpha = night; b.drawImage(s.c, Math.round(f.x - ox) - s.ax, Math.round(f.y - oy) - s.ay); }
+  b.globalAlpha = 1;
   // hvit sirkel rundt hunden din når den er ute, tegnet over skogen og lyset så den alltid synes
   if (G.started && D.st !== 'heel') ring(D.x - ox - 1, D.y - oy - 7, 14, 14, 20, 2);
   for (const ic of icons) b.drawImage(ic[0], ic[1], ic[2]);
@@ -2361,13 +2579,16 @@ function hudUpdate(dt) {
   $('breath').hidden = !(G.started && (P.aim || P.breath < 1)); $('breathFill').style.width = (P.breath * 100) + '%';
   $('breathFill').classList.toggle('low', P.breath < 0.25 || P.winded);
   setText('breathTxt', P.winded ? 'Andpusten · hent deg inn' : P.aim ? 'Pust · hold Space for å holde pusten' : 'Pust · hold Space for å springe');
+  // helse, leirutstyr og arbeid som pågår
+  $('hp').hidden = !G.started;
+  setText('hpTxt', 'Helse ' + Math.ceil(P.hp) + (P.sick ? ' · forkjølet' : P.warm ? ' · varmer deg' : ''));
+  $('hpFill').style.width = P.hp + '%'; $('hpFill').classList.toggle('low', P.sick || P.hp < 30);
+  setText('campN', 'Ved × ' + G.wood + ' · kjøtt × ' + G.meat); setText('campS', 'Bål · ' + G.matches + ' fyrstikker');
+  $('work').hidden = !P.work;
+  if (P.work) { setText('workTxt', { chop: 'Hogger …', build: 'Bygger gapahuk …', cook: 'Steker kjøtt …' }[P.work.kind]); $('workFill').style.width = (P.work.t / P.work.dur * 100) + '%'; }
   // handlingsprompt
   let pr = '';
-  if (G.started && !G.paused && !P.aim) {
-    const a = nearestDead();
-    if (a) pr = 'Ta vare på ' + SPEC[a.sp].name.toLowerCase() + ' (' + SPEC[a.sp].sexn[a.sex] + ')';
-    else { const c = nearestCabin(P.x, P.y); if (hyp(P.x - (c.x - 13), P.y - (c.y + 6)) < 26) pr = 'Gå inn i bua'; }
-  }
+  if (G.started && !G.paused && !P.aim && !P.work) { const ac = action(); if (ac) pr = ac[0]; }
   $('prompt').hidden = !pr; if (pr) setText('promptTxt', pr);
   if (G.panel === 'pause') $('pauseNote').hidden = !mp();
   if (HUD.dirtyMsg) {
@@ -2412,6 +2633,7 @@ function renderShop() {
     bt.onclick = () => buy(u); row.appendChild(bt); list.appendChild(row);
   }
   if (shopCat === 'lure') supplyRow(list, 'flask', 'Påfyll av luktstoff', `Du har ${G.scents} flasker.`, `Tre flasker med ${UPG[8].lv[lv('scentLv')].toLowerCase()}.`, 'flask', FLASK_PRICE, () => { G.scents += 3; });
+  if (shopCat === 'camp') supplyRow(list, 'match', 'Fyrstikker', `Du har ${G.matches} fyrstikker.`, `En eske med ${MATCH_N}. Hver fyrstikk tenner ett bål.`, 'match', MATCH_PRICE, () => { G.matches += MATCH_N; });
   if (shopCat === 'gear') supplyRow(list, 'treat', 'Godbiter til hunden', `Du har ${G.treats} godbiter.`, `${TREAT_N} godbiter. Hunden får én hver gang den står for et dyr.`, 'treat', TREAT_PRICE, () => { G.treats += TREAT_N; });
   const st = $('stats'); st.innerHTML = '';
   for (const [n, v, t] of statRows()) {
@@ -2436,11 +2658,13 @@ function buy(u) {
   G.money -= p; G.up[u.id] = L + 1; sfx.buy();
   if (u.id === 'mag' || u.id === 'hagle') refill();
   if (u.id === 'hagle' && L === 0) msg('Trykk 2 for å ta hagla, 1 for rifla.', 'good');
+  if (u.id === 'axe') msg('Stå inntil et tre og trykk F for å hogge ved.', 'good');
   save(); renderShop();
 }
 function openShop() {
   G.paused = true; G.panel = 'shop'; P.aim = false; try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
-  refill(); P.cold = 0; // ovnen i bua tørker klærne
+  // ovnen og maten i bua gjør deg tørr, varm og frisk
+  refill(); if (P.sick) msg('Du varmet deg ved ovnen i bua og er frisk igjen.', 'good'); healFull();
   $('sleepBtn').hidden = mp();
   renderShop(); $('shop').hidden = false; sfx.ui();
 }
@@ -2476,7 +2700,7 @@ function closePanel() { if (!G.panel) return; $(G.panel).hidden = true; G.panel 
 
 // ---------- start ----------
 function startGame(fresh) {
-  if (fresh) { G.money = 0; for (const u of UPG) G.up[u.id] = 0; G.scents = 2; G.treats = TREAT_START; G.journal = []; if (!mp()) { G.day = 1; G.hour = 6.6; G.animals = []; } save(); }
+  if (fresh) { G.money = 0; for (const u of UPG) G.up[u.id] = 0; G.scents = 2; G.treats = TREAT_START; G.wood = G.matches = G.meat = 0; healFull(); G.huts = []; G.cut = new Set(); chunks.clear(); G.journal = []; if (!mp()) { G.day = 1; G.hour = 6.6; G.animals = []; } save(); }
   netSetName(); auInit(); G.started = true; G.paused = false; $('title').hidden = true; netAway();
   if (!lv('hagle')) G.gun = 'rifle';
   refill(); dogReset();
@@ -2514,6 +2738,8 @@ function bindInput() {
       case 'KeyF': interact(); break;
       case 'KeyT': goToHunter(); break;
       case 'KeyH': sendDog(); break;
+      case 'KeyB': lightFire(); break;
+      case 'KeyG': buildHut(); break;
       case 'KeyJ': case 'Tab': openBook(); break;
       case 'KeyM': auMute(!AU.muted); $('muteBtn').setAttribute('aria-pressed', AU.muted); msg(AU.muted ? 'Lyden er av.' : 'Lyden er på.'); break;
     }
@@ -2544,7 +2770,7 @@ function bindInput() {
   addEventListener('resize', resize);
   document.querySelectorAll('#shopTabs button').forEach(bt => bt.onclick = () => { shopCat = bt.dataset.cat; sfx.ui(); renderShop(); });
   document.querySelectorAll('[data-close]').forEach(bt => bt.onclick = closePanel);
-  $('sleepBtn').onclick = () => { if (mp()) return; if (G.hour > 5.5) G.day++; G.hour = 5.5; G.animals = []; G.scentObjs = []; dogReset(); msg('Du sov godt. Det lysner over skogen.'); save(); closePanel(); };
+  $('sleepBtn').onclick = () => { if (mp()) return; sleepToDawn('Du sov godt. Det lysner over skogen.'); closePanel(); };
   $('startBtn').onclick = () => startGame(false);
   $('pauseBtn').onclick = () => openPause();
   $('resumeBtn').onclick = resume;
@@ -2562,7 +2788,7 @@ function boot() {
   genAll();
   for (const k in ICON) ICONURL[k] = dataURL(ICON[k]);
   for (const sp of SPECIES) ICONURL['an_' + sp] = dataURL(cropSprite(ANI[sp].m.stand[0], 2));
-  $('windArrow').src = dataURL(FX.arrow); $('callIco').src = ICONURL.call; $('scentIco').src = ICONURL.scent; $('treatIco').src = ICONURL.treat;
+  $('windArrow').src = dataURL(FX.arrow); $('callIco').src = ICONURL.call; $('scentIco').src = ICONURL.scent; $('treatIco').src = ICONURL.treat; $('campIco').src = ICONURL.fire;
   const has = load();
   P.x = -13; P.y = 6; CAM.x = P.x; CAM.y = P.y - 30;
   if (has) {
@@ -2628,6 +2854,9 @@ function applySnap(m) {
   });
   const os = new Map(G.scentObjs.map(s => [s.id, s]));
   G.scentObjs = (m.sc || []).map(s => Object.assign(os.get(s.id) || { pt: 0 }, s));
+  const ofi = new Map(G.fires.map(f => [f.id, f]));
+  G.fires = (m.fi || []).map(f => Object.assign(ofi.get(f.id) || { pt: 0 }, f));
+  G.huts = (m.hu || []).map(h => ({ id: h.id, x: +h.x, y: +h.y }));
 }
 // Speilede dyr glir mot siste kjente posisjon og fortsetter i farta mellom oppdateringene
 function mirrorAnimal(a, dt) {
@@ -2709,6 +2938,9 @@ function netMsg(m) {
       break;
     }
     case 'scent': if (isAuth()) addScent(m); break;
+    case 'fire': if (isAuth()) addFire(m); break;
+    case 'hut': if (isAuth()) addHut(m); break;
+    case 'cut': cutTree(m.x | 0, m.y | 0); if (isAuth()) scare(+m.x, +m.y, 420); break;
     case 'bay': { const a = isAuth() && G.animals.find(x => x.id === m.id); if (a) holdAnimal(a, +m.x || a.x); break; }
     case 'collect': {
       if (!isAuth()) break;
@@ -2755,7 +2987,8 @@ function netUpdate(dt) {
     NET.snapT -= dt;
     if (NET.snapT <= 0) {
       NET.snapT = 0.1;
-      netSend({ t: 'snap', T: Math.round(G.t * 100) / 100, h: Math.round(G.hour * 1000) / 1000, d: G.day, an: G.animals.map(packA), sc: G.scentObjs.map(s => ({ id: s.id, x: s.x, y: s.y, r: s.r, t: Math.round(s.t * 10) / 10 })) });
+      netSend({ t: 'snap', T: Math.round(G.t * 100) / 100, h: Math.round(G.hour * 1000) / 1000, d: G.day, an: G.animals.map(packA), sc: G.scentObjs.map(s => ({ id: s.id, x: s.x, y: s.y, r: s.r, t: Math.round(s.t * 10) / 10 })),
+        fi: G.fires.map(f => ({ id: f.id, x: f.x, y: f.y, t: Math.round(f.t) })), hu: G.huts.map(h => ({ id: h.id, x: h.x, y: h.y })) });
     }
   }
 }
@@ -2887,6 +3120,8 @@ function render3D(dt) {
   // Andre jegere vises bare på kartet, aldri i siktet.
   for (const a of G.animals) add(a.x, a.y, animalSprite(a), Math.cos(a.head) * rx + Math.sin(a.head) * ry < 0, { a, solid: a.state !== 'dead', hz: a.z || 0 });
   for (const so of G.scentObjs) add(so.x, so.y, FX.bottle, false, {});
+  for (const f of G.fires) add(f.x, f.y, fireSpr(f), false, {});
+  for (const h of G.huts) add(h.x, h.y, FX.hut, false, {});
   // bare det skuddet virvler opp; fallende løv, ildfluer og lukt driver ikke forbi i siktet
   for (const p of G.parts) {
     if (p.fly || p.faint || p.glow || p.leaf !== undefined) continue;

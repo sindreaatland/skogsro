@@ -68,6 +68,13 @@ const sfx = {
   bark() { auNoise(0.07, 0.3, 'bandpass', 800, 300, 1.4, { echo: true }); },
   // los fra jakthunden: to korte bjeff, svakere og mer til siden jo lenger unna den står
   woof(k = 1, pan = 0) { for (let i = 0; i < 2; i++) { auTone('triangle', 520, 280, 0.08, 0.14 * k, { delay: i * 0.2, pan, echo: true, att: 0.006 }); auNoise(0.07, 0.12 * k, 'bandpass', 1100, 500, 1.4, { delay: i * 0.2, pan }); } },
+  // friluft: øksehogg, tre som faller, knitring fra bålet, steking, fyrstikk og nys
+  chop() { auNoise(0.05, 0.3, 'bandpass', 900, 400, 1.5, { echo: true }); auTone('triangle', 220, 140, 0.06, 0.15); },
+  fall() { auNoise(0.5, 0.2, 'highpass', 2500, 800, 0.6); auNoise(0.5, 0.4, 'lowpass', 600, 120, 0.7, { delay: 0.45, echo: true }); auTone('sine', 90, 40, 0.3, 0.5, { delay: 0.45 }); },
+  crackle(k = 1) { for (let i = 0; i < 3; i++) auNoise(0.015, 0.12 * k * Math.random(), 'highpass', 2500 + Math.random() * 2000, 0, 1, { delay: Math.random() * 0.3 }); },
+  sizzle() { auNoise(1, 0.05, 'highpass', 5000, 3500, 0.5, { att: 0.1 }); },
+  strike() { auNoise(0.12, 0.2, 'bandpass', 3000, 1200, 1); auNoise(0.5, 0.06, 'lowpass', 900, 300, 0.5, { delay: 0.1, att: 0.1 }); },
+  sneeze() { auNoise(0.12, 0.08, 'bandpass', 1400, 2600, 1.2, { att: 0.08 }); auNoise(0.18, 0.22, 'bandpass', 2600, 900, 1, { delay: 0.22, att: 0.01 }); },
   // plystring når hunden sendes ut eller kalles inn (lavere og kortere enn rådyrpipa)
   whistle() { auTone('sine', 1250, 1650, 0.12, 0.06, { att: 0.02 }); auTone('sine', 1650, 1150, 0.18, 0.06, { delay: 0.18, att: 0.02 }); },
   // vingesus: rask serie med korte støyslag når fugl letter
