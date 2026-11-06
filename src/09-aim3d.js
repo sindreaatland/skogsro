@@ -102,14 +102,9 @@ function render3D(dt) {
         const s = SPR[o.k][o.v];
         add(o.x, o.y, s, false, { o, solid: !SOFT[o.k], sw: s.sway ? (Math.sin(G.t * 1.3 + o.ph) * 0.8 + wl) * wa : 0 });
       }
-  // dyra vises i profil og snus etter hvilken vei de går sett herfra; fugl i lufta tegnes i sin høyde
+  // dyra vises i profil og snus etter hvilken vei de går sett herfra; fugl i lufta tegnes i sin høyde.
+  // Andre jegere vises bare på kartet, aldri i siktet.
   for (const a of G.animals) add(a.x, a.y, animalSprite(a), Math.cos(a.head) * rx + Math.sin(a.head) * ry < 0, { a, solid: a.state !== 'dead', hz: a.z || 0 });
-  for (const r of NET.peers.values()) {
-    if (!r.started || r.in) continue;
-    const fx = r.face === 'side' ? (r.flip ? -1 : 1) : 0, fy = r.face === 'down' ? 1 : r.face === 'up' ? -1 : 0;
-    const tw = fx * vx + fy * vy, lt = fx * rx + fy * ry, dir = Math.abs(lt) > Math.abs(tw) ? 'side' : tw < 0 ? 'down' : 'up';
-    add(r.x, r.y, HUN[dir][r.aim ? 1 : 0][r.moving ? 1 + ((r.walkT * 7.5) | 0) % 4 : 0], dir === 'side' && lt < 0, { peer: r });
-  }
   for (const so of G.scentObjs) add(so.x, so.y, FX.bottle, false, {});
   // bare det skuddet virvler opp; fallende løv, ildfluer og lukt driver ikke forbi i siktet
   for (const p of G.parts) {
