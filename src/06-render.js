@@ -96,9 +96,21 @@ function render(dt) {
     sh.drawImage(it.s.sil, -it.s.ax, -it.s.ay);
   }
   b.globalAlpha = 0.12 + 0.24 * dayl; b.drawImage(shL, 0, 0, bw, bh, 0, 0, bw, bh); b.globalAlpha = 1;
+  // ring av lyse prikker med mørk kant som går rundt på bakken under felte dyr du kan hente
+  for (const it of items) {
+    const a = it.a; if (!a || a.state !== 'dead' || !canTake(a, NET.id)) continue;
+    const s = it.s, bb = s.bb || (s.bb = s.pix.bbox()), rx = bb[2] / 2 + 3, ry = Math.max(3, rx * 0.35);
+    const X = a.x - ox + (bb[0] + bb[2] / 2 - s.ax) * (a.face < 0 ? -1 : 1), Y = a.y - oy - s.ay + bb[1] + bb[3] - 2;
+    b.globalAlpha = 0.75 + 0.25 * Math.sin(G.t * 3);
+    for (let i = 0; i < 18; i++) {
+      const t = i / 18 * TAU + G.t * 0.6, x = Math.round(X + Math.cos(t) * rx), y = Math.round(Y + Math.sin(t) * ry);
+      b.fillStyle = '#1a1410'; b.fillRect(x, y + 1, 1, 1); b.fillStyle = '#fff4d6'; b.fillRect(x, y, 1, 1);
+    }
+  }
+  b.globalAlpha = 1;
   // objekter, dyr, jeger
   const icons = [], reveal = [[P.x, P.y - 6]];
-  for (const a of G.animals) if (a.state !== 'dead' && hyp(a.x - P.x, a.y - P.y) < 340) reveal.push([a.x, a.y - SPEC[a.sp].leg - (a.z || 0)]);
+  for (const a of G.animals) if (hyp(a.x - P.x, a.y - P.y) < 340) reveal.push([a.x, a.state === 'dead' ? a.y - 3 : a.y - SPEC[a.sp].leg - (a.z || 0)]);
   for (const it of items) if (it.peer) reveal.push([it.peer.x, it.peer.y - 6]);
   for (const it of items) {
     if (it.o) {
@@ -153,6 +165,8 @@ function render(dt) {
     for (const p of G.parts) if (p.fly) { const a = clamp(p.life, 0, 1) * (0.5 + 0.5 * Math.sin(G.t * 5 + p.x)); b.globalAlpha = a * night; b.drawImage(FX.glowS, Math.round(p.x - ox) - 4, Math.round(p.y - p.z - oy) - 4); b.fillStyle = '#f4ffb0'; b.fillRect(Math.round(p.x - ox), Math.round(p.y - p.z - oy), 1, 1); }
   }
   for (const p of G.parts) if (p.glow) { b.globalAlpha = clamp(p.life, 0, 1) * 0.35; b.fillStyle = p.col; b.fillRect(Math.round(p.x - ox), Math.round(p.y - p.z - oy), 1, 1); }
+  // felte dyr du kan hente lyser svakt om natta, så de er lette å finne igjen i mørket
+  if (night > 0.05) for (const a of G.animals) if (a.state === 'dead' && canTake(a, NET.id)) { b.globalAlpha = night * (0.2 + 0.08 * Math.sin(G.t * 3)); b.drawImage(FX.glow, Math.round(a.x - ox) - 36, Math.round(a.y - oy) - 39); }
   if (dayl > 0.2) {
     b.globalCompositeOperation = 'screen'; b.globalAlpha = 0.07 * dayl * (1 - fogA * 0.5);
     const sx = -(((ox + G.t * 2) % 256) + 256) % 256, sy = -((oy % 256) + 256) % 256;
@@ -233,10 +247,11 @@ function drawOverlay() {
       }
     }
   }
-  // pil mot nærmeste bu og mot de andre jegerne når de er utenfor skjermen, ellers navn over hodet
+  // pil mot nærmeste bu, egne felte dyr og de andre jegerne når de er utenfor skjermen, ellers navn over hodet
   if (G.started && !P.aim) {
     const c = nearestCabin(P.x, P.y);
     edgeMark(c.x, c.y - 30, 'Bua ' + Math.round(c.d * M_PER_PX) + ' m', FX.house);
+    for (const a of G.animals) if (a.state === 'dead' && (!a.by || a.by === NET.id)) edgeMark(a.x, a.y - 6, SPEC[a.sp].name + ' ' + Math.round(hyp(a.x - P.x, a.y - P.y) * M_PER_PX) + ' m', FX.deer);
     for (const r of NET.peers.values()) {
       if (!r.started || r.in) continue;
       if (!edgeMark(r.x, r.y - 12, r.name + ' ' + Math.round(hyp(r.x - P.x, r.y - P.y) * M_PER_PX) + ' m')) { const [sx, sy] = toScreen(r.x, r.y - 32); pxText(r.name, sx, sy, Math.round(12 * DPR), '#ece4cf'); }

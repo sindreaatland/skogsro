@@ -584,6 +584,10 @@ function genFx() {
   FX.ex = glyph(['010', '010', '010', '010', '000', '010'], C('#ee7c2a'));
   { const p = new Pix(7, 10); p.rect(2, 4, 3, 5, C('#5a8a5a')); p.set(2, 4, C('#8ab88a')); p.rect(2, 6, 3, 2, C('#d8c040')); p.rect(3, 2, 1, 2, C('#5a8a5a')); p.rect(2, 1, 3, 1, C('#a87848')); p.outlineAuto(0.4); FX.bottle = mkSpr(p, 3, 8, {}); }
   { const p = new Pix(11, 10); for (let i = 0; i < 5; i++) p.rect(5 - i, 1 + i, 1 + i * 2, 1, C('#7a9e48')); p.rect(2, 6, 7, 3, C('#7a5c40')); p.rect(5, 7, 1, 2, C('#f0bc50')); p.outlineAuto(0.3); FX.house = p.canvas(); }
+  // hjortehode med gevir: markør for felte dyr
+  { const p = new Pix(11, 10), cl = { a: C('#e2d4ae'), h: C('#9a6438'), e: C('#2a1c14') };
+    ['', '.a.a...a.a.', '.aaa...aaa.', '..aa...aa..', '..hhhhhhh..', '...heheh...', '...hhhhh...', '....hhh....', '....eee....'].forEach((r, j) => r.split('').forEach((b, i) => { if (cl[b]) p.set(i, j, cl[b]); }));
+    p.outlineAuto(0.3); FX.deer = p.canvas(); }
   { const p = new Pix(7, 7); p.set(3, 0, C('#f2efe2')); p.rect(2, 1, 3, 1, C('#f2efe2')); p.rect(1, 2, 5, 1, C('#f2efe2')); p.outlineAuto(0.25); FX.arrow = p.canvas(); }
   FX.bird = [['101', '010'], ['000', '111']].map(r => { const p = new Pix(3, 2); r.forEach((row, j) => row.split('').forEach((b, i) => { if (b === '1') p.set(i, j, C('#1c2224')); })); return p.canvas(); });
 }
