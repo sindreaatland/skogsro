@@ -33,7 +33,7 @@ const UPG = [
 ];
 const ST = {
   mag: [1.5, 1.9, 2.4, 3.0], fov: [40, 22, 15, 10], spread: [1.1, 0.75, 0.45, 0.25], range: [260, 340, 440, 560], dmg: [40, 70, 100, 145],
-  sway: [2.4, 1.7, 1.1, 0.7], cap: [1, 3, 4, 5], cycle: [1.5, 1.05, 0.7, 0.45], reload: [2.4, 1.8, 1.3, 0.9], noise: [950, 640, 420, 260],
+  sway: [2.4, 1.7, 1.1, 0.7], cap: [1, 3, 4, 5], cycle: [1.5, 1.05, 0.7, 0.45], reload: [2.4, 1.8, 1.3, 0.9], noise: [1500, 850, 450, 260],
   callR: [420, 520, 620, 720], scentR: [200, 300, 420], scentT: [90, 140, 200], camo: [1, 0.75, 0.55], deo: [1, 0.7, 0.45], boots: [1, 0.7, 0.48],
 };
 // Hagla: modellen gir antall skudd og ladetid, choken svermens spredning (radianer) og patronene antall hagl,
@@ -50,7 +50,7 @@ const fmtKg = kg => String(kg).replace('.', ',') + ' kg';
 
 const G = {
   t: 0, hour: 6.6, day: 1, money: 0, scents: 2, journal: [], up: {}, started: false, paused: false, panel: null, gun: 'rifle',
-  wind: { a: 0, s: 0.5, x: 1, y: 0 }, animals: [], scentObjs: [], blood: [], parts: [], msgs: [], spawnT: 0, dayl: 1, hunters: [], saveT: 15, pauseT: 0,
+  wind: { a: 0, s: 0.5, x: 1, y: 0 }, animals: [], scentObjs: [], blood: [], parts: [], msgs: [], spawnT: 0, quiet: [], dayl: 1, hunters: [], saveT: 15, pauseT: 0,
 };
 for (const u of UPG) G.up[u.id] = 0;
 const P = { x: 0, y: 30, face: 'down', flip: false, walkT: 0, moving: false, sneak: false, aim: false, breath: 1, hold: false, ammo: 1, ammo2: 0, cycle: 0, reload: 0, callCd: 0, stepT: 0, wet: false, deep: false, cold: 0, chill: false, sway: [0, 0], unrest: 0, winded: false, bph: 0 };
@@ -113,8 +113,10 @@ function spawnAnimal(sp, x, y, sex) {
 }
 function trySpawn(h) {
   const alive = G.animals.filter(a => a.state !== 'dead' && hyp(a.x - h.x, a.y - h.y) < 1400).length;
-  if (alive >= 16) return;
-  const ang = Math.random() * TAU, dist = rnd(420, 900), x = h.x + Math.cos(ang) * dist, y = h.y + Math.sin(ang) * dist;
+  if (alive >= 8) return;
+  const ang = Math.random() * TAU, dist = rnd(650, 1200), x = h.x + Math.cos(ang) * dist, y = h.y + Math.sin(ang) * dist;
+  // der det nylig er skutt, kommer det ikke nye dyr på en god stund
+  if (G.quiet.some(q => hyp(x - q.x, y - q.y) < q.r)) return;
   const f = fields(x, y, cabinsNear(x, y));
   if (f[2] < 2 || nearestCabin(x, y).d < 220) return;
   const sp = pickSpecies(x, y), g = SPEC[sp].grp, n = g[0] + ((Math.random() * (g[1] - g[0] + 1)) | 0);
@@ -330,13 +332,15 @@ function applyShot(sh, pid) {
     const a = ZONES[h.zone] ? G.animals.find(a => a.id === h.id && a.state !== 'dead') : null;
     if (a && !hits.some(x => x[0] === a)) hits.push([a, h]);
   }
+  // smellet bærer langt: dyr i stor omkrets flykter, og området holdes tomt for nye dyr en stund etterpå
   const R = ST.noise[clamp(sh.supp | 0, 0, 3)];
   for (const a of G.animals) {
     if (a.state === 'dead' || hits.some(x => x[0] === a)) continue;
     const dd = hyp(a.x - sh.x, a.y - sh.y);
-    if (dd < R * 0.6) { a.aware = 1.5; startFlee(a, sh.x, sh.y); }
+    if (dd < R * 0.8) { a.aware = 1.5; startFlee(a, sh.x, sh.y); }
     else if (dd < R) { a.aware = Math.max(a.aware, 0.6); }
   }
+  G.quiet.push({ x: sh.x, y: sh.y, r: R, t: 90 });
   for (const [a, h] of hits) hitAnimal(a, h, sh, pid);
 }
 function hitAnimal(hitA, h, sh, pid) {
@@ -487,7 +491,8 @@ function update(dt) {
   if (isAuth()) {
     for (const a of G.animals.slice()) animalUpdate(a, dt);
     const anc = anchors();
-    G.spawnT -= dt; if (G.spawnT <= 0) { G.spawnT = 1.1 / anc.length; trySpawn(anc[(Math.random() * anc.length) | 0]); }
+    G.quiet = G.quiet.filter(q => (q.t -= dt) > 0);
+    G.spawnT -= dt; if (G.spawnT <= 0) { G.spawnT = 2.5 / anc.length; trySpawn(anc[(Math.random() * anc.length) | 0]); }
     G.animals = G.animals.filter(a => { const r = a.state === 'dead' ? 2200 : 1400; return anc.some(h => hyp(a.x - h.x, a.y - h.y) < r); });
   } else for (const a of G.animals) mirrorAnimal(a, dt);
   // vingesus når fugl letter i nærheten (én gang per flokk og bilde)
