@@ -206,6 +206,7 @@ function bindInput() {
       case 'KeyH': sendDog(); break;
       case 'KeyB': lightFire(); break;
       case 'KeyG': buildHut(); break;
+      case 'KeyV': toggleView(); break;
       case 'KeyJ': case 'Tab': openBook(); break;
       case 'KeyM': auMute(!AU.muted); $('muteBtn').setAttribute('aria-pressed', AU.muted); msg(AU.muted ? 'Lyden er av.' : 'Lyden er på.'); break;
     }
@@ -225,7 +226,8 @@ function bindInput() {
   addEventListener('mousemove', e => {
     if (MOUSE.locked) { MOUSE.x = clamp(MOUSE.x + e.movementX * DPR, 0, W); MOUSE.y = clamp(MOUSE.y + e.movementY * DPR, 0, H); }
     else { MOUSE.x = e.clientX * DPR; MOUSE.y = e.clientY * DPR; }
-    if (P.aim || AIM.want) aimLook(e.movementX * DPR, e.movementY * DPR);
+    // i siktet og i 3D-visningen snur musa blikket
+    if (P.aim || AIM.want || G.view3d && G.started && !G.paused) aimLook(e.movementX * DPR, e.movementY * DPR);
   });
   document.addEventListener('pointerlockchange', () => {
     MOUSE.locked = document.pointerLockElement === cv; document.body.classList.toggle('locked', MOUSE.locked);

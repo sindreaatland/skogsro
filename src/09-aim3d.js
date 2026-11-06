@@ -8,7 +8,7 @@
 // tegnet i synsfeltet rundt kikkerten; v3, snap, snapT: bildet som løses opp når vi bytter mellom kart og 3D
 const AIM = { yaw: 0, pitch: 0, ry: 0, rp: 0, camYaw: 0, f: 300, eye: 15, far: 900, cx: 0, cy: 0, sx: 0, sy: 0, hy: 0, kick: 0, range: null, pick: null, list: [], list2: [], im: null, px: null,
   want: false, raise: 0, tp: 0, tpF: -1, open: 0, in: false, ex: 0, ey: 0, ringX: 0, ringY: 0, ringR: 0, lc: null, lensX: 0, lensY: 0, upB: 0, brT: 0, brIn: true, hbT: 0, held: false,
-  v3: false, snap: null, snapTmp: null, snapT: 0, pat: {}, masks: new Map() };
+  v3: 0, camX: 0, camY: 0, snap: null, snapTmp: null, snapT: 0, pat: {}, masks: new Map() };
 const EYE = 15, NEAR = 14, FAR = 900, SWAY_K = 0.005, PITCH_MAX = 0.35;
 // Høyreklikk: kartet går inn mot jegeren (IN_T), så ser du ham bakfra i 3D ta børsa opp (TP_T, synsvidde TP_FOV grader),
 // og kikkerten kommer opp foran øyet (OPEN_T). Slipper du, tas kikkerten ned (CLOSE_T) og kartet kommer tilbake (LOWER_T).
@@ -19,6 +19,8 @@ const IN_T = 0.12, TP_T = 0.55, TP_FOV = 60, OPEN_T = 0.22, CLOSE_T = 0.14, LOWE
 // Bildet jegeren er på i 3D: griper reima, børsa foran brystet, ned på kne, kolben i skulderen
 const tpFrame = () => Math.min(3, (AIM.tp / 0.19) | 0);
 const aimThird = () => !P.aim && AIM.want && AIM.raise >= 1;
+// I 3D-visningen (V) går du rundt med kameraet bak jegeren, der det står når han begynner å ta opp børsa
+const walk3D = () => G.view3d && !P.aim && !AIM.want;
 const FOG_HEX = '#a9b6a2', FOG = C(FOG_HEX), SKY_HEX = '#c6d4d2', GROUND0 = C('#3d5334'), CSB = Math.log2(CS);
 // Gress, bregner, siv og lyng stopper ikke kula; alt annet du ser, gjør det
 const SOFT = { fern: 1, grassT: 1, reed: 1, heather: 1 };
@@ -35,14 +37,31 @@ const pitchMax = () => hagle() ? 0.8 : PITCH_MAX;
 const aimEye = () => P.deep ? EYE - 5 : EYE;
 const fogSil = s => s._fog || (s._fog = s.pix.sil(FOG).canvas());
 
+// ---------- kart eller 3D ----------
+// V bytter mellom kartet og 3D. I 3D snur musa deg, W/S går fram og tilbake og A/D til sidene. Ikke mens børsa er oppe
+function toggleView() {
+  if (!G.started || G.paused || P.aim || AIM.want) return;
+  G.view3d = !G.view3d; AIM.raise = 0; sfx.ui();
+  // 3D starter med blikket den veien jegeren står
+  if (G.view3d) { AIM.yaw = P.face === 'side' ? (P.flip ? Math.PI : 0) : P.face === 'up' ? -Math.PI / 2 : Math.PI / 2; AIM.pitch = 0; }
+  msg(G.view3d ? '3D: musa snur deg, WASD går. V tilbake til kartet.' : 'Kartet. V for 3D.');
+}
+// Jegeren snur seg den av de fire retningene på kartet som ligger nærmest vinkelen
+function faceTo(yaw) {
+  const dx = Math.cos(yaw), dy = Math.sin(yaw);
+  if (Math.abs(dx) > Math.abs(dy) * 0.8) { P.face = 'side'; P.flip = dx < 0; } else P.face = dy > 0 ? 'down' : 'up';
+}
+
 // ---------- å legge an ----------
 // Høyreklikk: kartet går inn mot jegeren, du ser ham bakfra i 3D ta børsa opp, og så går bildet over i siktet (P.aim).
-// Slipper du, tas kikkerten ned og kartet kommer tilbake mens jegeren senker børsa
+// Slipper du, tas kikkerten ned og kartet kommer tilbake mens jegeren senker børsa. I 3D-visningen står kameraet
+// alt bak ham, så der går du rett til å ta børsa opp, og etterpå tilbake til å gå
 function aimPress() {
   if (AIM.want) return;
   AIM.want = true;
   if (P.aim) return; // kikkerten var på vei ned og kommer opp igjen
   aimStart(MOUSE.wx, MOUSE.wy); P.sway = [0, 0];
+  if (G.view3d) AIM.raise = 1;
   sfx.shoulder();
 }
 function aimRelease() { AIM.want = false; P.hold = false; }
@@ -56,8 +75,7 @@ function aimUpdate(dt) {
     if (!AIM.want && AIM.open <= 0) { P.aim = AIM.in = false; P.hold = false; sfx.lower(); }
   } else if (AIM.want) {
     // jegeren snur seg mot målet mens kartet går inn mot ham
-    const dx = Math.cos(AIM.yaw), dy = Math.sin(AIM.yaw);
-    if (Math.abs(dx) > Math.abs(dy) * 0.8) { P.face = 'side'; P.flip = dx < 0; } else P.face = dy > 0 ? 'down' : 'up';
+    faceTo(AIM.yaw);
     if (AIM.raise < 1) AIM.raise = Math.min(1, AIM.raise + dt / IN_T);
     else {
       // i 3D; ute på djupt vann går det ikke an å knele, så da går du rett i siktet
@@ -87,18 +105,21 @@ function aimAudio(dt) {
   }
 }
 
-// Høyreklikk: se dit musa pekte på kartet, og rett på dyret hvis du pekte på et
+// Høyreklikk: se dit musa pekte på kartet, og rett på dyret hvis du pekte på et. I 3D ser du dit du alt ser
 function aimStart(tx, ty) {
-  let best = null, bd = 1e9, h = 6;
-  for (const a of G.animals) {
-    if (a.state === 'dead') continue;
-    const A = SPEC[a.sp], d = hyp(a.x - tx, a.y - (a.z || 0) - A.leg - A.Hh / 2 - ty);
-    if (d < A.L / 2 + 8 && d < bd) { bd = d; best = a; }
+  if (!G.view3d) {
+    let best = null, bd = 1e9, h = 6;
+    for (const a of G.animals) {
+      if (a.state === 'dead') continue;
+      const A = SPEC[a.sp], d = hyp(a.x - tx, a.y - (a.z || 0) - A.leg - A.Hh / 2 - ty);
+      if (d < A.L / 2 + 8 && d < bd) { bd = d; best = a; }
+    }
+    if (best) { tx = best.x; ty = best.y; h = SPEC[best.sp].leg + SPEC[best.sp].Hh / 2 + (best.z || 0); }
+    const d = hyp(tx - P.x, ty - P.y);
+    AIM.yaw = d > 8 ? Math.atan2(ty - P.y, tx - P.x) : P.face === 'side' ? (P.flip ? Math.PI : 0) : P.face === 'up' ? -Math.PI / 2 : Math.PI / 2;
+    AIM.pitch = Math.atan((h - aimEye()) / Math.max(d, 30));
   }
-  if (best) { tx = best.x; ty = best.y; h = SPEC[best.sp].leg + SPEC[best.sp].Hh / 2 + (best.z || 0); }
-  const d = hyp(tx - P.x, ty - P.y);
-  AIM.yaw = AIM.camYaw = d > 8 ? Math.atan2(ty - P.y, tx - P.x) : P.face === 'side' ? (P.flip ? Math.PI : 0) : P.face === 'up' ? -Math.PI / 2 : Math.PI / 2;
-  AIM.pitch = clamp(Math.atan((h - aimEye()) / Math.max(d, 30)), -pitchMax(), pitchMax());
+  AIM.camYaw = AIM.yaw; AIM.pitch = clamp(AIM.pitch, -pitchMax(), pitchMax());
   AIM.ry = AIM.yaw; AIM.rp = AIM.pitch;
   AIM.f = aimFocal(); AIM.kick = 0; AIM.ex = AIM.ey = 0; AIM.list.length = 0; AIM.pick = null; AIM.range = null;
 }
@@ -110,17 +131,17 @@ function aimLook(dx, dy) {
   if (P.aim) { AIM.ex -= dx / ZB * 0.15; AIM.ey -= dy / ZB * 0.15; }
 }
 
-// Ett 3D-bilde. Bak jegeren mens han tar børsa opp; ellers fra øynene hans: med kikkert tegnes først det forstørrede
-// bildet i linsa, så synsfeltet rundt, og kikkert, børse og hender i forgrunnen. Det bildet kula følger (linsa, ellers
-// hele bildet) lagres i AIM for skudd og avstandsmåling
+// Ett 3D-bilde. Bak jegeren mens han går i 3D-visningen og mens han tar børsa opp; ellers fra øynene hans: med kikkert
+// tegnes først det forstørrede bildet i linsa, så synsfeltet rundt, og kikkert, børse og hender i forgrunnen. Det bildet
+// kula følger (linsa, ellers hele bildet) lagres i AIM for skudd og avstandsmåling
 function render3D(dt) {
   AIM.kick = Math.max(0, AIM.kick - dt * 4); AIM.upB = performance.now() + 4;
-  const third = aimThird(), bw = Math.ceil(W / ZB), bh = Math.ceil(H / ZB), ix = bw >> 1, need = new Map();
+  const third = !P.aim, walk = walk3D(), bw = Math.ceil(W / ZB), bh = Math.ceil(H / ZB), ix = bw >> 1, need = new Map();
   const e = smooth(0, 1, AIM.open), scope = !third && !hagle() && lv('scope') > 0;
   let yaw, pitch, eye, camX = P.x, camY = P.y, fWide, fade = 0;
   if (third) {
-    // bak og til høyre for jegeren, litt over hodet hans, mens han tar børsa opp; kameraet glir sakte nærmere,
-    // og til slutt inn i hodet hans mens han tones bort
+    // bak og til høyre for jegeren, litt over hodet hans (AIM.tp er 0 mens han går); mens han tar børsa opp,
+    // glir kameraet sakte nærmere, og til slutt inn i hodet hans mens han tones bort
     const push = smooth(0, 0.7, AIM.tp), dive = smooth(0.72, 1, AIM.tp), back = lerp(60, 50, push) * (1 - 0.8 * dive), side = 12 * (1 - 0.8 * dive);
     yaw = AIM.yaw; pitch = AIM.pitch - 0.07 * (1 - dive); eye = lerp(24, aimEye(), dive); fWide = tpFocal(); fade = smooth(0.72, 0.95, AIM.tp);
     camX = P.x - Math.cos(yaw) * back - Math.sin(yaw) * side; camY = P.y - Math.sin(yaw) * back + Math.cos(yaw) * side;
@@ -148,7 +169,7 @@ function render3D(dt) {
     }
   }
   // synsfeltet over hele skjermen; rundt kikkerten litt dempet, som det andre øyet ser det
-  const wv = world({ ...cam, f: fWide, third, fade, nmax: lens ? 6 : 16, hole: lens && [AIM.ringX + 0.5, AIM.ringY + 0.5, R + Math.round(bh * 0.07)] }, bw, bh, need, lens ? AIM.list2 : AIM.list);
+  const wv = world({ ...cam, f: fWide, third, walk, fade, nmax: lens ? 6 : 16, hole: lens && [AIM.ringX + 0.5, AIM.ringY + 0.5, R + Math.round(bh * 0.07)] }, bw, bh, need, lens ? AIM.list2 : AIM.list);
   if (!lens) shotView(wv);
   if (scope) { b.globalAlpha = 0.25; b.fillStyle = MASK; b.fillRect(0, 0, bw, bh); b.globalAlpha = 1; scopeBody(AIM.ringX, AIM.ringY, R, bh); }
   else if (!third) drawSights(bw, bh, iy);
@@ -164,17 +185,24 @@ function render3D(dt) {
   // avstandsmåleren leser det som ligger i trådkorset, ellers bakken
   const pk = AIM.pick = aimPick(AIM.sx, AIM.sy), zg = AIM.sy > AIM.hy ? AIM.eye * AIM.f / (AIM.sy - AIM.hy) : Infinity;
   AIM.range = pk ? pk.it.z : zg < AIM.far ? zg : null;
+  // mens du går i 3D, følger kartet med, og «musa på kartet» (hunden, skudd fra hofta) er bakken midt i bildet
+  if (walk) {
+    const z = clamp(zg, 90, 460);
+    CAM.x = P.x; CAM.y = P.y - 10; MOUSE.wx = camX + Math.cos(yaw) * z; MOUSE.wy = camY + Math.sin(yaw) * z;
+  }
   drawOverlay();
   // tegn bakken for biter vi ser ut over men ikke har tegnet ennå, nærmeste først
   const t0 = performance.now();
   for (const [kx, ky] of [...need.values()].sort((p, q) => p[2] - q[2])) { genGround(getChunk(kx, ky)); if (performance.now() - t0 > 6) break; }
+  if ((G.t | 0) % 5 === 0) evictChunks(anchors());
 }
 // Bildet kula følger: midten er trådkorset
-function shotView(v) { Object.assign(AIM, { cx: v.cx, cy: v.cy, hy: v.hy, f: v.f, eye: v.eye, far: v.far, camYaw: v.yaw, sx: v.cx, sy: v.cy }); }
+function shotView(v) { Object.assign(AIM, { cx: v.cx, cy: v.cy, hy: v.hy, f: v.f, eye: v.eye, far: v.far, camYaw: v.yaw, camX: v.x, camY: v.y, sx: v.cx, sy: v.cy }); }
 // Skogen sett fra (o.x, o.y) i øyehøyde o.eye, i retning o.yaw/o.pitch med brennvidde o.f, tegnet inn i bufferen. Midten av
 // bildet er (bw/2, o.cy). Med o.clip ([x0, y0, x1, y1]) tegnes bare det utsnittet. Bakken innenfor o.hole ([x, y, r],
 // der okularet dekker) tegnes ikke, og o.nmax begrenser hvor mange delrader en bakkerad snittes av (færre i det dempede
-// synsfeltet rundt kikkerten). Med o.third står jegeren i bildet, tonet bort med o.fade. Det som tegnes, havner i L, nærmest sist
+// synsfeltet rundt kikkerten). Med o.third står jegeren i bildet, tonet bort med o.fade; med o.walk går han rundt, og de
+// andre jegerne og blodet på bakken vises også. Det som tegnes, havner i L, nærmest sist
 function world(o, bw, bh, need, L) {
   const camX = o.x, camY = o.y, f = o.f, eye = o.eye, [x0, y0, x1, y1] = o.clip || [0, 0, bw, bh];
   const vx = Math.cos(o.yaw), vy = Math.sin(o.yaw), rx = -vy, ry = vx;
@@ -246,9 +274,31 @@ function world(o, bw, bh, need, L) {
   for (const so of G.scentObjs) add(so.x, so.y, FX.bottle, false, {});
   for (const fi of G.fires) add(fi.x, fi.y, fireSpr(fi), false, {});
   for (const h of G.huts) add(h.x, h.y, FX.hut, false, {});
-  // sett bakfra: jegeren som tar børsa opp, og hunden ved siden av ham
-  const hu = o.third && add(P.x, P.y, HUN.ots[tpFrame()], false, { hunter: 1, al: 1 - o.fade });
+  // sett bakfra: jegeren som går (eller hogger, sett fra siden mot treet), eller som tar børsa opp, og hunden ved siden av ham
+  let hs = HUN.ots[tpFrame()], hf = false;
+  if (o.walk) {
+    const tr = P.work && P.work.tree;
+    hs = tr ? HUN.chop[chopFrame(P.work)] : HUN.up[0][P.moving ? 1 + ((P.walkT * 7.5) | 0) % 4 : 0];
+    hf = !!tr && (tr.x - P.x) * rx + (tr.y - P.y) * ry < 0;
+  }
+  const hu = o.third && add(P.x, P.y, hs, hf, { hunter: 1, al: 1 - o.fade });
   if (o.third) add(D.x, D.y, dogSprite(D), D.face * rx < 0, { al: 1 - o.fade });
+  if (o.walk) {
+    // de andre jegerne, snudd etter hvilken vei de går sett herfra, og hundene deres
+    for (const r of NET.peers.values()) {
+      if (!r.started || r.in) continue;
+      const fx = r.face === 'side' ? (r.flip ? -1 : 1) : 0, fy = r.face === 'side' ? 0 : r.face === 'up' ? -1 : 1, fw = fx * vx + fy * vy;
+      const d = fw > 0.7 ? 'up' : fw < -0.7 ? 'down' : 'side';
+      add(r.x, r.y, HUN[d][r.aim ? 1 : 0][r.moving ? 1 + ((r.walkT * 7.5) | 0) % 4 : 0], d === 'side' && fx * rx + fy * ry < 0, {});
+      if (r.dog) add(r.dog.x, r.dog.y, dogSprite(r.dog), r.dog.face * rx < 0, {});
+    }
+    // blodsporet som flate flekker på bakken
+    for (const d of G.blood) {
+      const dx = d.x - camX, dy = d.y - camY, z = dx * vx + dy * vy;
+      if (z < NEAR || z > far) continue;
+      const k = f / z; L.push({ p: { col: d.t < 30 ? '#9a2a22' : '#6a221c', al: clamp(1 - d.t / 240, 0.2, 1) }, flat: 1, z, k, X: cx + (dx * rx + dy * ry) * k, Y: hy + eye * k, fo: fog(z) });
+    }
+  }
   // bare det skuddet virvler opp; fallende løv, ildfluer og lukt driver ikke forbi i siktet
   for (const p of G.parts) {
     if (p.fly || p.faint || p.glow || p.leaf !== undefined) continue;
@@ -262,9 +312,9 @@ function world(o, bw, bh, need, L) {
   b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1; b.globalCompositeOperation = 'source-over';
   for (const it of L) {
     if (it.p) {
-      const p = it.p, sz = Math.max(1, Math.round(it.k));
-      b.globalAlpha = (p.faint ? clamp(p.life, 0, 1) * 0.28 : p.smoke ? clamp(p.life, 0, 1) * 0.55 : 1) * (1 - it.fo);
-      b.fillStyle = p.col; b.fillRect(Math.round(it.X - sz / 2), Math.round(it.Y - sz / 2), sz, sz); b.globalAlpha = 1;
+      const p = it.p, sz = Math.max(1, Math.round(it.k)), ht = it.flat ? Math.max(1, Math.round(sz * eye / it.z)) : sz;
+      b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = (p.faint ? clamp(p.life, 0, 1) * 0.28 : p.smoke ? clamp(p.life, 0, 1) * 0.55 : p.al || 1) * (1 - it.fo);
+      b.fillStyle = p.col; b.fillRect(Math.round(it.X - sz / 2), Math.round(it.Y - ht / 2), sz, ht); b.globalAlpha = 1;
       continue;
     }
     const al = it.al == null ? 1 : it.al; if (al < 0.02) continue;
@@ -279,7 +329,7 @@ function world(o, bw, bh, need, L) {
   const g = b.createLinearGradient(0, hy - f * 0.5, 0, hy); g.addColorStop(0, SKY_HEX); g.addColorStop(1, FOG_HEX);
   b.fillStyle = g; b.fillRect(x0, y0, x1 - x0, y1 - y0);
   b.globalCompositeOperation = 'source-over';
-  return { cx, cy, hy, f, eye, far, yaw: o.yaw };
+  return { cx, cy, hy, f, eye, far, yaw: o.yaw, x: camX, y: camY };
 }
 // Sprite (eller dis-silhuetten) skalert inn i ruta it.W × it.H; trær som svaier tegnes i striper som i 2D
 function drawBill(it, fog) {

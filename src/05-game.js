@@ -57,7 +57,7 @@ const ZONES = { head: ['Hodeskudd', 2.2, 0.95], vital: ['Hjerte/lunge', 1.6, 1],
 const fmtKg = kg => String(kg).replace('.', ',') + ' kg';
 
 const G = {
-  t: 0, hour: 6.6, day: 1, money: 0, scents: 2, treats: TREAT_START, wood: 0, matches: 0, meat: 0, fires: [], huts: [], falls: [], cut: new Set(), crackT: 0, journal: [], up: {}, started: false, paused: false, panel: null, gun: 'rifle',
+  t: 0, hour: 6.6, day: 1, money: 0, scents: 2, treats: TREAT_START, wood: 0, matches: 0, meat: 0, fires: [], huts: [], falls: [], cut: new Set(), crackT: 0, journal: [], up: {}, started: false, paused: false, panel: null, gun: 'rifle', view3d: false,
   wind: { a: 0, s: 0.5, x: 1, y: 0 }, animals: [], scentObjs: [], blood: [], parts: [], msgs: [], spawnT: 0, quiet: [], dayl: 1, hunters: [], saveT: 15, pauseT: 0,
 };
 for (const u of UPG) G.up[u.id] = 0;
@@ -688,6 +688,8 @@ function playerUpdate(dt) {
     if (KEYS.KeyA || KEYS.ArrowLeft) mx -= 1; if (KEYS.KeyD || KEYS.ArrowRight) mx += 1;
     if (KEYS.KeyW || KEYS.ArrowUp) my -= 1; if (KEYS.KeyS || KEYS.ArrowDown) my += 1;
   }
+  // i 3D går W/S fram og tilbake dit du ser, og A/D til sidene
+  if (G.view3d && (mx || my)) { const c = Math.cos(AIM.yaw), s = Math.sin(AIM.yaw), f = -my, r = mx; mx = c * f - s * r; my = s * f + c * r; }
   P.sneak = !!(KEYS.ShiftLeft || KEYS.ShiftRight);
   const br = bridgeAt(P.x, P.y), wv = br ? 9 : fields(P.x, P.y, cabinsNear(P.x, P.y))[2];
   P.wet = wv < 1.1; P.deep = wv < 0.55;
@@ -701,7 +703,7 @@ function playerUpdate(dt) {
   P.run = P.moving && !P.sneak && !P.winded && !!KEYS.Space;
   if (P.moving) {
     const l = hyp(mx, my), sp = (P.sneak ? 16 : P.run ? 72 : 40) * (P.deep ? 0.35 : P.wet ? 0.55 : 1);
-    let nx = P.x + mx / l * sp * dt, ny = P.y + my / l * sp * dt * 0.85;
+    let nx = P.x + mx / l * sp * dt, ny = P.y + my / l * sp * dt * (G.view3d ? 1 : 0.85);
     // rekkverket holder deg på brua til du går av i en av endene
     if (br) {
       const dx = nx - br.x, dy = ny - br.y, s = dx * br.tx + dy * br.ty;
@@ -709,13 +711,15 @@ function playerUpdate(dt) {
     }
     const c = collide(nx, ny, 3); P.x = c.x; P.y = c.y;
     P.walkT += dt * (P.sneak ? 0.55 : P.run ? 1.7 : 1);
-    if (Math.abs(mx) >= Math.abs(my)) { P.face = 'side'; P.flip = mx < 0; } else P.face = my > 0 ? 'down' : 'up';
+    if (!G.view3d) { if (Math.abs(mx) >= Math.abs(my)) { P.face = 'side'; P.flip = mx < 0; } else P.face = my > 0 ? 'down' : 'up'; }
     P.stepT -= dt;
     if (P.stepT <= 0) {
       P.stepT = P.sneak ? 0.55 : P.run ? 0.2 : 0.32; sfx.step(P.sneak, P.wet);
       if (isAuth()) stepNoise({ x: P.x, y: P.y, sneak: P.sneak, run: P.run, wet: P.wet, boots: lv('boots') });
     }
   }
+  // i 3D snur jegeren seg dit du ser (på kartet og for de andre jegerne)
+  if (G.view3d && !P.work) faceTo(AIM.yaw);
   // sikte: pust og ro. Små justeringer går greit, men svinger du børsa langt (f.eks. fra ett dyr til et annet),
   // kommer den i uro som tar rundt et sekund å roe seg. Holder du pusten (Space), står siktet stille, og bare i
   // noen få sekunder; går lufta tom, hiver du etter pusten, og du kan ikke holde den igjen før du har hentet deg inn
@@ -734,8 +738,7 @@ function playerUpdate(dt) {
     const k = P.winded ? 3.2 : P.hold ? 0 : P.breath < 0.25 ? 1.8 : 1, t = P.bph;
     const tgx = (Math.sin(t * 1.1) * 0.7 + Math.sin(t * 2.3 + 1) * 0.3) * swayA * k, tgy = (Math.sin(t * 1.7 + 2) * 0.6 + Math.sin(t * 0.8) * 0.4) * swayA * 0.8 * k;
     P.sway[0] = lerp(P.sway[0], tgx, Math.min(1, dt * 6)); P.sway[1] = lerp(P.sway[1], tgy, Math.min(1, dt * 6));
-    const dx = Math.cos(AIM.yaw), dy = Math.sin(AIM.yaw);
-    if (Math.abs(dx) > Math.abs(dy) * 0.8) { P.face = 'side'; P.flip = dx < 0; } else P.face = dy > 0 ? 'down' : 'up';
+    faceTo(AIM.yaw);
   } else if (P.run) { P.breath = Math.max(0, P.breath - dt / 5); if (!P.breath) P.winded = true; }
   else P.breath = Math.min(1, P.breath + dt / 2);
 }

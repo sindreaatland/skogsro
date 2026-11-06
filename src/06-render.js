@@ -60,9 +60,10 @@ let genBudgetT = 0;
 // Tåke og dis over døgnet: tett om morgenen, litt om kvelden
 const mist = h => 0.6 * smooth(3, 5.5, h) * (1 - smooth(7.5, 10.5, h)) + 0.1 + 0.3 * smooth(18.5, 21, h) * (1 - smooth(23, 24, h));
 function render(dt) {
-  // bytter vi mellom kart og 3D, løses det forrige bildet opp i rutemønster over det nye
-  const v3 = G.started && (P.aim || aimThird());
-  if (v3 !== AIM.v3) { AIM.v3 = v3; if (!G.paused) snapStart(); }
+  // 0 kart, 1 bak jegeren i 3D, 2 fra øynene hans. Bytter vi bilde, løses det forrige opp i rutemønster over det nye,
+  // bortsett fra inn i siktet bakfra, der kameraet selv glir inn i hodet hans
+  const v3 = !G.started ? 0 : P.aim ? 2 : aimThird() || walk3D() ? 1 : 0;
+  if (v3 !== AIM.v3) { if (!G.paused && !(AIM.v3 === 1 && v3 === 2)) snapStart(); AIM.v3 = v3; }
   if (v3) { render3D(dt); snapDraw(dt); return; }
   // kamera
   let tx, ty, tz = 1;
@@ -238,9 +239,18 @@ function render(dt) {
   if ((G.t | 0) % 5 === 0) evictChunks(anchors());
 }
 
-// Tegner pil (og ev. ikon) ved skjermkanten mot et punkt utenfor skjermen; false hvis punktet er synlig
-function edgeMark(wx, wy, label, icon) {
-  const [sx, sy] = toScreen(wx, wy), mg = 90 * DPR;
+// Skjermpunktet for (wx, wy) h piksler over bakken: på kartet rett opp, i 3D sett fra kameraet. Bak kameraet havner
+// punktet langt ute på den siden det ligger
+function markAt(wx, wy, h) {
+  if (!G.view3d) return toScreen(wx, wy - h);
+  const vx = Math.cos(AIM.camYaw), vy = Math.sin(AIM.camYaw), dx = wx - AIM.camX, dy = wy - AIM.camY, z = dx * vx + dy * vy, lat = dy * vx - dx * vy;
+  if (z < 1) return [lat < 0 ? -1e5 : 1e5, H / 2];
+  const k = AIM.f / z;
+  return [(AIM.cx + lat * k) * ZB, (AIM.hy + (AIM.eye - h) * k) * ZB];
+}
+// Tegner pil (og ev. ikon) ved skjermkanten mot et punkt h piksler over bakken utenfor skjermen; false hvis punktet er synlig
+function edgeMark(wx, wy, h, label, icon) {
+  const [sx, sy] = markAt(wx, wy, h), mg = 90 * DPR;
   if (sx >= 0 && sy >= 0 && sx <= W && sy <= H) return false;
   const ang = Math.atan2(sy - H / 2, sx - W / 2), kx = (W / 2 - mg) / Math.abs(Math.cos(ang) || 1e-6), ky = (H / 2 - mg) / Math.abs(Math.sin(ang) || 1e-6), k = Math.min(kx, ky);
   const px = W / 2 + Math.cos(ang) * k, py = H / 2 + Math.sin(ang) * k, z = 3 * DPR;
@@ -262,20 +272,20 @@ function drawOverlay() {
   // ikke mens børsa tas opp eller senkes
   if (G.started && !P.aim && !AIM.raise) {
     const c = nearestCabin(P.x, P.y);
-    edgeMark(c.x, c.y - 30, 'Bua ' + Math.round(c.d * M_PER_PX) + ' m', FX.house);
+    edgeMark(c.x, c.y, 30, 'Bua ' + Math.round(c.d * M_PER_PX) + ' m', FX.house);
     if (D.st !== 'heel') {
       const t = (D.st === 'mark' ? 'Hunden står ' : 'Hunden ') + Math.round(hyp(D.x - P.x, D.y - P.y) * M_PER_PX) + ' m';
-      if (!edgeMark(D.x, D.y - 6, t, FX.dog) && D.st === 'mark') { const [sx, sy] = toScreen(D.x, D.y - 44); pxText('Hunden står', sx, sy, Math.round(13 * DPR), '#ffb050'); }
+      if (!edgeMark(D.x, D.y, 6, t, FX.dog) && D.st === 'mark') { const [sx, sy] = markAt(D.x, D.y, G.view3d ? 24 : 44); pxText('Hunden står', sx, sy, Math.round(13 * DPR), '#ffb050'); }
     }
-    for (const a of G.animals) if (a.state === 'dead' && (!a.by || a.by === NET.id)) edgeMark(a.x, a.y - 6, SPEC[a.sp].name + ' ' + Math.round(hyp(a.x - P.x, a.y - P.y) * M_PER_PX) + ' m', FX.deer);
+    for (const a of G.animals) if (a.state === 'dead' && (!a.by || a.by === NET.id)) edgeMark(a.x, a.y, 6, SPEC[a.sp].name + ' ' + Math.round(hyp(a.x - P.x, a.y - P.y) * M_PER_PX) + ' m', FX.deer);
     for (const r of NET.peers.values()) {
       if (!r.started || r.in) continue;
-      if (!edgeMark(r.x, r.y - 12, r.name + ' ' + Math.round(hyp(r.x - P.x, r.y - P.y) * M_PER_PX) + ' m')) { const [sx, sy] = toScreen(r.x, r.y - 32); pxText(r.name, sx, sy, Math.round(12 * DPR), '#ece4cf'); }
+      if (!edgeMark(r.x, r.y, 12, r.name + ' ' + Math.round(hyp(r.x - P.x, r.y - P.y) * M_PER_PX) + ' m')) { const [sx, sy] = markAt(r.x, r.y, 32); pxText(r.name, sx, sy, Math.round(12 * DPR), '#ece4cf'); }
     }
   }
-  // eget pikselkors som musepeker
+  // eget pikselkors som musepeker; i 3D står det midt i bildet
   if (G.started && !P.aim && !AIM.raise && !G.paused) {
-    const x = Math.round(MOUSE.x), y = Math.round(MOUSE.y), k = u;
+    const x = G.view3d ? W >> 1 : Math.round(MOUSE.x), y = G.view3d ? H >> 1 : Math.round(MOUSE.y), k = u;
     const arms = (o, c) => { m.fillStyle = c; m.fillRect(x - k * 4 + o, y - k / 2 + o, k * 3, k); m.fillRect(x + k + o, y - k / 2 + o, k * 3, k); m.fillRect(x - k / 2 + o, y - k * 4 + o, k, k * 3); m.fillRect(x - k / 2 + o, y + k + o, k, k * 3); };
     arms(k / 2, 'rgba(10,14,12,0.7)'); arms(0, '#ece4cf');
   }
