@@ -625,9 +625,9 @@ function houseDoor(kind, rot) {
   const [u, v, nu, nv] = kind === 'church' ? [41, 0, 1, 0] : st.end ? [(st.L || 48) / 2 + 5, 0, 1, 0] : [12.5 - (st.L || 48) / 2, (st.D || 32) / 2 + 5, 0, 1];
   return { door: [u * c - v * s, u * s + v * c], out: [nu * c - nv * s, nu * s + nv * c] };
 }
-function genHouseTop(st, rot) {
+// Veggene, taket, pipa og lysene til et hus av stilen st, bygd i m (Model her, eller GLModel i 10-gl.js)
+function houseDef(m, st) {
   const L = st.L || 48, D = st.D || 32, hl = L / 2, hd = D / 2, Hw = HOUSE_HW, Hr = HOUSE_HR, ov = 2.5;
-  const m = new Model(Math.ceil(hyp(hl + ov, hd + ov)) + 1, Hw + Hr + 8, rot);
   const wc = T(...WALLC[st.wc]), rc = T(...ROOFC[st.roof]), stn = T(...WALLC.stone), trim = C(st.wc === 'white' ? '#7e8e98' : '#f0ece2'), dc = C(st.door || '#5c3c28'), fr = C('#d6c69c');
   const base = st.wall === 'panel' || st.wall === 'frame';
   // dør, vinduer og lykt på hver vegg: [slag, fra, til] langs veggen (u på langveggene S og N, v i gavlene E og W)
@@ -657,6 +657,11 @@ function genHouseTop(st, rot) {
   // lys i vinduene og lykta på veggene som vender mot oss
   const at = (name, a) => name === 'S' ? [a, hd] : name === 'N' ? [a, -hd] : name === 'E' ? [hl, a] : [-hl, a];
   for (const name in F) if (vis[name]) for (const f of F[name]) if (f[0] !== 'door') m.lamp(...at(name, (f[1] + f[2]) / 2), 10, f[0] === 'lamp' ? 0.1 : st.forge ? 0.26 : 0.16);
+  return { F, at };
+}
+function genHouseTop(st, rot) {
+  const L = st.L || 48, D = st.D || 32, hl = L / 2, hd = D / 2, Hw = HOUSE_HW, Hr = HOUSE_HR, ov = 2.5;
+  const m = new Model(Math.ceil(hyp(hl + ov, hd + ov)) + 1, Hw + Hr + 8, rot), { F, at } = houseDef(m, st);
   // skiltet henger over døra, vendt rett mot oss så det kan leses
   if (st.sign) {
     const df = F[st.end ? 'E' : 'S'][0], [X, Y] = m.scr(...at(st.end ? 'E' : 'S', (df[1] + df[2]) / 2), Hw + 1), sw = st.sign.length * 4 + 5, sx = clamp(X - (sw >> 1), 1, m.w - sw - 2), p = m.p;
@@ -666,8 +671,8 @@ function genHouseTop(st, rot) {
   return m.finish({ obb: [hl, hd, Math.cos(rot), Math.sin(rot)], s3: HOUSE_3D[st.id] || (HOUSE_3D[st.id] = genHouse(st)) });
 }
 // Kirka: skip med skifertak, og tårn med spir og kors i enden der døra er
-function genChurchTop(rot) {
-  const m = new Model(45, 74, rot), wc = T(...WALLC.white), rc = T(...ROOFC.slate), stn = T(...WALLC.stone), fr = C('#7e8e98'), hd = 14, Hw = 20, Hr = 13, u0 = -37, u1 = 22;
+function churchDef(m) {
+  const wc = T(...WALLC.white), rc = T(...ROOFC.slate), stn = T(...WALLC.stone), fr = C('#7e8e98'), hd = 14, Hw = 20, Hr = 13, u0 = -37, u1 = 22;
   const glass = (a, z) => C(['#f0bc50', '#f8dc88', '#5a8ab0', '#c8503c', '#f0bc50'][(hash2(Math.floor(a), Math.floor(z / 2), 41) * 5) | 0]);
   const nave = (a0, dir, gab) => (q, z) => {
     const a = a0 + dir * q;
@@ -694,6 +699,9 @@ function genChurchTop(rot) {
   };
   m.box(22, 36, -7, 7, 0, 44, tw, rc[1]);
   m.spire(29, 0, 8.5, 44, 18, T('#3a5a50', '#4a7264', '#5e8c7a', '#78a692'));
+}
+function genChurchTop(rot) {
+  const m = new Model(45, 74, rot); churchDef(m);
   const [X, Y] = m.scr(29, 0, 62);
   m.p.rect(X - 1, Y - 8, 2, 9, C('#e6b63c')); m.p.rect(X - 3, Y - 6, 6, 2, C('#e6b63c')); m.p.rect(X - 3, Y - 5, 6, 1, C('#a07a20'));
   return m.finish({ obb: [37.5, 15, Math.cos(rot), Math.sin(rot)], s3: HOUSE_3D.church || (HOUSE_3D.church = genChurch()) });

@@ -1,0 +1,13 @@
+[      64ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8791/favicon.ico:1
+[    2117ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:8791/ws' failed: Error during WebSocket handshake: Unexpected response code: 404 @ http://127.0.0.1:8791/dist/test.html:6013
+[   12208ms] TypeError: g.applyQuaternion is not a function
+    at stick (http://127.0.0.1:8791/dist/test.html:7049:7)
+    at figQuad (http://127.0.0.1:8791/dist/test.html:7689:52)
+    at http://127.0.0.1:8791/dist/test.html:7856:133
+    at figPool (http://127.0.0.1:8791/dist/test.html:7796:19)
+    at figSync (http://127.0.0.1:8791/dist/test.html:7856:3)
+    at glSync (http://127.0.0.1:8791/dist/test.html:7576:3)
+    at glMap (http://127.0.0.1:8791/dist/test.html:7543:3)
+    at render (http://127.0.0.1:8791/dist/test.html:4849:3)
+    at loop (http://127.0.0.1:8791/dist/test.html:5993:17)
+[   14077ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8791/favicon.ico:1

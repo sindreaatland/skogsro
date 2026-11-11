@@ -1039,7 +1039,7 @@ function dogUpdate(dt) {
     let h = h0 + (D.st === 'search' ? Math.sin(D.ph) * 0.6 * smooth(40, 160, ed) : 0);
     D.waterT -= dt; if (D.waterT <= 0) { D.waterT = 0.25; D.wet = isWater(D.x, D.y); }
     const s = Math.min(spd * (D.wet ? 0.45 : 1), ed / Math.max(dt, 1e-3));
-    const go = a => collide(D.x + Math.cos(a) * s * dt, D.y + Math.sin(a) * s * (G.view3d ? 1 : 0.85) * dt, 2);
+    const go = a => collide(D.x + Math.cos(a) * s * dt, D.y + Math.sin(a) * s * dt, 2);
     let c = go(h);
     // fører steget uti, går den rett mot punktet i stedet; er det også vått, står den og finner ny vei
     if (dry && !D.swim && isWater(c.x, c.y)) {
@@ -1285,7 +1285,7 @@ const FALL_T = 1.6;
 const nearK = (x, y) => clamp(1 - hyp(x - P.x, y - P.y) / 700, 0, 1);
 function fellTree(x, y, dir) {
   const ch = chunks.get(Math.floor(x / CS) + ',' + Math.floor(y / CS)), o = ch && ch.objs.find(o => o.x === x && o.y === y && CHOP[o.k]);
-  if (o) { G.falls.push({ x, y, s: SPR[o.k][o.v], lc: LEAF_C[o.k], dir: dir < 0 ? -1 : 1, t: 0 }); const k = nearK(x, y); if (k > 0) sfx.creak(k); }
+  if (o) { G.falls.push({ x, y, s: SPR[o.k][o.v], k: o.k, v: o.v, lc: LEAF_C[o.k], dir: dir < 0 ? -1 : 1, t: 0 }); const k = nearK(x, y); if (k > 0) sfx.creak(k); }
   cutTree(x, y);
 }
 function fallAng(f) {
@@ -1444,7 +1444,7 @@ function playerUpdate(dt) {
     if (!ride) {
       // motbakker er tunge og de bratteste skrentene må du klyve sakte opp; slakt nedover går det litt lettere
       const l = hyp(mx, my), sp = (P.aim ? 9 : P.sneak ? 16 : P.run ? 72 : 40) * (P.deep ? 0.35 : P.wet ? 0.55 : 1) * (br ? 1 : gradeK(gradeAt(P.x, P.y, mx / l, my / l)));
-      let nx = P.x + mx / l * sp * dt, ny = P.y + my / l * sp * dt * (G.view3d || P.aim ? 1 : 0.85);
+      let nx = P.x + mx / l * sp * dt, ny = P.y + my / l * sp * dt;
       // rekkverket holder deg på brua til du går av i en av endene
       if (br) {
         const dx = nx - br.x, dy = ny - br.y, s = dx * br.tx + dy * br.ty;

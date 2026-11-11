@@ -626,7 +626,7 @@ function toStump(o) { o.v = (hash2(o.x, o.y, 9) * SPR.stump.length) | 0; o.k = '
 function cutTree(x, y) {
   G.cut.add(x + ',' + y);
   const ch = chunks.get(Math.floor(x / CS) + ',' + Math.floor(y / CS)), o = ch && ch.objs.find(o => o.x === x && o.y === y && CHOP[o.k]);
-  if (o) toStump(o);
+  if (o) { toStump(o); if (typeof glCut === 'function') glCut(x, y); }
 }
 
 // Kollisjon mot stammer, stein, hus og bakveggen i gapahuker

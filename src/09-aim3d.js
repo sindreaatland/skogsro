@@ -1,7 +1,7 @@
 // ===== Siktet i 3D: jegeren sett bakfra mens han tar børsa opp, så skogen sett fra øynene hans =====
-// Bakken projiseres rad for rad fra de samme bakkebitene som kartet bruker (gulvcasting), og trær,
-// stein, busker, dyr og andre jegere er de vanlige spritene skalert etter avstand og tegnet bakerst
-// først. Kula følger trådkorset: det første faste du ser der, er det den treffer.
+// Bildet tegnes av 3D-scenen (glAim i 10-gl.js). Her regnes det ut hva kula treffer: dybden til bakken stråle for
+// stråle fra de samme høydene, og trær, stein, busker og dyr som pikselbildene sine skalert etter avstand.
+// Kula følger trådkorset: det første faste du ser der, er det den treffer.
 // want: høyre musknapp holdes; raise: kartet går inn mot jegeren (0–1) og ut igjen når børsa senkes; tp: jegeren tar
 // børsa opp, sett bakfra i 3D (0–1); tpF: bildet han er på; open: kikkerten foran øyet (0–1); in: vi gikk selv inn i siktet;
 // ex, ey: øyets avstand fra midten av kikkerten; ringX, ringY, ringR: linsa i okularet (bufferpiksler); list2: det som er
@@ -36,7 +36,6 @@ const surrFocal = () => Math.ceil(H / ZB) / 2 / Math.tan(SURR_FOV * Math.PI / 36
 const pitchMax = () => hagle() ? 0.8 : PITCH_MAX;
 // Jegeren kneler når han sikter; ute på djupt vann er øynene nærmere vannflata
 const aimEye = () => P.deep ? EYE - 5 : EYE;
-const fogSil = s => s._fog || (s._fog = s.pix.sil(FOG).canvas());
 
 // ---------- kart eller 3D ----------
 // Hjulet bytter mellom kartet og 3D. I 3D snur musa deg, W/S går fram og tilbake og A/D til sidene. Ikke mens børsa er oppe.
@@ -284,7 +283,10 @@ function world(o, bw, bh, need, L) {
       pwx = wx; pwy = wy; psy = sy;
     }
   }
-  b.putImageData(AIM.im, 0, 0, x0, y0, x1 - x0, y1 - y0);
+  // selve bildet tegnes i 3D (10-gl.js) med samme projeksjon; bakken over er bare dybden treff og skjuling regnes etter
+  b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1; b.globalCompositeOperation = 'source-over'; b.imageSmoothingEnabled = false;
+  b.clearRect(x0, y0, x1 - x0, y1 - y0);
+  b.drawImage(glAim({ x: camX, y: camY, camZ, yaw: o.yaw, f, cx, hy, far, fog0, third: o.third, walk: o.walk, fade: o.fade || 0 }, bw, bh), x0, y0, x1 - x0, y1 - y0, x0, y0, x1 - x0, y1 - y0);
 
   // alt som står i synsfeltet, som sprites skalert etter avstand
   L.length = 0;
@@ -319,72 +321,7 @@ function world(o, bw, bh, need, L) {
   // dyra vises i profil og snus etter hvilken vei de går sett herfra; fugl i lufta tegnes i sin høyde.
   // Andre jegere vises bare på kartet, aldri i siktet.
   for (const a of G.animals) add(a.x, a.y, animalSprite(a), Math.cos(a.head) * rx + Math.sin(a.head) * ry < 0, { a, solid: a.state !== 'dead', hz: a.z || 0 });
-  // folk i landsbyen, snudd etter hvilken vei de går sett herfra
-  for (const v of VILL) if (!v.in) {
-    const fx = v.face === 'side' ? (v.flip ? -1 : 1) : 0, fy = v.face === 'side' ? 0 : v.face === 'up' ? -1 : 1, fw = fx * vx + fy * vy, d = fw > 0.7 ? 'up' : fw < -0.7 ? 'down' : 'side';
-    add(v.x, v.y, villSpr(v, d), (d === 'side' || v.act === 'chop' || v.act === 'smith') && fx * rx + fy * ry < 0, {});
-  }
-  for (const so of G.scentObjs) add(so.x, so.y, FX.bottle, false, {});
-  for (const fi of G.fires) add(fi.x, fi.y, fireSpr(fi), false, {});
-  for (const h of G.huts) add(h.x, h.y, FX.hut, false, {});
-  // hesten, sett fra den vinkelen kameraet ser den fra
-  const horseAt = (x, y, hd, kit, fr) => horseSpr(hd, Math.atan2(y - camY, x - camX), kit, fr);
-  if (lv('horse') && !HORSE.on) add(HORSE.x, HORSE.y, horseAt(HORSE.x, HORSE.y, HORSE.h, horseKit(false), horseStep()), false, {});
-  // sett bakfra: jegeren som går (eller hogger, sett fra siden mot treet), eller som tar børsa opp, og hunden ved siden av ham
-  let hs = HUN.ots[tpFrame()], hf = false;
-  if (o.walk) {
-    const tr = P.work && P.work.tree;
-    hs = tr ? HUN.chop[chopFrame(P.work)] : HUN.up[0][P.moving ? 1 + ((P.walkT * 7.5) | 0) % 4 : 0];
-    hf = !!tr && (tr.x - P.x) * rx + (tr.y - P.y) * ry < 0;
-  }
-  if (HORSE.on) { hs = horseAt(P.x, P.y, HORSE.h, horseKit(true), horseStep()); hf = false; }
-  const hu = o.third && add(P.x, P.y, hs, hf, { hunter: 1, al: 1 - o.fade, hz: horseBob() });
-  if (o.third) { const [s, fl] = dogView(D, vx, vy, rx, ry); add(D.x, D.y, s, fl, { al: 1 - o.fade }); }
-  if (o.walk) {
-    // de andre jegerne, snudd etter hvilken vei de går sett herfra, og hundene deres
-    for (const r of NET.peers.values()) {
-      if (!r.started || r.in) continue;
-      const fx = r.face === 'side' ? (r.flip ? -1 : 1) : 0, fy = r.face === 'side' ? 0 : r.face === 'up' ? -1 : 1, fw = fx * vx + fy * vy;
-      const d = fw > 0.7 ? 'up' : fw < -0.7 ? 'down' : 'side';
-      if (r.av && r.av.on) add(r.x, r.y, horseAt(r.x, r.y, r.av.h, r.av.kit | 1, r.moving ? 1 + ((G.t * 5) | 0) % 2 : 0), false, {});
-      else add(r.x, r.y, HUN[d][r.aim ? 1 : 0][r.moving ? 1 + ((r.walkT * 7.5) | 0) % 4 : 0], d === 'side' && fx * rx + fy * ry < 0, {});
-      if (r.av && !r.av.on) add(r.av.x, r.av.y, horseAt(r.av.x, r.av.y, r.av.h, r.av.kit), false, {});
-      if (r.dog) { const [s, fl] = dogView(r.dog, vx, vy, rx, ry); add(r.dog.x, r.dog.y, s, fl, {}); }
-    }
-    // blodsporet som flate flekker på bakken
-    for (const d of G.blood) {
-      const dx = d.x - camX, dy = d.y - camY, z = dx * vx + dy * vy;
-      if (z < NEAR || z > far) continue;
-      const k = f / z; L.push({ p: { col: d.t < 30 ? '#9a2a22' : '#6a221c', al: clamp(1 - d.t / 240, 0.2, 1) }, flat: 1, z, k, X: cx + (dx * rx + dy * ry) * k, Y: hy + (camZ - heightAt(d.x, d.y)) * k, fo: fog(z) });
-    }
-  }
-  // bare det skuddet virvler opp; fallende løv, ildfluer og lukt driver ikke forbi i siktet
-  for (const p of G.parts) {
-    if (p.fly || p.faint || p.mote || p.glow || p.leaf !== undefined) continue;
-    const dx = p.x - camX, dy = p.y - camY, z = dx * vx + dy * vy;
-    if (z < NEAR || z > far) continue;
-    const k = f / z; L.push({ p, z, k, X: cx + (dx * rx + dy * ry) * k, Y: hy + (camZ - heightAt(p.x, p.y) - p.z) * k, fo: fog(z) });
-  }
   L.sort((p, q) => q.z - p.z);
-  // trær, stein og busker mellom kameraet og jegeren som dekker ham, blir halvgjennomsiktige, som trærne på kartet
-  if (hu) for (const it of L) if (it.o && it.z < hu.z && it.X < hu.X + hu.W && it.X + it.W > hu.X && it.Y < hu.Y + hu.H && it.Y + it.H > hu.Y) it.al = 0.3;
-  b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1; b.globalCompositeOperation = 'source-over';
-  for (const it of L) {
-    if (it.p) {
-      const p = it.p, sz = Math.max(1, Math.round(it.k)), ht = it.flat ? Math.max(1, Math.round(sz * eye / it.z)) : sz;
-      b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = (p.faint ? clamp(p.life, 0, 1) * 0.28 : p.smoke ? clamp(p.life, 0, 1) * 0.55 : p.al || 1) * (1 - it.fo);
-      b.fillStyle = p.col; b.fillRect(Math.round(it.X - sz / 2), Math.round(it.Y - ht / 2), sz, ht); b.globalAlpha = 1;
-      continue;
-    }
-    const al = it.al == null ? 1 : it.al; if (al < 0.02) continue;
-    if (it.clipY != null) { b.setTransform(1, 0, 0, 1, 0, 0); b.save(); b.beginPath(); b.rect(x0, y0, x1 - x0, it.clipY - y0); b.clip(); }
-    if (it.flip) b.setTransform(-1, 0, 0, 1, it.X + it.W, it.Y); else b.setTransform(1, 0, 0, 1, it.X, it.Y);
-    // langt ute i disen er det bare silhuetten igjen
-    if (it.fo > 0.9) { b.globalAlpha = al; drawBill(it, true); }
-    else { b.globalAlpha = al; drawBill(it, false); if (it.fo > 0.01) { b.globalAlpha = it.fo * al; drawBill(it, true); } }
-    b.globalAlpha = 1;
-    if (it.clipY != null) b.restore();
-  }
   b.setTransform(1, 0, 0, 1, 0, 0);
   // bak alt: blånende åser i tre lag over synsranda, de nærmeste først, og så himmelen. Høyden følger retningen du ser
   // i (støy rundt en sirkel, så den går rundt uten skjøt), åsene er høyest mot fjellet i nord, og tåka visker dem ut
@@ -405,61 +342,8 @@ function world(o, bw, bh, need, L) {
   b.globalCompositeOperation = 'source-over';
   return { cx, cy, hy, f, eye, camZ, far, yaw: o.yaw, x: camX, y: camY };
 }
-// Hunden sett herfra (blikkretning vx, vy, høyre rx, ry), i en av åtte retninger etter hvilken vei den går. Gir [sprite, speilvendt]
-function dogView(d, vx, vy, rx, ry) {
-  const hx = Math.cos(d.hd), hy = Math.sin(d.hd);
-  return dogDir(d, hx * vx + hy * vy, hx * rx + hy * ry);
-}
 // Hvor mye en stripe av et tre svaier: ingenting i den nederste halvdelen (stammen står fast), mest i toppen
 const swayQ = (y, h) => Math.max(0, 1 - 2 * y / h);
-// Sprite (eller dis-silhuetten) skalert inn i ruta it.W × it.H; trær som svaier tegnes i striper som i 2D
-function drawBill(it, fog) {
-  const s = it.s, e = it.k >= 2.2 ? upSprite(s, upLevel(it.k)) : null;
-  const img = e ? (fog ? e.fog : e.c) : fog ? fogSil(s) : s.c, u = e ? e.n : 1;
-  const [bx, by, bw, bh] = e ? e.bb : [0, 0, s.w, s.h], kx = it.W / s.w, ky = it.H / s.h, X0 = Math.round(bx * kx), Wd = Math.round((bx + bw) * kx) - X0;
-  if (!it.sw) { const Y0 = Math.round(by * ky); b.drawImage(img, 0, 0, bw * u, bh * u, X0, Y0, Wd, Math.round((by + bh) * ky) - Y0); return; }
-  for (let y0 = by - by % 6; y0 < by + bh; y0 += 6) {
-    const ya0 = Math.max(y0, by), yb0 = Math.min(y0 + 6, by + bh), q = swayQ(y0, s.h), off = Math.round(it.sw * q * q * it.k), ya = Math.round(ya0 * ky), yb = Math.round(yb0 * ky);
-    if (yb > ya) b.drawImage(img, 0, (ya0 - by) * u, bw * u, (yb0 - ya0) * u, X0 + off, ya, Wd, yb - ya);
-  }
-}
-
-// ---------- skarpe piksler på nært hold ----------
-// Nært og i kikkerten blir hver sprite-piksel mange bufferpiksler. Da tegnes en oppskalert utgave (Scale2x: runder av
-// trappetrinn uten å finne på nye farger), så pikslene blir omtrent like store som i resten av bildet. Utgavene lages
-// ved behov, noen få millisekunder per bilde, og de som har ligget ubrukt lengst, kastes når de tar for mye plass
-const UPS = new Map(), UPS_MAX = 2e7;
-let upsPx = 0;
-const upLevel = k => k >= 10 ? 8 : k >= 5 ? 4 : 2;
-function scale2x(p) {
-  const w = p.w, h = p.h, d = p.d, q = new Pix(w * 2, h * 2), o = q.d, w2 = w * 2;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const i = y * w + x, P0 = d[i], A = y > 0 ? d[i - w] : 0, Bx = x < w - 1 ? d[i + 1] : 0, Cx = x > 0 ? d[i - 1] : 0, D = y < h - 1 ? d[i + w] : 0;
-    let e0 = P0, e1 = P0, e2 = P0, e3 = P0;
-    if (A !== D && Cx !== Bx) { if (Cx === A) e0 = A; if (A === Bx) e1 = Bx; if (D === Cx) e2 = Cx; if (Bx === D) e3 = D; }
-    const j = 2 * y * w2 + 2 * x; o[j] = e0; o[j + 1] = e1; o[j + w2] = e2; o[j + w2 + 1] = e3;
-  }
-  return q;
-}
-// Utgaven av s forstørret n ganger (2, 4 eller 8), beskåret til det som faktisk er tegnet. Er tidsbudsjettet for
-// dette bildet brukt opp, fås den største som alt finnes (eller null)
-function upSprite(s, n) {
-  let e = UPS.get(s);
-  if (e) { UPS.delete(s); UPS.set(s, e); } else UPS.set(s, e = { px: 0 });
-  for (let k = 2; k <= n; k *= 2) {
-    if (e[k]) continue;
-    const bb = s.bb || (s.bb = s.pix.bbox());
-    if (performance.now() > AIM.upB || bb[2] < 1) return e[k >> 1] || null;
-    let src = e[k >> 1] && e[k >> 1].pix;
-    if (k === 2) { src = new Pix(bb[2], bb[3]); for (let y = 0; y < bb[3]; y++) { const i = (bb[1] + y) * s.w + bb[0]; src.d.set(s.pix.d.subarray(i, i + bb[2]), y * bb[2]); } }
-    const pix = scale2x(src), sz = pix.w * pix.h * 3;
-    e[k] = { pix, n: k, bb, c: pix.canvas(), fog: pix.sil(FOG).canvas() };
-    e.px += sz; upsPx += sz;
-    while (upsPx > UPS_MAX && UPS.size > 1) { const [ks, old] = UPS.entries().next().value; UPS.delete(ks); upsPx -= old.px; }
-  }
-  return e[n];
-}
-
 // ---------- sikter, kikkert og børse ----------
 // Tegnes i de samme bufferpikslene som skogen, så alt i bildet har samme pikselstørrelse. Kikkerten eller børsa glir
 // opp fra underkanten når du legger an (AIM.open), og ned igjen når du slipper.

@@ -1011,7 +1011,7 @@ function boot() {
   cv = $('cv'); m = cv.getContext('2d');
   buf = document.createElement('canvas'); b = buf.getContext('2d');
   shL = document.createElement('canvas'); sh = shL.getContext('2d');
-  genAll();
+  genAll(); glInit();
   for (const k in ICON) ICONURL[k] = dataURL(ICON[k]);
   for (const sp of SPECIES) ICONURL['an_' + sp] = dataURL(cropSprite(ANI[sp].m.stand[0], 2));
   // jegeren forfra (inventaret, «til en jeger») og bakfra (3D), hunden og gapahuken til hjulet
