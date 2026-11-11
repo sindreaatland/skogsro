@@ -194,7 +194,6 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 /* bekledningen i kors: hatt øverst, hansker, jakke og jaktkniv i midten, så bukse og sko */
 .mc-cross { display: grid; grid-template-columns: repeat(3, var(--s)); grid-auto-rows: var(--s); gap: 4px; grid-template-areas: ". hat ." "gloves jacket knife" ". pants ." ". shoes ."; }
 .mc-row + .mc-lab { margin-top: 6px; }
-.mc-kr { align-items: center; gap: 10px; }
 .mc-krn { font-size: 20px; color: #2c3326; font-variant-numeric: tabular-nums; }
 /* hesten: lasten i seks kolonner med ledige ruter */
 .mc-horse .mc-grid { grid-template-columns: repeat(6, var(--s)); }
@@ -206,7 +205,16 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 /* tom plass på kroppen: omrisset av det som hører hjemme der; ruta du drar over, lyser opp */
 .mc-slot.mc-empty img { filter: brightness(0); opacity: .18; }
 .mc-slot.over { outline: 3px solid var(--amber); outline-offset: 1px; }
-.mc-slot[tabindex]:hover, .mc-slot[tabindex]:focus-visible { background: #a2aa96; outline-color: var(--amber); }
+.mc-slot[tabindex]:focus-visible { background: #a2aa96; outline-color: var(--amber); }
+/* ruta under pekeren får et hvitt slør; det du har tatt opp, henger på pekeren, og ruta det lå i, er blek */
+.mc-slot[tabindex]:hover::after { content: ""; position: absolute; inset: 0; background: rgba(255,255,255,.4); pointer-events: none; }
+.mc-slot.held img, .mc-slot.held .mc-n { opacity: .25; }
+.mc-slot.nosell img, .mc-slot.nosell .mc-n { opacity: .35; }
+#mcHeld { position: fixed; z-index: 31; width: 40px; height: 40px; margin: -20px 0 0 -20px; object-fit: contain; image-rendering: pixelated; pointer-events: none; }
+.mc-foot { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; color: #2c3326; }
+.mc-foot .warn { color: #8a2a12; }
+.qty { width: 100%; min-width: 150px; accent-color: var(--amber); cursor: pointer; }
+.wh-k { position: absolute; left: 5px; top: 2px; font-family: var(--f-lab); font-size: 13px; font-weight: 400; color: var(--muted); }
 .mc-dur { position: absolute; left: 3px; right: 3px; bottom: 2px; height: 3px; background: #1a1c18; }
 .mc-dur b { display: block; height: 100%; }
 .mc-n { position: absolute; right: 1px; bottom: -1px; font-family: var(--f-lab); font-size: 13px; color: #fff; text-shadow: 2px 2px 0 #3f3f3f; font-variant-numeric: tabular-nums; }
@@ -246,12 +254,12 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 
 /* Vinduene har fast høyde tilpasset skjermen: lange lister blar inni vinduet, og vinduet verken vokser,
    krymper eller flytter seg når innholdet endres. Inventaret krymper rutene sine til det får plass uten å bla */
-.card { display: flex; flex-direction: column; max-height: calc(100dvh - 48px); overflow: hidden; }
+.card { display: flex; flex-direction: column; max-height: var(--vh); overflow: hidden; }
 .card > .card-h, .card > .menu-h { flex: none; }
 .card > :last-child { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-.shop-card { height: min(860px, 100dvh - 48px); }
-#book .card { height: min(760px, 100dvh - 48px); }
-.menu-card { height: min(600px, 100dvh - 48px); }
+.shop-card { height: min(860px, var(--vh)); }
+#book .card { height: min(760px, var(--vh)); }
+.menu-card { height: min(600px, var(--vh)); }
 .book-body { align-content: start; grid-template-rows: auto auto minmax(0, 1fr); }
 #bookList { overflow-y: auto; align-content: start; min-height: 0; }
 #plSheet .menu-body { grid-template-rows: minmax(0, 1fr) auto; overflow: hidden; }
@@ -303,6 +311,53 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 .map-leg i { width: 12px; height: 12px; flex: none; border: 2px solid #0c110e; }
 .map-leg img { width: 22px; margin: 0 -5px; flex: none; }
 @media (max-width: 900px) { #keys { display: none; } #log { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); } #bar { max-width: none; } }
+
+/* Telefon: vinduene holder seg innenfor de trygge kantene, og rutene i inventaret fyller bredden */
+body { overscroll-behavior: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-text-size-adjust: 100%; }
+#cv { touch-action: none; }
+.sheet { --pad: 24px; --vh: calc(100dvh - 2 * var(--pad) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); padding-block: calc(var(--pad) + env(safe-area-inset-top, 0px)) calc(var(--pad) + env(safe-area-inset-bottom, 0px)); }
+@media (max-width: 700px) { #mapCv { width: min(100dvh - 200px, 100vw - 70px); } }
+@media (max-width: 480px) {
+  .sheet { padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
+  .card-h { padding: 10px 12px; gap: 10px; } .card-h h2 { font-size: 22px; }
+  .mc { margin: 8px; padding: 8px; }
+  .inv-card .mc, .shop-mine .mc { --s: clamp(20px, (100vw - 122px) / 9, 44px); }
+  .shop-mine, .shop-main { padding: 8px; }
+  .sub-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* telefonen på tvers: lavt, så vinduene går nesten helt ut, og inventaret blar heller enn å krympe rutene */
+@media (max-height: 500px) {
+  .sheet { --pad: 8px; }
+  .inv-card .mc { --s: clamp(28px, 4vw, 36px); }
+  #shopStats { position: static; }
+  .menu-h { padding: 10px 20px 8px; } .menu-name { font-size: 40px; }
+  .t-wrap { gap: 10px; } .t-name { font-size: clamp(48px, 20vh, 168px); } .t-sub { font-size: 16px; }
+}
+
+/* Berøring (body.touch, se bindTouch): spaken der venstre tommel settes ned, og runde knapper nede til høyre.
+   Av linja nederst står bare våpenet igjen; resten ligger i hjulet og inventaret */
+#tc { display: none; }
+#stick { position: fixed; z-index: 3; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%; background: rgba(0,0,0,.25); border: 2px solid rgba(236,228,207,.35); pointer-events: none; }
+#stick i { position: absolute; left: 32px; top: 32px; width: 44px; height: 44px; border-radius: 50%; background: rgba(236,228,207,.55); }
+body.touch #tc { position: fixed; z-index: 3; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(3, 62px); grid-auto-rows: 62px; grid-template-areas: ". sneak load" "wheel fire aim"; gap: 10px; }
+.tc { border-radius: 50%; background: var(--panel); border: 2px solid var(--edge); font-size: 16px; padding: 0; touch-action: none; }
+.tc:active { background: #26332b; border-color: var(--moss); }
+#tcSneak { grid-area: sneak; } #tcLoad { grid-area: load; } #tcWheel { grid-area: wheel; } #tcFire { grid-area: fire; border-color: var(--rust); } #tcAim { grid-area: aim; border-color: var(--moss); }
+#tcSneak[aria-pressed="true"], body.aiming #tcAim { color: var(--amber); border-color: var(--amber); }
+/* i siktet holder venstre tommel pusten mens høyre flytter siktet og skyter */
+#tcHold { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 62px; height: 62px; }
+body:not(.aiming) #tcHold, body.aiming #tcWheel { visibility: hidden; }
+body.touch #wheel { pointer-events: auto; }
+body.touch #tbtns { flex-wrap: wrap; justify-content: flex-end; max-width: 52vw; }
+body.touch .tbtn { padding: 8px 10px; font-size: 12px; }
+body.touch #bar { bottom: calc(166px + env(safe-area-inset-bottom, 0px)); max-width: none; }
+body.touch #bar .slot:not(:first-child), body.touch .slot .k, body.touch #prompt kbd, body.touch .t-keys, body.touch #keysBtn { display: none; }
+body.touch #gunName { padding-right: 0; }
+body.touch #prompt { pointer-events: auto; padding: 12px 18px; }
+body.touch #breath { bottom: calc(26vh + 60px + env(safe-area-inset-bottom, 0px)); }
+/* meldingene står oppe under klokka, så tomlene og handlingsknappen har nedre del av bildet for seg selv */
+body.touch #log { top: calc(180px + env(safe-area-inset-top, 0px)); bottom: auto; max-width: calc(100vw - 32px); }
+@media (orientation: landscape) { body.touch #log { top: 130px; max-width: 40vw; } }
 @media (prefers-reduced-motion: reduce) { #windArrow, .msg { transition: none; } }
 </style>
 
@@ -322,7 +377,9 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
   <div class="slot box"><img id="campIco" alt=""><div><div class="slot-t" id="campN">Ved × 0 · kjøtt × 0</div><div class="slot-s" id="campS">Sekken 0 / 20 kg</div></div></div>
   <div class="slot box"><img id="treatIco" alt=""><div><div class="slot-t" id="treatN">× 3</div><div class="slot-s" id="dogTxt">Send ut hunden</div></div></div>
 </div>
-<div id="keys" class="hud"><span><kbd>WASD</kbd>gå</span><span><kbd>Høyreklikk</kbd>sikt</span><span><kbd>Venstreklikk</kbd>skyt</span><span><kbd>F</kbd>handling</span><span><kbd>Q</kbd>hold for hjulet</span><span><kbd>E</kbd>inventar</span><span><kbd>M</kbd>kart</span><span><kbd>Esc</kbd>pause</span></div>
+<div id="keys" class="hud"><span><kbd>WASD</kbd>gå</span><span><kbd>Høyreklikk</kbd>sikt</span><span><kbd>Venstreklikk</kbd>skyt</span><span><kbd>F</kbd>handling</span><span><kbd>Q</kbd>hold for hjulet</span><span><kbd>1–9</kbd>rett fra hjulet</span><span><kbd>E</kbd>inventar</span><span><kbd>M</kbd>kart</span><span><kbd>Esc</kbd>pause</span></div>
+<div id="stick" hidden><i></i></div>
+<div id="tc" hidden><button class="tc" id="tcSneak" type="button" aria-pressed="false">Snik</button><button class="tc" id="tcLoad" type="button">Lad</button><button class="tc" id="tcWheel" type="button">Hjul</button><button class="tc" id="tcFire" type="button">Skyt</button><button class="tc" id="tcAim" type="button">Sikt</button><button class="tc" id="tcHold" type="button">Pust</button></div>
 <div id="wheel" hidden><div id="wheelRing"><div id="wheelIts"></div><div id="wheelMid"><div id="wheelN"></div><div id="wheelD"></div></div><div id="wheelDot"></div></div></div>
 
 <div id="shop" class="sheet" hidden>
@@ -332,7 +389,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
       <div class="shop-mine">
         <div class="lab">Det du har</div>
         <div id="shopMc"></div>
-        <div class="side-note">Det som kan selges her, står under Selg. Klikk på noe her, eller dra det over, så står det øverst der. Våpnene lades fra sekken når du går inn.</div>
+        <div class="side-note">Klikk på noe for å selge det. Shift+klikk selger hele stabelen med en gang. Det som er dempet, kjøpes ikke her. Våpnene lades fra sekken når du går inn.</div>
         <div class="side-acts"><button class="act" type="button" id="sleepBtn">Sov til morgengry</button></div>
       </div>
       <div class="shop-main" id="shopMain">
@@ -405,6 +462,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 </div>
 
 <div id="mcTip" role="tooltip" hidden></div>
+<img id="mcHeld" alt="" hidden>
 
 <div id="notice" class="sheet" hidden>
   <div class="card pause-card" role="alertdialog" aria-labelledby="noticeT" aria-describedby="noticeD">
@@ -428,7 +486,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
     <div class="card-h"><h2 id="keysT">Taster</h2><button class="xbtn" type="button" data-back>Tilbake (Esc)</button></div>
     <div class="menu-body">
       <div class="key-list">
-        <kbd>WASD</kbd><span>Gå · A/D flytter deg rolig til sidene i siktet</span>
+        <kbd>WASD</kbd><span>Gå · musa snur deg og bildet · A/D flytter deg rolig til sidene i siktet</span>
         <kbd>Shift</kbd><span>Snik</span>
         <kbd>Space</kbd><span>Spring · hold pusten i siktet</span>
         <kbd>Høyreklikk</kbd><span>Sikt (hold)</span>
@@ -438,6 +496,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
         <kbd>E</kbd><span>Inventar · dra ting dit du vil, og klær over på kroppen</span>
         <kbd>M</kbd><span>Oversiktskart over hele jaktfeltet</span>
         <kbd>Q</kbd><span>Hold for hjulet, pek med musa og slipp</span>
+        <kbd>1–9</kbd><span>Det samme som plassene i hjulet, uten å åpne det</span>
         <kbd>Esc</kbd><span>Pause</span>
       </div>
       <div class="menu-sec"><div class="lab">I hjulet</div><p class="side-note">Lokk · luktstoff · send ut eller kall inn hunden · bål · gapahuk · bytt mellom rifle og hagle · jaktbok · til en annen jeger</p></div>
@@ -464,7 +523,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
     <div id="titleBtns" hidden><button class="big" id="startBtn" type="button">Gå inn i skogen</button><button class="ghost" id="newBtn" type="button" hidden>Start på nytt</button></div>
     <div id="saveTxt" hidden></div>
     <div class="t-keys">
-      <div><kbd>WASD</kbd>Gå · <kbd>Shift</kbd>snik</div>
+      <div><kbd>WASD</kbd>Gå · <kbd>Mus</kbd>snu · <kbd>Shift</kbd>snik</div>
       <div><kbd>Høyreklikk</kbd>Sikt (hold)</div>
       <div><kbd>Venstreklikk</kbd>Skyt</div>
       <div><kbd>Space</kbd>Spring · hold pusten i siktet</div>
@@ -2191,9 +2250,17 @@ function nearestCabin(x, y, ok) {
   return { x: b.x, y: b.y, d: bd, c: b };
 }
 
-// Elver og stier følger nullkonturen til hvert sitt støyfelt
+// Elvene følger nullkonturen til et støyfelt
 const riverN = (x, y) => fbm(x / 560, y / 560, SEED + 37, 2) - 0.5;
-const trailN = (x, y) => fbm(x / 310 + 40, y / 310 + 40, SEED + 53, 2) - 0.5;
+// Stiene er lagt mellom stedene (se «stier» lenger ned). _trail har stykkene [x0, y0, x1, y1] som går gjennom eller
+// like forbi hver rute på TG × TG piksler, og trailAt gir avstanden til nærmeste sti i halve stibredder (under 1 er sti)
+const TG = 32, TR_HW = 4, TR_FAR = 12, _trail = new Map(), tkey = (i, j) => (i + 512) * 1024 + j + 512;
+function trailAt(x, y) {
+  const L = _trail.get(tkey(Math.floor(x / TG), Math.floor(y / TG)));
+  let d = TR_FAR;
+  if (L) for (const s of L) d = Math.min(d, segDist(x, y, s));
+  return d / TR_HW;
+}
 // Klimaet over jaktfeltet: 1 er kaldt fjell i nord, −1 er mildt lavland i sørvest og 0 er skogen rundt bua.
 // Grov støy gjør overgangene ujevne, så de ikke følger rette linjer
 function climate(x, y) {
@@ -2208,7 +2275,7 @@ function fields(x, y, cabs) {
   const Cn = clamp((fbm(x / 470, y / 470, SEED + 23, 2) - 0.5) * 2.8 + 0.5 + 0.35 * kc - 0.45 * km, 0, 1);
   const r = Math.abs(riverN(x, y)), pd = vnoise(x / 820 + 5.2, y / 820 - 3.1, SEED + 41);
   let Wv = r / (0.010 + Math.max(0, pd - 0.6) * 0.18);
-  let Tr = Math.abs(trailN(x, y)) / 0.011;
+  let Tr = trailAt(x, y);
   const He = vnoise(x / 110, y / 110, SEED + 61), Va = vnoise(x / 37, y / 37, SEED + 5);
   for (const c of cabs) {
     const d = hyp(x - c.x, (y - c.y) * 1.3);
@@ -2317,27 +2384,11 @@ function regionAt(x, y) {
 }
 
 // ---------- bruer der stiene krysser bekker og elver ----------
-// Krysningspunktet finnes med Newton-iterasjon på de to støyfeltene, så alle biter (og alle
-// jegere på nettet) finner nøyaktig samme punkt. Biten punktet ligger i eier brua.
-const _br = new Map(), BR_HW = 5, BR_MAX = 64;
-function crossing(x, y) {
-  for (let i = 0; i < 24; i++) {
-    const a = trailN(x, y), c = riverN(x, y);
-    const ax = trailN(x + 0.5, y) - trailN(x - 0.5, y), ay = trailN(x, y + 0.5) - trailN(x, y - 0.5);
-    const cx = riverN(x + 0.5, y) - riverN(x - 0.5, y), cy = riverN(x, y + 0.5) - riverN(x, y - 0.5);
-    const det = ax * cy - ay * cx; if (Math.abs(det) < 1e-12) return null;
-    let dx = (a * cy - ay * c) / det, dy = (ax * c - cx * a) / det;
-    const l = hyp(dx, dy); if (l > 6) { dx *= 6 / l; dy *= 6 / l; } // dempede steg: støyen er ikke lineær langt unna
-    x -= dx; y -= dy;
-    if (dx * dx + dy * dy < 1e-8) return [x, y];
-  }
-  return null;
-}
-function makeBridge(x, y) {
+// Brua ligger rett over elva i retningen (tx, ty) stien har der den krysser (x, y). Biten punktet ligger i eier brua.
+const _br = new Map(), BR_HW = 5, BR_MAX = 64, NO_BR = [];
+function makeBridge(x, y, tx, ty) {
   const cabs = cabinsNear(x, y), wv = (px, py) => fields(px, py, cabs)[2];
   if (wv(x, y) >= 1) return null;
-  const gx = trailN(x + 0.5, y) - trailN(x - 0.5, y), gy = trailN(x, y + 0.5) - trailN(x, y - 0.5), gl = hyp(gx, gy);
-  const tx = -gy / gl, ty = gx / gl;
   // gå langs stien til land på begge sider; begge kantene av dekket må også nå land
   const reach = dir => {
     let m = 0;
@@ -2357,17 +2408,120 @@ function makeBridge(x, y) {
   }
   return { x, y, tx, ty, a: -a, b, hw: BR_HW, id: (hash2(x | 0, y | 0, 5) * 1e6) | 0, bb };
 }
-function bridgesOf(cx, cy) {
-  const key = cx + ',' + cy; let L = _br.get(key);
-  if (L) return L;
-  L = []; const seen = [], x0 = cx * CS, y0 = cy * CS;
-  for (let y = y0 - 12; y < y0 + CS + 12; y += 8) for (let x = x0 - 12; x < x0 + CS + 12; x += 8) {
-    if (Math.abs(trailN(x, y)) > 0.04 || Math.abs(riverN(x, y)) > 0.04) continue;
-    const c = crossing(x, y);
-    if (!c || c[0] < x0 || c[0] >= x0 + CS || c[1] < y0 || c[1] >= y0 + CS || seen.some(p => hyp(p[0] - c[0], p[1] - c[1]) < 3)) continue;
-    seen.push(c); const br = makeBridge(c[0], c[1]); if (br) L.push(br);
+const bridgesOf = (cx, cy) => _br.get(cx + ',' + cy) || NO_BR;
+
+// ---------- stier ----------
+// Ingen sti går på måfå: alle fører til et sted. Stiene går fra de fire portene i landsbyen og ut til hver utpost, hver
+// koie og hvert landemerke. Stedene kobles på ett og ett, det nærmeste først, med en sti som legges (A*) i rutenettet
+// høydene står i, fra stedet og mot det nærmeste stedet som alt har sti. Den stopper der den møter en sti som ligger
+// der fra før, så stiene møtes i stidele og henger sammen i ett nett: følger du en sti, kommer du alltid fram til noe.
+// Stien går helst der det er slakt: stigning langs stien og bratt sideli koster mye, så den går rundt skrentene
+// i stedet for rett opp. Den krysser elver der de er smale (med bru) og går rundt innsjøene, om det ikke er eneste
+// vei fram (en koie på en holme). Alt regnes ut fra støyfeltene, så alle jegere på nettet får de samme stiene.
+{
+  const N = 2 * WORLD / TG + 1, O = WORLD / TG, NN = N * N;
+  // per punkt i rutenettet: høyde, elvefelt, hvor bratt det er, BL (1 sperret av landsbyen, 2 innsjø), på en sti (ON) og hvor
+  // stien går der (PX, PY: punktet etter at stien er glattet)
+  const H = new Float32Array(NN).fill(NaN), RV = new Float32Array(NN), SG = new Float32Array(NN).fill(-1), BL = new Uint8Array(NN), ON = new Uint8Array(NN);
+  const PX = new Float32Array(NN), PY = new Float32Array(NN), GS = new Float32Array(NN), FR = new Int32Array(NN), ST = new Int32Array(NN), CL = new Int32Array(NN);
+  const nx = a => (a % N - O) * TG, ny = a => ((a / N | 0) - O) * TG, at = (x, y) => clamp(Math.round(y / TG) + O, 0, N - 1) * N + clamp(Math.round(x / TG) + O, 0, N - 1);
+  const node = a => {
+    if (H[a] === H[a]) return a;
+    const x = nx(a), y = ny(a);
+    RV[a] = riverN(x, y); H[a] = heightRaw(x, y);
+    BL[a] = Math.abs(x) < 400 && Math.abs(y + 150) < 300 && villDist(x, y) < 30 ? 1 : H[a] === 0 && vnoise(x / 820 + 5.2, y / 820 - 3.1, SEED + 41) > 0.65 ? 2 : 0;
+    return a;
+  };
+  const steep = a => {
+    if (SG[a] < 0) { const i = a % N, j = a / N | 0; SG[a] = hyp(H[node(i < N - 1 ? a + 1 : a)] - H[node(i ? a - 1 : a)], H[node(j < N - 1 ? a + N : a)] - H[node(j ? a - N : a)]) / (2 * TG); }
+    return SG[a];
+  };
+  // haug med de åpne punktene, det billigste øverst
+  const hk = [], hv = [];
+  const push = (v, k) => {
+    let i = hk.length; hk.push(k); hv.push(v);
+    while (i) { const p = (i - 1) >> 1; if (hk[p] <= k) break; hk[i] = hk[p]; hv[i] = hv[p]; i = p; }
+    hk[i] = k; hv[i] = v;
+  };
+  const pop = () => {
+    const top = hv[0], k = hk.pop(), v = hv.pop(), n = hk.length;
+    if (n) {
+      let i = 0;
+      for (;;) { let c = i * 2 + 1; if (c >= n) break; if (c + 1 < n && hk[c + 1] < hk[c]) c++; if (hk[c] >= k) break; hk[i] = hk[c]; hv[i] = hv[c]; i = c; }
+      hk[i] = k; hv[i] = v;
+    }
+    return top;
+  };
+  // billigste vei fra punktet sa mot (gx, gy), til første punkt som alt ligger på en sti
+  let sid = 0;
+  const route = (sa, gx, gy) => {
+    sid++; hk.length = hv.length = 0;
+    node(sa); GS[sa] = 0; ST[sa] = sid; FR[sa] = -1; push(sa, 0);
+    while (hk.length) {
+      const a = pop(); if (CL[a] === sid) continue; CL[a] = sid;
+      if (ON[a]) { const L = []; for (let q = a; q >= 0; q = FR[q]) L.push(q); return L.reverse(); }
+      const i = a % N, j = a / N | 0;
+      for (let k = 0; k < 8; k++) {
+        const di = [1, -1, 0, 0, 1, 1, -1, -1][k], dj = [0, 0, 1, -1, 1, -1, 1, -1][k], bi = i + di, bj = j + dj;
+        if (bi < 0 || bj < 0 || bi >= N || bj >= N) continue;
+        const b = node(bj * N + bi); if (CL[b] === sid || BL[b] === 1 && !ON[b]) continue;
+        const len = k < 4 ? TG : TG * Math.SQRT2, s = Math.abs(H[b] - H[a]) / len, sg = steep(b), s2 = Math.max(0, s - 0.45);
+        const g = GS[a] + len * (1 + 40 * s * s + 400 * s2 * s2 + 10 * sg * sg) + ((RV[a] < 0) !== (RV[b] < 0) ? 400 : 0) + (BL[b] === 2 ? 2000 : H[b] === 0 ? 600 : 0);
+        if (ST[b] !== sid || g < GS[b]) { GS[b] = g; ST[b] = sid; FR[b] = a; push(b, g + hyp(bi - gx, bj - gy) * TG); }
+      }
+    }
+    return null;
+  };
+  // legger et stykke sti i rutene det går gjennom eller like forbi, og bygger bru der det krysser en elv
+  const seg = (x0, y0, x1, y1, onBr) => {
+    const l = hyp(x1 - x0, y1 - y0); if (l < 0.01) return;
+    const s = [x0, y0, x1, y1];
+    for (let j = Math.floor((Math.min(y0, y1) - TR_FAR) / TG); j <= Math.floor((Math.max(y0, y1) + TR_FAR) / TG); j++)
+      for (let i = Math.floor((Math.min(x0, x1) - TR_FAR) / TG); i <= Math.floor((Math.max(x0, x1) + TR_FAR) / TG); i++) { const k = tkey(i, j), L = _trail.get(k); if (L) L.push(s); else _trail.set(k, [s]); }
+    const neg = riverN(x0, y0) < 0;
+    if (onBr || neg === riverN(x1, y1) < 0) return;
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 14; i++) { const m = (lo + hi) / 2; if (riverN(lerp(x0, x1, m), lerp(y0, y1, m)) < 0 === neg) lo = m; else hi = m; }
+    const tx = (x1 - x0) / l, ty = (y1 - y0) / l, bx = lerp(x0, x1, lo), by = lerp(y0, y1, lo);
+    let br = makeBridge(bx, by, tx, ty);
+    // når stien ikke fram på skrå over elva, legges brua tvers over, der det er kortest
+    if (!br) { const gx = riverN(bx + 0.5, by) - riverN(bx - 0.5, by), gy = riverN(bx, by + 0.5) - riverN(bx, by - 0.5), gl = hyp(gx, gy) * (gx * tx + gy * ty < 0 ? -1 : 1); if (gl) br = makeBridge(bx, by, gx / gl, gy / gl); }
+    if (!br) return;
+    const k = Math.floor(bx / CS) + ',' + Math.floor(by / CS), L = _br.get(k); if (L) L.push(br); else _br.set(k, [br]);
+    // stien går rett fram til begge endene av brua
+    seg(bx + br.tx * (br.a - 4), by + br.ty * (br.a - 4), bx + br.tx * (br.b + 4), by + br.ty * (br.b + 4), 1);
+  };
+  // legger en sti fra d mot t, fram til første sti på veien
+  const lay = (d, t) => {
+    const path = route(at(d[0], d[1]), t[0] / TG + O, t[1] / TG + O);
+    if (!path) return false;
+    // punktene skyves litt hit og dit, så stien bukter seg i stedet for å følge rutenettet på rette strekk
+    const wob = (a, k) => (vnoise(nx(a) / 75, ny(a) / 75, SEED + 53 + k) - 0.5) * 30;
+    const pts = [d, ...path.map(a => ON[a] ? [PX[a], PY[a]] : [nx(a) + wob(a, 0), ny(a) + wob(a, 1)])];
+    // og knekkene glattes ut; endene ligger fast
+    for (let n = 0; n < 3; n++) for (let i = 1, p = pts[0]; i < pts.length - 1; i++) { const q = pts[i], r = pts[i + 1]; pts[i] = [(p[0] + 2 * q[0] + r[0]) / 4, (p[1] + 2 * q[1] + r[1]) / 4]; p = q; }
+    path.forEach((a, i) => { ON[a] = 1; PX[a] = pts[i + 1][0]; PY[a] = pts[i + 1][1]; });
+    for (let i = 0; i < pts.length - 1; i++) seg(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
+    return true;
+  };
+  // stiene ut av portene er der fra før (de fire første i V_PATH)
+  const gates = V_PATH.slice(0, 4).map(p => p[1]), tree = gates.slice();
+  for (const [x, y] of gates) { const a = node(at(x, y)); ON[a] = 1; PX[a] = x; PY[a] = y; }
+  // til døra på husene og til foten av landemerkene
+  const dests = [...PLACES.filter(c => !inVillage(c)).map(c => [c.door[0] + c.out[0] * 6, c.door[1] + c.out[1] * 6]), ...MARKS.map(q => [q.x, q.y + 3])];
+  const join = (i, t) => { const d = dests.splice(i, 1)[0]; if (lay(d, t)) tree.push(d); };
+  // først en sti ut av hver port, til det nærmeste stedet på den kanten av landsbyen
+  for (const g of gates) {
+    let bi = -1, bd = 1e9;
+    dests.forEach((d, i) => { const dx = d[0] - g[0], dy = d[1] - g[1], q = hyp(dx, dy); if (q < bd && dx * g[0] + dy * (g[1] + 150) > 0.5 * q * hyp(g[0], g[1] + 150)) { bd = q; bi = i; } });
+    if (bi >= 0) join(bi, g);
   }
-  _br.set(key, L); return L;
+  // så resten, det som ligger nærmest et sted med sti først
+  while (dests.length) {
+    let bi = 0, bt = null, bd = 1e9;
+    dests.forEach((d, i) => { for (const t of tree) { const q = hyp(d[0] - t[0], d[1] - t[1]); if (q < bd) { bd = q; bi = i; bt = t; } } });
+    join(bi, bt);
+  }
 }
 // Står (x, y) på en av bruene i lista? m utvider brua i alle retninger
 function inBridge(list, x, y, m) {
@@ -3032,7 +3186,8 @@ const rackKr = () => G.rack.reduce((s, l) => s + l.kr, 0);
 const horseKg = () => kg1(rackKg() + G.cargo.wood * WOOD_KG);
 const horseNear = (r = HORSE_REACH) => lv('horse') > 0 && (HORSE.on || hyp(HORSE.x - P.x, HORSE.y - P.y) < r);
 // rådet når sekken er full og hesten ikke er her
-const horseHint = () => lv('horse') ? `hent hesten: den bærer ${horseCap()} kg` : `kjøp en hest i stallen: den bærer ${ST.hbag[0]} kg`;
+const horseCalls = () => lv('horse') > 0 && !horseNear() && hyp(HORSE.x - P.x, HORSE.y - P.y) <= HORSE_CALL;
+const horseHint = () => lv('horse') ? `${horseCalls() ? 'kall på hesten (hold Q)' : 'hent hesten'}: den bærer ${horseCap()} kg` : `kjøp en hest i stallen: den bærer ${ST.hbag[0]} kg`;
 const rackFree = () => horseNear() ? Math.max(0, kg1(horseCap() - horseKg())) : 0;
 // plass til kjøtt der du står: sekken, og hesten hvis den er like ved
 const meatFree = () => kg1(sackFree() + rackFree());
@@ -3058,7 +3213,7 @@ const G = {
 };
 for (const u of UPG) G.up[u.id] = 0;
 for (const k of CARGO) G.cargo[k] = 0;
-const P = { x: 0, y: 30, face: 'down', flip: false, walkT: 0, moving: false, sneak: false, aim: false, breath: 1, hold: false, mag: { rifle: 0, hagle: 0, bue: 0 }, cycle: 0, reload: 0, callCd: 0, stepT: 0, wet: false, deep: false, cold: 0, chill: false, sway: [0, 0], unrest: 0, winded: false, bph: 0, hp: 100, sick: false, risk: 0, warm: false, work: null, sneezeT: 20 };
+const P = { x: 0, y: 30, h: -Math.PI / 2, face: 'down', flip: false, walkT: 0, moving: false, sneak: false, aim: false, breath: 1, hold: false, mag: { rifle: 0, hagle: 0, bue: 0 }, cycle: 0, reload: 0, callCd: 0, stepT: 0, wet: false, deep: false, cold: 0, chill: false, sway: [0, 0], unrest: 0, winded: false, bph: 0, hp: 100, sick: false, risk: 0, warm: false, work: null, sneezeT: 20 };
 const lv = id => G.up[id];
 // Våpnene: rifla har du fra start, hagla og buen når du har kjøpt dem (trinn over 0). De to våpenplassene i inventaret
 // (G.arms) er det du har med deg; de andre ligger i utstyret (eller på hesten) som { gun } til du drar dem opp.
@@ -3606,6 +3761,14 @@ function moveCargo(k, toHorse) {
   }
   save(); return '';
 }
+// F ved hesten: alt kjøttet i sekken som får plass, lastes over på den
+function horseLoad() {
+  const was = meatKg();
+  for (const l of [...G.meat]) moveCargo('meat:' + l.sp, true);
+  const kg = kg1(was - meatKg());
+  if (!(kg > 0)) { sfx.deny(); msg('Hesten er full.', 'warn'); return; }
+  sfx.kneel(); msg(fmtKg(kg) + ' kjøtt lastet på hesten (' + String(horseKg()).replace('.', ',') + ' / ' + horseCap() + ' kg).' + (G.meat.length ? ' Hesten er full, resten ligger i sekken.' : ''), 'good');
+}
 // Hva F gjør der du står: [tekst til hjelpelinja, handling]
 function action() {
   if (HORSE.on) return ['Gå av hesten', horseDismount];
@@ -3614,13 +3777,18 @@ function action() {
     const A = SPEC[a.sp], rest = ROT_H - deadH(a);
     // råttent kjøtt kan ikke tas vare på; de siste tre timene står det hvor lenge det holder seg
     if (rest <= 0) return [A.name + ' · har råtnet, kjøttet kan ikke selges', () => { sfx.deny(); msg('Dyret har ligget for lenge og har råtnet. Kjøttet kan ikke selges.', 'warn'); }];
-    if (meatFree() / knifeK() < 0.1) return [horseNear() ? 'Sekken og hesten er fulle · selg i landsbyen' : 'Sekken er full · selg i landsbyen', meatFull];
+    if (meatFree() / knifeK() < 0.1) return [horseNear() ? 'Sekken og hesten er fulle · selg i landsbyen' : horseCalls() ? 'Sekken er full · kall på hesten (hold Q)' : 'Sekken er full · selg i landsbyen', meatFull];
+    // hvor kjøttet havner: hesten først når den står like ved, resten i sekken
+    const get = kg1(Math.min((a.left ?? carcassKg(a)) * knifeK(), meatFree())), onH = kg1(Math.min(get, rackFree())), inS = kg1(get - onH);
     return [(a.left === undefined ? 'Ta vare på ' + A.name.toLowerCase() + ' (' + A.sexn[a.sex] + ')' : 'Skjær ut mer kjøtt (' + A.name.toLowerCase() + ', ' + fmtKg(kg1(a.left * knifeK())) + ' igjen)')
-      + (rest <= 3 ? rest < 1 ? ' · råtner snart' : ' · råtner om ' + Math.ceil(rest) + ' t' : '') + (rackFree() > 0 ? ' · lastes på hesten' : ''), () => collect(a)];
+      + (rest <= 3 ? rest < 1 ? ' · råtner snart' : ' · råtner om ' + Math.ceil(rest) + ' t' : '') + (onH > 0 ? inS > 0 ? ' · ' + fmtKg(onH) + ' på hesten, ' + fmtKg(inS) + ' i sekken' : ' · lastes på hesten' : ''), () => collect(a)];
   }
   const c = cabinsNear(P.x, P.y).find(c => hyp(P.x - c.door[0], P.y - c.door[1]) < 18);
   if (c) return [doorText(c), () => openShop(c)];
-  if (lv('horse') && hyp(HORSE.x - P.x, HORSE.y - P.y) < 18) return lv('saddle') ? ['Ri hesten', horseMount] : ['Hesten mangler sal', () => { sfx.deny(); msg('Du trenger sal for å ri. Stallen i landsbyen selger en. Hesten bærer likevel for deg her (E).'); }];
+  const atHorse = lv('horse') && hyp(HORSE.x - P.x, HORSE.y - P.y) < 18;
+  // har du kjøtt i sekken og hesten har plass, laster F over først; neste F rir
+  if (atHorse && G.meat.length && horseCap() - horseKg() >= 0.1) return ['Last kjøttet på hesten (' + fmtKg(meatKg()) + ')', horseLoad];
+  if (atHorse) return lv('saddle') ? ['Ri hesten', horseMount] : ['Hesten mangler sal', () => { sfx.deny(); msg('Du trenger sal for å ri. Stallen i landsbyen selger en. Hesten bærer likevel for deg her (F laster over kjøttet, E for resten).'); }];
   // i åpningen av gapahuken sover du; ellers ved bålet steker du
   const h = nearHut(P.x, P.y, 18);
   if (h) return nearFire(h.x, h.y, 60) ? ['Sov i gapahuken', sleepHut] : ['Tenn bål foran gapahuken for å sove her', () => msg('Du trenger et bål foran gapahuken for å holde varmen i natt. Tenn et fra hjulet (hold Q).')];
@@ -3731,10 +3899,10 @@ function dogCell(i, j) {
   const x = (i + 0.5) * DG, y = (j + 0.5) * DG, cabs = cabinsNear(x, y), w = (dx, dy) => fields(x + dx, y + dy, cabs)[2];
   const w0 = inWorld(x, y) ? w(0, 0) : 0, R = BR_MAX + 16, c = q => Math.floor(q / CS);
   v = 0;
-  // langt fra vann er det verken bru eller bredd å se etter, og bruer ligger bare der en sti går
+  // langt fra vann er det verken bru eller bredd å se etter
   if (w0 >= 9) v = 1;
   else {
-    if (Math.abs(trailN(x, y)) < 0.14) for (let b = c(y - R); b <= c(y + R) && !v; b++) for (let a = c(x - R); a <= c(x + R) && !v; a++) v = inBridge(bridgesOf(a, b), x, y, 6) || 0;
+    for (let b = c(y - R); b <= c(y + R) && !v; b++) for (let a = c(x - R); a <= c(x + R) && !v; a++) v = inBridge(bridgesOf(a, b), x, y, 6) || 0;
     if (!v) v = w0 >= 3 || (w0 >= 1 && w(-4, -4) >= 1 && w(4, -4) >= 1 && w(-4, 4) >= 1 && w(4, 4) >= 1) ? 1 : 0;
   }
   _dw.set(k, v); return v;
@@ -4260,6 +4428,8 @@ function fireUpdate(dt) {
 
 // ---------- oppdatering ----------
 const KEYS = {}, MOUSE = { x: 0, y: 0, wx: 0, wy: 0, locked: false };
+// spaken og knappene på berøringsskjerm (se bindTouch i 07-ui.js): x svinger, y er fram (-1) eller bak (1)
+const STICK = { x: 0, y: 0, run: false, sneak: false, hold: false };
 function playerUpdate(dt) {
   P.cycle = Math.max(0, P.cycle - dt); P.callCd = Math.max(0, P.callCd - dt);
   if (P.reload > 0) { P.reload -= dt; if (P.reload <= 0) { const k = ammoKey(), n = Math.min(gunCap() - inGun(), G[k]); P.reload = 0; if (G.gun) { P.mag[G.gun] += n; G[k] -= n; } } }
@@ -4269,16 +4439,24 @@ function playerUpdate(dt) {
   if (G.started && !G.paused && !P.aim && !AIM.want) {
     if (KEYS.KeyA || KEYS.ArrowLeft) mx -= 1; if (KEYS.KeyD || KEYS.ArrowRight) mx += 1;
     if (KEYS.KeyW || KEYS.ArrowUp) my -= 1; if (KEYS.KeyS || KEYS.ArrowDown) my += 1;
+    mx += STICK.x; my += STICK.y;
   } else if (G.started && !G.paused && P.aim && AIM.want && !P.deep) {
     if (KEYS.KeyA || KEYS.ArrowLeft) mx -= 1; if (KEYS.KeyD || KEYS.ArrowRight) mx += 1;
+    mx += STICK.x;
   }
   // på hesten driver W den fram, S holder igjen og A/D styrer, både på kartet og i 3D
+  // til fots på kartet snur musa jegeren (P.h, se mousemove i 07-ui.js) og bildet med ham, W/S går fram og tilbake dit
+  // han ser og A/D til sidene. På hesten og i siktet følger retningen hans hesten og blikket, så kartet står riktig vei
+  // når han er tilbake på beina
+  if (HORSE.on) P.h = HORSE.h;
+  else if (P.aim || AIM.want) P.h = AIM.yaw;
+  else { const c = Math.cos(P.h), s = Math.sin(P.h), f = -my, r = mx; mx = c * f - s * r; my = s * f + c * r; if (G.started) faceTo(P.h); }
   const ride = HORSE.on, fl = fields(P.x, P.y, cabinsNear(P.x, P.y)), br = bridgeAt(P.x, P.y), wv = br ? 9 : fl[2];
   if (ride) horseDrive(dt, mx, -my, wv, fl[3], br);
   else if (HORSE.come && G.started && !G.paused) horseCome(dt);
   // i 3D og i siktet går W/S fram og tilbake dit du ser, og A/D til sidene
   if (!ride && P.aim && (mx || my)) { const c = Math.cos(AIM.yaw), s = Math.sin(AIM.yaw), f = -my, r = mx; mx = c * f - s * r; my = s * f + c * r; }
-  P.sneak = !ride && !!(KEYS.ShiftLeft || KEYS.ShiftRight);
+  P.sneak = !ride && !!(KEYS.ShiftLeft || KEYS.ShiftRight || STICK.sneak);
   // på hesten holder du deg tørr
   P.wet = !ride && wv < 1.1; P.deep = !ride && wv < 0.55;
   // vassing gjør deg våt og kald, svømming enda mer; på land tørker klærne sakte. Gode støvler holder deg tørr i grunt
@@ -4291,7 +4469,7 @@ function playerUpdate(dt) {
   else if (P.chill && P.cold === 0) { P.chill = false; msg('Klærne har tørket. Du er varm igjen.', 'good'); }
   P.moving = ride ? Math.abs(HORSE.v) > 2 : mx !== 0 || my !== 0;
   // Space mens du går: spring. Det går fort, men bråker og tar pusten, og er lufta tom, må du hente deg inn
-  P.run = !ride && P.moving && !P.aim && !P.sneak && !P.winded && !!KEYS.Space;
+  P.run = !ride && P.moving && !P.aim && !P.sneak && !P.winded && !!(KEYS.Space || STICK.run);
   // på kne i siktet flytter du deg sakte og stille, som når du sniker
   const low = P.sneak || P.aim;
   if (P.moving) {
@@ -4345,7 +4523,7 @@ function playerUpdate(dt) {
   // noen få sekunder; går lufta tom, hiver du etter pusten, og du kan ikke holde den igjen før du har hentet deg inn
   const swayA = (hagle() ? HST.sway : bue() ? BST.sway[lv('bue')] : ST.sway[lv('stock')]) * (P.sneak ? 0.85 : 1) * (1 + 1.2 * P.cold * cloMul('steady'));
   if (P.winded && P.breath >= 0.8) P.winded = false;
-  P.hold = P.aim && !P.winded && !!KEYS.Space;
+  P.hold = P.aim && !P.winded && !!(KEYS.Space || STICK.hold);
   // hvileretningen følger siktet etter; hvor langt siktet er fra den, sier hvor stort svinget er (radianer)
   const ra = 1 - Math.exp(-dt / 0.6);
   AIM.ry += (AIM.yaw - AIM.ry) * ra; AIM.rp += (AIM.pitch - AIM.rp) * ra;
@@ -4497,9 +4675,12 @@ function update(dt) {
 // ===== Tegning: lavoppløst piksel-buffer som skaleres opp =====
 let cv, m, buf, b, W = 0, H = 0, DPR = 1, ZB = 3, ZM = 3;
 // zs: zoom etter farten og utsynet (aldri under ZMIN); vx, vy: farten kameraet ser foran seg etter; px, py: der jegeren sto sist;
-// bob: hvor mye bildet duver med stegene; idle: 1 når du har stått i ro en stund
-const CAM = { x: 0, y: 0, z: 1, w: 400, h: 300, ox: 0, oy: 0, S: 3, dx: 0, dy: 0, zs: 1, vx: 0, vy: 0, px: 0, py: 0, bob: 0, idle: 0 };
+// bob: hvor mye bildet duver med stegene; idle: 1 når du har stått i ro en stund; yaw: retningen kartet ses i (opp på
+// skjermen), som følger jegeren når musa snur ham; (fx, fy) og (rx, ry): fram og til høyre på bakken i den retningen
+const CAM = { x: 0, y: 0, z: 1, w: 400, h: 300, ox: 0, oy: 0, S: 3, dx: 0, dy: 0, zs: 1, vx: 0, vy: 0, px: 0, py: 0, bob: 0, idle: 0, yaw: -Math.PI / 2, fx: 0, fy: -1, rx: 1, ry: 0 };
 const ZMIN = 0.78;
+// Det forteste bildet kan snu seg etter hesten, i radianer per sekund
+const CAM_TURN = 1.2;
 // Lufta: vindkastene (gx, gy) og skyskyggene (cx, cy) driver med vinden
 const AIR = { gx: 0, gy: 0, cx: 0, cy: 0 };
 // Vindkast som ruller gjennom skogen: trærne står nesten stille mellom kastene (0.35) og bøyer seg i dem (opp mot 1.9)
@@ -4540,13 +4721,16 @@ function render(dt) {
   // kamera
   const re = smooth(0, 1, AIM.raise);
   let tx, ty, bx = 0, by = 0;
+  // bildet snur seg med jegeren: til fots følger det musa tett, på hesten svinger det rolig etter (høyst CAM_TURN)
+  if (G.started) { const d = figAng(P.h, CAM.yaw); CAM.yaw += HORSE.on ? clamp(d * Math.min(1, dt * 4.5), -CAM_TURN * dt, CAM_TURN * dt) : d * Math.min(1, dt * 18); }
+  const fx = CAM.fx = Math.cos(CAM.yaw), fy = CAM.fy = Math.sin(CAM.yaw), rx = CAM.rx = -fy, ry = CAM.ry = fx;
   if (!G.started) { tx = P.x + Math.sin(G.t * 0.05) * 70; ty = P.y - 30 + Math.cos(G.t * 0.04) * 30; }
   else {
     // kameraet ser litt foran deg dit du går, og lenger jo fortere det går (ikke etter et sprang, som ut av bua)
     const jx = P.x - CAM.px, jy = P.y - CAM.py, ok = dt > 0 && hyp(jx, jy) < 30, kv = Math.min(1, dt * 2.5);
     CAM.vx = lerp(CAM.vx, ok ? jx / dt : 0, kv); CAM.vy = lerp(CAM.vy, ok ? jy / dt : 0, kv);
     const sp = hyp(CAM.vx, CAM.vy), lead = Math.min(0.4, 48 / Math.max(sp, 1)) * (1 - re);
-    tx = P.x + CAM.vx * lead; ty = P.y - 10 + CAM.vy * lead;
+    tx = P.x + fx * 10 + CAM.vx * lead; ty = P.y + fy * 10 + CAM.vy * lead;
     // det zoomer litt ut når du springer eller rir, og litt inn når du sniker
     // og fra en topp ser du lenger: jo høyere du står over landet rundt, jo mer zoomer det ut
     let hs = 0; for (let i = 0; i < 8; i++) hs += heightAt(P.x + Math.cos(i * TAU / 8) * 160, P.y + Math.sin(i * TAU / 8) * 160);
@@ -4561,15 +4745,16 @@ function render(dt) {
   CAM.px = P.x; CAM.py = P.y;
   // når børsa tas opp, går kameraet inn mot jegeren
   let tz = CAM.zs;
-  if (re > 0) { ty -= 7 * re; tz = CAM.zs * (1 + 1.2 * re); }
+  if (re > 0) { tx += fx * 7 * re; ty += fy * 7 * re; tz = CAM.zs * (1 + 1.2 * re); }
   CAM.z = re > 0 ? tz : lerp(CAM.z, tz, Math.min(1, dt * 9));
   if (Math.abs(CAM.z - tz) < 0.01) CAM.z = tz;
   const fk = re > 0 ? Math.min(1, dt * 14) : Math.min(1, dt * 5);
   CAM.x = lerp(CAM.x, tx, fk); CAM.y = lerp(CAM.y, ty, fk);
   // S: skjermpiksler per piksel i verden; (cx, cy, hc): punktet på bakken midt i bildet; w, h: bakken bildet dekker
   const S = CAM.S = ZM * CAM.z;
-  CAM.w = W / S; CAM.h = H / S / GL_SIN;
-  CAM.cx = CAM.x + bx; CAM.cy = CAM.y + by; CAM.hc = heightAt(CAM.x, CAM.y);
+  const vw = W / S, vh = H / S / GL_SIN;
+  CAM.w = Math.abs(rx) * vw + Math.abs(fx) * vh; CAM.h = Math.abs(ry) * vw + Math.abs(fy) * vh;
+  CAM.cx = CAM.x + rx * bx - fx * by; CAM.cy = CAM.y + ry * bx - fy * by; CAM.hc = heightAt(CAM.x, CAM.y);
   [MOUSE.wx, MOUSE.wy] = toWorld(MOUSE.x, MOUSE.y);
   glMap(dt);
   mapMarks(dt);
@@ -4608,9 +4793,11 @@ function mapMarks(dt) {
   m.globalAlpha = 1;
   // skyskygger som glir over skogen med vinden, og solstråler mellom trærne; i tåka er de borte
   if (G.dayl > 0.2) {
+    // flisene ligger flatt på bakken og snur seg med kartet
     const tile = (img, n, ax, ay) => {
-      const x0 = Math.floor((CAM.cx - CAM.w / 2 - ax) / n) * n + ax, y0 = Math.floor((CAM.cy - CAM.h / 2 - ay) / n) * n + ay;
-      for (let y = y0; y < CAM.cy + CAM.h / 2; y += n) for (let x = x0; x < CAM.cx + CAM.w / 2; x += n) m.drawImage(img, Math.round(W / 2 + (x - CAM.cx) * S), Math.round(H / 2 + (y - CAM.cy) * GL_SIN * S), Math.ceil(n * S), Math.ceil(n * GL_SIN * S));
+      const pat = img.pat || (img.pat = m.createPattern(img, 'repeat')), ox = (ax - CAM.cx) % n, oy = (ay - CAM.cy) % n, k = GL_SIN * S;
+      pat.setTransform(new DOMMatrix([CAM.rx * S, -CAM.fx * k, CAM.ry * S, -CAM.fy * k, W / 2 + (ox * CAM.rx + oy * CAM.ry) * S, H / 2 - (ox * CAM.fx + oy * CAM.fy) * k]));
+      m.fillStyle = pat; m.fillRect(0, 0, W, H);
     };
     m.globalAlpha = 0.2 * G.dayl * (1 - mist(G.hour)); tile(FX.cloud, 512, AIR.cx % 512, AIR.cy % 512);
     m.globalCompositeOperation = 'screen'; m.globalAlpha = 0.07 * G.dayl * (1 - mist(G.hour) * 0.5); tile(FX.rays, 256, -G.t * 2 % 256, 0);
@@ -4736,7 +4923,7 @@ function hudUpdate(dt) {
   // pustemåleren vises så lenge du springer eller henter deg inn etterpå; i siktet er den en strek nederst i bildet
   $('breath').hidden = !(G.started && !P.aim && P.breath < 1); $('breathFill').style.width = (P.breath * 100) + '%';
   $('breathFill').classList.toggle('low', P.breath < 0.25 || P.winded);
-  setText('breathTxt', P.winded ? 'Andpusten · hent deg inn' : 'Pust · hold Space for å springe');
+  setText('breathTxt', P.winded ? 'Andpusten · hent deg inn' : TOUCH.on ? 'Pust' : 'Pust · hold Space for å springe');
   // helse, leirutstyr og arbeid som pågår
   $('hp').hidden = !G.started;
   setText('hpTxt', 'Helse ' + Math.ceil(P.hp) + (P.sick ? ' · forkjølet' : P.warm ? ' · varmer deg' : '') + (G.wear.shoes === 'bare' ? ' · barbeint' : G.shoeHp <= 25 ? ' · slitte sko' : ''));
@@ -4749,6 +4936,8 @@ function hudUpdate(dt) {
   let pr = '';
   if (G.started && !G.paused && !P.aim && !P.work) { const ac = action(); if (ac) pr = ac[0]; }
   $('prompt').hidden = !pr; if (pr) setText('promptTxt', pr);
+  // knappene på berøringsskjerm står bare framme mens du går og sikter
+  $('tc').hidden = !G.started || G.paused; if (!P.aim) STICK.hold = false;
   if (G.panel === 'pause') setText('pauseNote', pauseNote());
   if (HUD.dirtyMsg) {
     HUD.dirtyMsg = false; const el = $('log'); el.innerHTML = '';
@@ -5019,15 +5208,27 @@ function supplyRow(list, ico, name, have, desc, id, price, add) {
 }
 // ---------- salg ----------
 // Til venstre i bua ligger det du har, i de samme rutene som i inventaret. Dra en rute over til bua (eller klikk på
-// den), så står den øverst under Selg. sellKey er ruta du har valgt, sold det du sist solgte
+// den): en stabel (kjøtt, ved, forbruksvarer) står da øverst under Selg med en glidebryter for hvor mye du selger, og
+// Shift+klikk selger hele stabelen med en gang. Utstyr, klær og våpen bekrefter du til høyre. sellKey er ruta du har
+// valgt, sold det du sist solgte
 let sellKey = null, dragKey = null, sold = '';
-function sellRow(list, ico, name, now, next, btns) {
+const sellDone = (name, kr) => { G.money += kr; sold = name + ' · ' + fmtKr(kr); sfx.coin(); save(); renderShop(); };
+// q er mengden du kan velge med glidebryteren: { max, step, fmt(n), kr(n), take(n) }
+const qMany = q => !!q && q.max > q.step;
+function sellRow(list, ico, name, now, next, btns, q) {
   const row = document.createElement('div'); row.className = 'item';
   row.innerHTML = `<img class="ico" alt="" src="${ICONURL[ico]}"><div class="it-body"><div class="it-head"><span class="it-name">${name}</span></div><div class="it-now">${now}</div><div class="it-next">${next}</div></div>`;
   const box = document.createElement('div'); box.className = 'sell-bts';
-  for (const [lab, kr, take, off] of btns) {
-    const bt = document.createElement('button'); bt.className = 'buy'; bt.textContent = lab + ' · ' + fmtKr(kr); bt.disabled = !!off;
-    bt.onclick = () => { take(); G.money += kr; sold = name + ' · ' + fmtKr(kr); sfx.coin(); save(); renderShop(); };
+  if (qMany(q)) {
+    const sl = document.createElement('input'), bt = document.createElement('button'), val = () => Math.min(q.max, kg1(+sl.value));
+    sl.type = 'range'; sl.className = 'qty'; sl.min = q.step; sl.max = q.max; sl.step = q.step; sl.value = q.max; sl.setAttribute('aria-label', 'Hvor mye du selger');
+    bt.className = 'buy'; bt.type = 'button';
+    (sl.oninput = () => { bt.textContent = 'Selg ' + q.fmt(val()) + ' · ' + fmtKr(q.kr(val())); })();
+    bt.onclick = () => { const n = val(), kr = q.kr(n); q.take(n); sellDone(name, kr); };
+    box.append(sl, bt);
+  } else for (const [lab, kr, take, off] of btns) {
+    const bt = document.createElement('button'); bt.className = 'buy'; bt.type = 'button'; bt.textContent = lab + ' · ' + fmtKr(kr); bt.disabled = !!off;
+    bt.onclick = () => { take(); sellDone(name, kr); };
     box.appendChild(bt);
   }
   row.appendChild(box); list.appendChild(row);
@@ -5046,7 +5247,10 @@ function sellOffer0(k) {
     const horse = k.startsWith('rack:'), here = horseNear(HORSE_SHOP), L = horse ? G.rack : G.meat;
     if (horse && !here) return R;
     const l = L.find(l => k.slice(5) === l.sp); if (!l) return R;
-    R.push([l.sp && ICONURL['an_' + l.sp] ? 'an_' + l.sp : 'meat', meatName(l) + (horse ? ' på hesten' : ''), fmtKg(l.kg) + '.', fmtKr(Math.round(mkr(l.kr) / l.kg)) + ' per kg.', [['Selg', mkr(l.kr), () => L.splice(L.indexOf(l), 1)]], 'meat', k]);
+    // en del av partiet tar med seg sin del av verdien
+    const part = n => n >= l.kg ? l.kr : Math.round(l.kr * n / l.kg);
+    R.push([l.sp && ICONURL['an_' + l.sp] ? 'an_' + l.sp : 'meat', meatName(l) + (horse ? ' på hesten' : ''), fmtKg(l.kg) + '.', fmtKr(Math.round(mkr(l.kr) / l.kg)) + ' per kg.', [['Selg', mkr(l.kr), () => L.splice(L.indexOf(l), 1)]], 'meat', k,
+      { max: l.kg, step: 0.1, fmt: fmtKg, kr: n => mkr(part(n)), take: n => { if (n >= l.kg) L.splice(L.indexOf(l), 1); else { l.kr -= part(n); l.kg = kg1(l.kg - n); } } }]);
     // alt kjøttet du har med deg: sekken, og hesten når den står her
     const both = here && G.rack.length, n = G.meat.length + (here ? G.rack.length : 0);
     if (n > 1) R.push(['meat', 'Alt kjøttet', fmtKg(kg1(meatKg() + (both ? rackKg() : 0))) + (both ? ' i sekken og på hesten.' : ' i sekken.'), 'Selg alt på en gang.',
@@ -5076,7 +5280,8 @@ function sellOffer0(k) {
     const [ico, name, unit] = CARGO_UI[id], n = S[id], wood = id === 'wood';
     const each = wood ? WOOD_PRICE : halfKr({ rounds: AMMO.rifle.price / AMMO.rifle.n, shells: AMMO.hagle.price / AMMO.hagle.n, arrows: AMMO.bue.price / AMMO.bue.n, scents: FLASK_PRICE / 3, treats: TREAT_PRICE / TREAT_N, matches: MATCH_PRICE / MATCH_N }[id]);
     R.push([ico, name + (horse ? ' på hesten' : ''), `Du har ${n} ${unit}${horse ? ' på hesten' : id === 'rounds' || id === 'shells' || id === 'arrows' ? ' i sekken' : ''}.`,
-      wood ? `Fastpris ${fmtKr(WOOD_PRICE)} per kubbe.` : `Du får halv pris: ${fmtKr(each)} stykket.`, sellN(n, each, n => { S[id] -= n; }), 'use', (horse ? 'horse:' : '') + id]);
+      wood ? `Fastpris ${fmtKr(WOOD_PRICE)} per kubbe.` : `Du får halv pris: ${fmtKr(each)} stykket.`, sellN(n, each, n => { S[id] -= n; }), 'use', (horse ? 'horse:' : '') + id,
+      { max: n, step: 1, fmt: v => v + ' stk', kr: v => each * v, take: v => { S[id] -= v; } }]);
   }
   if (horse) return R;
   // utstyret i ruta går ett trinn ned, og bua gir halv pris for trinnet du selger. Rifla og hagla er flere deler, og
@@ -5090,6 +5295,19 @@ function sellOffer0(k) {
 }
 // Legg ruta k i salgsfeltet og vis budet
 function offerFor(k) { sellKey = k; sold = ''; shopCat = 'sell'; sfx.ui(); renderShop(); }
+// Klikk på (eller dra over) ruta k: en stabel med mer enn én i selges fra glidebryteren, og med all (Shift) selges
+// hele med en gang. Én enkelt forbruksvare selges direkte; alt annet bekrefter du til høyre
+function sellClick(k, all) {
+  const r = sellOffer(k)[0]; if (!r) return;
+  if ((r[5] === 'meat' || r[5] === 'use') && (all || !qMany(r[7]))) { const b = r[4][r[4].length - 1]; b[2](); sellKey = null; shopCat = 'sell'; return sellDone(r[1], b[1]); }
+  offerFor(k);
+}
+// hvor ruta k kan selges, når stedet du er på, ikke kjøper den
+function buyers(k) {
+  const g = (sellOffer0(k)[0] || [])[5]; if (!g) return '';
+  const N = [...new Set(Object.values(SHOPS).filter(S => S.buys.includes(g)).map(S => S.name || 'utpostene'))];
+  return N.length ? 'Kjøpes ikke her. Selges her: ' + N.join(', ') + '.' : '';
+}
 function dragDone() { dragKey = null; $('shop').classList.remove('dragging'); $('shopMain').classList.remove('over'); }
 // Alt bua kjøper av det du har med deg, én rad per ting (se sellOffer): [ikon, navn, nå, mer, knapper, gruppe, id]
 function sellAll() {
@@ -5110,10 +5328,16 @@ function renderSell(list) {
   const top = document.createElement('p'); top.className = 'side-note';
   top.textContent = shopNow().sells + (R.length ? ' Det du har med deg av det, er verdt ' + fmtKr(total) + '.' : ' Du har ikke noe av det med deg nå.');
   list.appendChild(top);
+  // kjøttet på hesten selges bare når den står ved bua; står den lenger unna, sier bua fra om det
+  if (shopNow().buys.includes('meat') && G.rack.length && !horseNear(HORSE_SHOP)) {
+    const far = document.createElement('p'); far.className = 'side-note';
+    far.textContent = 'Hesten står for langt unna til å selge fra. ' + fmtKg(rackKg()) + ' kjøtt ligger på den. Hent den bort til bua.';
+    list.appendChild(far);
+  }
   const sec = (title, rows, box) => {
     if (!rows.length) return;
     const to = box || list; shopHead(to, title);
-    for (const r of rows) sellRow(to, ...r.slice(0, 5));
+    for (const r of rows) sellRow(to, ...r.slice(0, 5), box && r[7]);
     if (box) list.appendChild(box);
   };
   const z = document.createElement('div'); z.className = 'drop full';
@@ -5137,12 +5361,18 @@ function renderMine() {
       s.ondragover = e => { if (!src()) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
       s.ondrop = e => { const d = src(); if (!d) return; e.preventDefault(); dragDone(); invDrop(d, 'wear', at.i); if (sellKey && sellKey.startsWith('o:')) sellKey = null; sfx.kneel(); save(); renderShop(); };
     }
-    if (!it || !sellOffer(it.sk).length) return;
-    it.hint = 'Dra over eller klikk for å selge.'; s.classList.add('sell'); s.classList.toggle('pick', it.sk === sellKey); s.draggable = true;
+    if (!it || it.empty || !it.sk) return;
+    const R = sellOffer(it.sk), r = R[0];
+    // det stedet ikke kjøper, er dempet og sier hvor det kan selges
+    if (!r) { s.classList.add('nosell'); it.hint = buyers(it.sk); return; }
+    const stack = r[5] === 'meat' || r[5] === 'use';
+    it.hint = (stack || R.length === 1 ? 'Her får du ' + fmtKr(r[4][r[4].length - 1][1]) + '. ' : '')
+      + (!stack ? 'Klikk for å selge, og bekreft til høyre.' : qMany(r[7]) ? 'Klikk for å velge hvor mye du selger. Shift+klikk selger alt.' : 'Klikk for å selge.');
+    s.classList.add('sell'); s.classList.toggle('pick', it.sk === sellKey); s.draggable = true;
     s.ondragstart = e => { mcTip(null); dragKey = it.sk; e.dataTransfer.setData('text/plain', it.n); e.dataTransfer.effectAllowed = 'move'; $('shop').classList.add('dragging'); };
     s.ondragend = dragDone;
-    s.onclick = () => offerFor(it.sk);
-    s.onkeydown = e => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); offerFor(it.sk); } };
+    s.onclick = e => sellClick(it.sk, e.shiftKey);
+    s.onkeydown = e => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); sellClick(it.sk, e.shiftKey); } };
   };
   mcRender($('shopMc'), on, renderMine, horseNear(HORSE_SHOP) && gridItems('horse').some(Boolean) && 'Hesten står utenfor.', true);
 }
@@ -5163,7 +5393,7 @@ function buy(u) {
   if (GUNS[u.id] && L === 0) { armsFix(); msg(u.lv[1] + ' ligger i utstyret. Dra den opp i en våpenplass i inventaret (E). ' + (u.id === 'bue' ? 'Piler' : 'Haglpatroner') + ' kjøper du her under ' + (u.id === 'bue' ? 'Pil og bue' : 'Hagla') + '.', 'good'); }
   if (u.id === 'mag' || GUNS[u.id]) refill();
   if (u.id === 'axe') msg('Stå inntil et tre og trykk F for å hogge ved.', 'good');
-  if (u.id === 'horse') { horsePark(); msg('Hesten står ved stallveggen. Legg kjøtt og ved på den i inventaret (E) når du står inntil den. For å ri trenger du sal.', 'good'); }
+  if (u.id === 'horse') { horsePark(); msg('Hesten står ved stallveggen. Trykk F inntil den for å laste over kjøttet fra sekken. Ved og annet flytter du i inventaret (E). For å ri trenger du sal.', 'good'); }
   if (u.id === 'saddle') msg('Hesten har fått sal. Gå bort til den og trykk F for å ri.', 'good');
   save(); renderShop();
 }
@@ -5265,7 +5495,11 @@ function openMap() {
 // der plagget lå. Står hesten like ved (eller du sitter på den), ligger lasten dens til høyre med ledige ruter, og det du
 // drar eller klikker over, flyttes til den andre siden. Hold musa over en rute, så står navnet og hva den gjør ved pekeren.
 // Det samme inventaret står til venstre i bua
-let invTab = 'gear', invNote = '', invDrag = null;
+// invHeld er ruta du har tatt opp med et klikk; den henger på pekeren til du klikker der den skal ligge
+let invTab = 'gear', invNote = '', invDrag = null, invHeld = null;
+function holdMove(e) { const g = $('mcHeld'); g.style.left = e.clientX + 'px'; g.style.top = e.clientY + 'px'; }
+function holdStart(it, e) { invHeld = it; mcTip(null); const g = $('mcHeld'); g.src = ICONURL[it.ico]; g.hidden = false; holdMove(e); addEventListener('mousemove', holdMove); }
+function holdEnd() { if (!invHeld) return; invHeld = null; $('mcHeld').hidden = true; removeEventListener('mousemove', holdMove); }
 const INV_N = { gear: 27, meat: 27, horse: 24 };
 // det som kan ligge på hesten i tillegg til kjøtt og klær (se CARGO): ikon, navn og hva det telles i
 const CARGO_UI = { wood: ['wood', 'Ved', 'ved'], rounds: ['caliber', 'Riflepatroner', 'riflepatroner'], shells: ['shell', 'Haglpatroner', 'haglpatroner'], arrows: ['arrows', 'Piler', 'piler'],
@@ -5281,8 +5515,8 @@ function gunDesc(g) {
 // Det som ligger i hvert rutenett nå, etter nøkkel. sk sier hva bua byr på når du vil selge det (se sellOffer)
 function itemsOf(g) {
   // ett parti kjøtt per art, med dyret på ruta og kiloene i hjørnet; i sekken og på hesten hver for seg
-  const lot = (l, horse) => ['meat:' + l.sp, { ico: l.sp && ICONURL['an_' + l.sp] ? 'an_' + l.sp : 'meat', sk: (horse ? 'rack:' : 'meat:') + l.sp, n: meatName(l), c: l.kg, lab: l.kg < 10 ? String(l.kg).replace('.', ',') : Math.round(l.kg),
-    d: fmtKg(l.kg) + ', verdt ' + fmtKr(l.kr) + ' i landsbyen.' + (horse ? '' : ' Stek det over bålet (F) og spis for helse.') }];
+  const lot = (l, horse) => ['meat:' + l.sp, { ico: l.sp && ICONURL['an_' + l.sp] ? 'an_' + l.sp : 'meat', sk: (horse ? 'rack:' : 'meat:') + l.sp, n: meatName(l), c: l.kg, lab: (l.kg < 10 ? String(l.kg).replace('.', ',') : Math.round(l.kg)) + ' kg',
+    d: fmtKg(l.kg) + ', verdt ' + fmtKr(l.kr) + ' på viltmottaket.' + (horse ? '' : ' Stek det over bålet (F) og spis for helse.') }];
   if (g === 'meat') return Object.fromEntries(G.meat.map(l => lot(l)));
   if (g === 'horse') return Object.fromEntries([...G.rack.map(l => lot(l, true)), ...CARGO.filter(k => G.cargo[k] > 0).map(k => {
     const [ico, n, unit] = CARGO_UI[k];
@@ -5335,7 +5569,7 @@ function wearItem(sl) {
 // Verktøytipset ved pekeren: navnet, hva det er, og hva du kan gjøre med det. Uten it skjules det
 function mcTip(it, x, y) {
   const t = $('mcTip');
-  if (!it) { t.hidden = true; t._it = null; return; }
+  if (!it || invHeld) { t.hidden = true; t._it = null; return; }
   if (t._it !== it) {
     t._it = it; t.innerHTML = '';
     for (const [c, s] of [['n', it.n], ['d', it.d], ['h', it.hint]]) if (s) { const d = document.createElement('div'); d.className = c; d.textContent = s; t.appendChild(d); }
@@ -5360,7 +5594,9 @@ function mcSlot(it, on, at) {
   if (on) on(s, it, at);
   return s;
 }
-const sackTxt = () => 'Sekken · ' + String(sackKg()).replace('.', ',') + ' av ' + fmtKg(sackCap());
+// Nederst i inventaret står alltid hvor mye du bærer (kjøtt og ved hver for seg) og pengene dine
+const sackTxt = () => 'Bærer ' + String(sackKg()).replace('.', ',') + ' av ' + fmtKg(sackCap())
+  + (sackKg() > 0 ? ' · ' + [G.meat.length && 'kjøtt ' + fmtKg(meatKg()), G.wood && 'ved ' + fmtKg(G.wood * WOOD_KG)].filter(Boolean).join(', ') : '');
 // Hele inventaret inn i root; redo tegner det på nytt (når du bytter fane). Med horse (teksten under lasten) står
 // hesten til høyre, eller som en tredje fane ved siden av utstyret og kjøttet når horseTab er satt (i bua, der det
 // ikke er plass til den under sekken)
@@ -5371,11 +5607,12 @@ function mcRender(root, on, redo, horse, horseTab) {
   mcTip(null);
   root.innerHTML = `<div class="mc"><div class="mc-top"><div class="mc-me"><img alt="Jegeren" src="${ICONURL.hunter}"><div class="mc-name"></div></div>
     <div class="mc-eq"><div class="mc-lab">Bekledning</div><div class="mc-cross"></div></div>
-    <div class="mc-eq"><div class="mc-lab">Våpen</div><div class="mc-row"></div><div class="mc-lab">Sekk</div><div class="mc-row"></div><div class="mc-lab">Penger</div><div class="mc-row mc-kr"><span class="mc-krn"></span></div></div></div>
-    <div class="mc-tabs" role="tablist"></div><div class="mc-store"><div class="mc-lab"></div><div class="mc-grid"></div><div class="mc-sum"></div></div></div>`
+    <div class="mc-eq"><div class="mc-lab">Våpen</div><div class="mc-row"></div><div class="mc-lab">Sekk</div><div class="mc-row"></div></div></div>
+    <div class="mc-tabs" role="tablist"></div><div class="mc-store"><div class="mc-lab"></div><div class="mc-grid"></div><div class="mc-sum"></div></div>
+    <div class="mc-foot"><span class="mc-kg"></span><span class="mc-krn"></span></div></div>`
     + (side ? '<div class="mc mc-horse"><div class="mc-lab"></div><div class="mc-grid"></div><div class="mc-sum"></div></div>' : '');
   root.querySelector('.mc-name').textContent = NET.name || 'Jeger';
-  const [rw, rp, rk] = root.querySelectorAll('.mc-row'), cross = root.querySelector('.mc-cross');
+  const [rw, rp] = root.querySelectorAll('.mc-row'), cross = root.querySelector('.mc-cross');
   // de to våpenplassene står der alltid; en tom plass viser omrisset av et våpen. Det i hendene er merket
   G.arms.forEach((g, i) => rw.appendChild(mcSlot(g ? { ico: GUNS[g].ico, sk: g, g: 'arms', i, n: gunLabel(g) + (g === G.gun ? held : ''), d: gunDesc(g) + ' Bytt mellom våpnene i hjulet (hold Q).', on: g === G.gun }
     : { ico: 'rifle', empty: true, n: 'Våpenplass', d: 'Dra et våpen hit fra utstyret for å ha det med deg. Du bytter mellom de to våpnene i hjulet (hold Q).' }, on, { g: 'arms', i })));
@@ -5385,8 +5622,8 @@ function mcRender(root, on, redo, horse, horseTab) {
   const kn = upg('knife'), ks = mcSlot({ ico: upgIco(kn), sk: 'knife', n: L('knife'), d: kn.d[lv('knife')] + (lv('knife') < kn.lv.length - 1 ? ' Bedre kniver får du kjøpt hos smeden i landsbyen.' : '') }, on);
   ks.style.gridArea = 'knife'; cross.appendChild(ks);
   rp.appendChild(mcSlot({ ico: 'pack', sk: 'pack', n: L('pack'), d: 'Rommer ' + fmtKg(ST.pack[lv('pack')]) + ' kjøtt og ved' + (lv('dogpack') ? ', og hunden bærer ' + fmtKg(ST.dogpack[lv('dogpack')]) + ' til' : '') + '. Du bærer ' + fmtKg(sackKg()) + '. Større sekker får du kjøpt i landsbyen.' }, on));
-  rk.prepend(mcSlot({ ico: 'coin', n: 'Penger', d: fmtKr(G.money) + '. Selg kjøtt, ved og utstyr i landsbyen for å få penger.' }));
-  rk.lastChild.textContent = fmtKr(G.money);
+  const kgEl = root.querySelector('.mc-kg'); kgEl.textContent = sackTxt(); kgEl.classList.toggle('warn', sackFree() < 0.1);
+  root.querySelector('.mc-krn').textContent = fmtKr(G.money);
   const tabs = root.querySelector('.mc-tabs');
   for (const [k, ico, lab] of [['gear', 'call', 'Utstyr'], ['meat', 'meat', 'Kjøtt' + (G.meat.length ? ' · ' + fmtKg(meatKg()) : '')], ...(horse && horseTab ? [['horse', '', 'Hesten']] : [])]) {
     const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'mc-tab'; bt.setAttribute('role', 'tab'); bt.setAttribute('aria-selected', invTab === k);
@@ -5395,10 +5632,10 @@ function mcRender(root, on, redo, horse, horseTab) {
     tabs.appendChild(bt);
   }
   const horseTxt = () => 'Hesten · ' + String(horseKg()).replace('.', ',') + ' av ' + horseCap() + ' kg';
-  root.querySelector('.mc-store .mc-lab').textContent = tab === 'horse' ? horseTxt() : sackTxt();
+  const lab = root.querySelector('.mc-store .mc-lab'); lab.textContent = tab === 'horse' ? horseTxt() : ''; lab.hidden = tab !== 'horse';
   const grid = root.querySelector('.mc-grid'), S = gridItems(tab), sum = root.querySelector('.mc-sum');
   S.forEach((it, i) => grid.appendChild(mcSlot(it, on, { g: tab, i })));
-  sum.textContent = invNote || (tab === 'horse' ? horse : tab === 'gear' ? '' : G.meat.length ? fmtKg(meatKg()) + ' i sekken · verdt ' + fmtKr(meatKr()) + ' i landsbyen'
+  sum.textContent = invNote || (tab === 'horse' ? horse : tab === 'gear' ? '' : G.meat.length ? fmtKg(meatKg()) + ' i sekken · verdt ' + fmtKr(meatKr()) + ' på viltmottaket'
     : 'Ingen kjøtt. Vilt du feller og tar vare på (F), havner i sekken.');
   sum.classList.toggle('warn', !!invNote);
   if (side) {
@@ -5477,20 +5714,25 @@ function invOn(s, it, at) {
   s.ondragover = e => { if (!invDrag || invDrag === it) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; s.classList.add('over'); };
   s.ondragleave = () => s.classList.remove('over');
   s.ondrop = e => { if (!invDrag) return; e.preventDefault(); e.stopPropagation(); const d = invDrag; invDrag = null; invDo(d, at.g, at.i); };
-  if (!it || it.empty) return;
-  const near = horseNear(), other = it.g === 'horse' ? 'Klikk eller dra over for å ta det med deg.' : 'Klikk eller dra over for å legge det på hesten.';
-  it.hint = it.g === 'wear' ? 'Klikk eller dra til utstyret for å ta det av.' : it.g === 'arms' ? 'Klikk eller dra til utstyret for å legge det fra deg.'
-    : it.obj && it.obj.gun && it.g !== 'horse' ? 'Klikk eller dra det til en våpenplass for å ta det med.' : it.obj ? it.g === 'horse' ? other : 'Klikk eller dra det til plassen på kroppen for å ta det på.'
-    : near && cargoKey(it.key) ? other : 'Dra for å flytte.';
+  // klikk med noe på pekeren legger det i denne ruta (samme rute legger det tilbake)
+  const put = () => { const d = invHeld; holdEnd(); if (d.g !== at.g || d.i !== at.i) invDo(d, at.g, at.i); else renderInv(); };
+  if (!it || it.empty) { s.onclick = () => { if (invHeld) put(); }; return; }
+  s.classList.toggle('held', !!invHeld && invHeld.g === at.g && invHeld.i === at.i);
+  const near = horseNear(), other = it.g === 'horse' ? 'Shift+klikk tar det med deg.' : 'Shift+klikk legger det på hesten.';
+  it.hint = 'Klikk for å ta det opp, og klikk der det skal ligge. ' + (it.g === 'wear' ? 'Shift+klikk tar det av.' : it.g === 'arms' ? 'Shift+klikk legger det i utstyret.'
+    : it.obj && it.obj.gun && it.g !== 'horse' ? 'Shift+klikk tar det med i en våpenplass.' : it.obj ? it.g === 'horse' ? other : 'Shift+klikk tar det på.'
+    : near && cargoKey(it.key) ? other : '');
   s.classList.add('move'); s.draggable = true;
-  s.onclick = () => invClick(it);
+  s.onclick = e => { if (invHeld) put(); else if (e.shiftKey) invClick(it); else { holdStart(it, e); s.classList.add('held'); } };
   s.onkeydown = e => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); invClick(it); } };
-  s.ondragstart = e => { mcTip(null); invDrag = it; e.dataTransfer.setData('text/plain', it.n); e.dataTransfer.effectAllowed = 'move'; };
+  s.ondragstart = e => { holdEnd(); mcTip(null); invDrag = it; e.dataTransfer.setData('text/plain', it.n); e.dataTransfer.effectAllowed = 'move'; };
   s.ondragend = () => { invDrag = null; };
 }
 function renderInv() {
   const horse = horseNear(), root = $('invMc');
-  mcRender(root, invOn, renderInv, horse && 'Klikk på noe, eller dra det over, for å flytte det mellom deg og hesten.');
+  mcRender(root, invOn, renderInv, horse && 'Shift+klikk på noe, eller dra det over, for å flytte det mellom deg og hesten.');
+  // klikker du utenfor rutene med noe på pekeren, legges det tilbake (fanene kan du bytte mellom)
+  root.onclick = e => { if (invHeld && !e.target.closest('.mc-slot, .mc-tab')) { holdEnd(); renderInv(); } };
   // slipper du noe ved siden av rutene på den andre siden, havner det i første ledige rute der
   root.querySelectorAll('.mc').forEach((box, i) => {
     const ok = () => invDrag && (invDrag.g === 'horse') !== (i === 1);
@@ -5541,9 +5783,11 @@ function wheelOpen() {
   WHEEL.items.forEach((it, i) => {
     const a = -Math.PI / 2 + i * TAU / n, el = document.createElement('div');
     el.className = 'wh-it' + (it.ok ? '' : ' off'); el.style.left = Math.round(Math.cos(a) * WHEEL_R) + 'px'; el.style.top = Math.round(Math.sin(a) * WHEEL_R) + 'px';
-    el.innerHTML = `<img alt="" src="${ICONURL[it.ico]}"><span></span>`; el.lastChild.textContent = it.n;
+    el.innerHTML = (i < 9 ? `<b class="wh-k">${i + 1}</b>` : '') + `<img alt="" src="${ICONURL[it.ico]}"><span></span>`; el.lastChild.textContent = it.n;
     box.appendChild(el);
   });
+  // på små skjermer krymper hjulet så hele ringen får plass
+  $('wheelRing').style.transform = `scale(${Math.min(1, Math.min(innerWidth, innerHeight) / 470)})`;
   wheelMove(0, 0); $('wheel').hidden = false;
 }
 // Pekeren i hjulet flyttes av musa og holdes innenfor ringen; retningen fra midten velger handlingen
@@ -5556,7 +5800,7 @@ function wheelMove(dx, dy) {
   if (sel === WHEEL.sel) return;
   WHEEL.sel = sel; const it = WHEEL.items[sel];
   [...$('wheelIts').children].forEach((el, i) => el.classList.toggle('on', i === sel));
-  setText('wheelN', it ? it.n : 'Velg med musa'); setText('wheelD', it ? it.d : 'Slipp Q for å gjøre det du peker på.');
+  setText('wheelN', it ? it.n : TOUCH.on ? 'Velg' : 'Velg med musa'); setText('wheelD', it ? it.d : TOUCH.on ? 'Trykk på det du vil gjøre, eller utenfor for å lukke.' : 'Slipp Q for å gjøre det du peker på.');
 }
 function wheelClose(run) {
   if (!WHEEL.open) return;
@@ -5580,7 +5824,7 @@ function pauseBack() {
 }
 function resume() { closePanel(); if (!G.panel) lockPointer(); }
 function closePanel() {
-  if (!G.panel) return; mcTip(null); $(G.panel).hidden = true; G.panel = null; G.paused = false; sfx.ui();
+  if (!G.panel) return; holdEnd(); mcTip(null); $(G.panel).hidden = true; G.panel = null; G.paused = false; sfx.ui();
   if (NOTES.length) notice(...NOTES.shift());
 }
 // Beskjed midt på skjermen som må lukkes (OK, Enter eller Esc): tittel, tekst og en liten forklaring under.
@@ -5602,17 +5846,86 @@ function startGame(fresh) {
   for (const g in P.mag) P.mag[g] = 0; refill(); dogReset();
   const [s, d] = windName();
   msg('Vinden kommer ' + d + '. Gå mot vinden, så kjenner ikke dyrene lukta di.');
-  msg('Høyreklikk for å sikte, venstreklikk for å skyte. E åpner inventaret.');
-  msg('Hold Q for hjulet: lokk, luktstoff, hund, bål og mer. Pek med musa og slipp Q.');
+  if (TOUCH.on) {
+    msg('Styr med venstre tommel der du setter den ned. Skyv helt fram for å springe.');
+    msg('Sikt tar børsa opp, og Skyt fyrer av. Dra fingeren over bildet for å flytte siktet.');
+    msg('Hjul har lokk, luktstoff, hund, bål og mer.');
+  } else {
+    msg('Høyreklikk for å sikte, venstreklikk for å skyte. E åpner inventaret.');
+    msg('Hold Q for hjulet: lokk, luktstoff, hund, bål og mer. Pek med musa og slipp Q.');
+  }
   msg('Hunden følger deg. Send den ut fra hjulet for å finne dyr; den spiser en godbit hver gang den står for et.');
   lockPointer();
 }
 function lockPointer() { try { const r = cv.requestPointerLock && cv.requestPointerLock(); if (r && r.catch) r.catch(() => { }); } catch (e) { } }
 
+// ---------- berøring ----------
+// På telefon styrer venstre tommel med en spak der du setter den ned (helt fram er spring), og å dra over resten av
+// bildet flytter siktet. Knappene nede til høyre sikter, skyter, lader, sniker og åpner hjulet, der du trykker på det
+// du vil gjøre. t er når skjermen sist ble rørt, så musehendelsene nettleseren lager av et trykk, kan ses bort fra
+const TOUCH = { on: false, t: -1e9, stick: null, look: null }, STICK_R = 48;
+function touchOn() {
+  if (TOUCH.on) return;
+  TOUCH.on = true; document.body.classList.add('touch'); touchPoint();
+  document.querySelectorAll('.tbtn, .xbtn, #noticeOk').forEach(bt => bt.textContent = bt.textContent.replace(/ \(.*\)/, ''));
+}
+// uten mus peker du rett fram: dit går skuddet fra hofta, og dit ser du når du tar børsa opp
+function touchPoint() { MOUSE.x = W / 2; MOUSE.y = H * 0.3; }
+function stickSet(dx, dy) {
+  const l = Math.max(1, hyp(dx, dy) / STICK_R), x = dx / STICK_R / l, y = dy / STICK_R / l;
+  STICK.x = Math.abs(x) < 0.25 ? 0 : x; STICK.y = y < -0.3 ? -1 : y > 0.5 ? 1 : 0; STICK.run = y < -0.6 && hyp(x, y) > 0.95;
+  $('stick').firstChild.style.transform = `translate(${x * STICK_R}px, ${y * STICK_R}px)`;
+}
+function stickEnd() { TOUCH.stick = null; STICK.x = STICK.y = 0; STICK.run = false; $('stick').hidden = true; }
+function bindTouch() {
+  if (matchMedia('(pointer: coarse)').matches) touchOn();
+  for (const ev of ['touchstart', 'touchend']) addEventListener(ev, () => { TOUCH.t = performance.now(); touchOn(); }, { capture: true, passive: true });
+  cv.addEventListener('touchstart', e => {
+    e.preventDefault(); auInit();
+    if (!G.started || G.paused) return;
+    for (const t of e.changedTouches) {
+      if (!TOUCH.stick && t.clientX < innerWidth / 2) {
+        TOUCH.stick = { id: t.identifier, x: t.clientX, y: t.clientY };
+        const el = $('stick'); el.style.left = t.clientX + 'px'; el.style.top = t.clientY + 'px'; el.hidden = false; stickSet(0, 0);
+      } else if (!TOUCH.look) TOUCH.look = { id: t.identifier, x: t.clientX, y: t.clientY };
+    }
+  }, { passive: false });
+  cv.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      const s = TOUCH.stick, l = TOUCH.look;
+      if (s && t.identifier === s.id) stickSet(t.clientX - s.x, t.clientY - s.y);
+      else if (l && t.identifier === l.id) {
+        if (P.aim || AIM.want) aimLook((t.clientX - l.x) * DPR, (t.clientY - l.y) * DPR);
+        l.x = t.clientX; l.y = t.clientY;
+      }
+    }
+  }, { passive: false });
+  const end = e => { for (const t of e.changedTouches) { if (TOUCH.stick && t.identifier === TOUCH.stick.id) stickEnd(); if (TOUCH.look && t.identifier === TOUCH.look.id) TOUCH.look = null; } };
+  cv.addEventListener('touchend', end); cv.addEventListener('touchcancel', end);
+  // det som haster, skjer idet fingeren treffer knappen; det som åpner noe, først når den slippes, så trykket ikke
+  // går videre til det som kommer opp under den
+  const tap = (id, fn, ev = 'pointerdown') => $(id).addEventListener(ev, e => { e.preventDefault(); auInit(); if (G.started && !G.paused && !WHEEL.open) fn(); });
+  tap('tcAim', () => AIM.want ? aimRelease() : aimPress());
+  tap('tcFire', () => { if (P.aim || !AIM.want) shoot(); });
+  tap('tcLoad', startReload);
+  tap('tcSneak', () => { STICK.sneak = !STICK.sneak; $('tcSneak').setAttribute('aria-pressed', STICK.sneak); });
+  tap('tcWheel', wheelOpen, 'click');
+  tap('prompt', () => { if (!P.aim && !AIM.want) interact(); }, 'click');
+  const hold = $('tcHold');
+  hold.onpointerdown = e => { e.preventDefault(); STICK.hold = true; }; hold.onpointerup = hold.onpointercancel = hold.onpointerleave = () => { STICK.hold = false; };
+  $('wheel').onclick = e => { const el = e.target.closest('.wh-it'); if (el) WHEEL.sel = [...el.parentNode.children].indexOf(el); wheelClose(!!el); };
+}
+
 // ---------- input ----------
+// Hvor mye jegeren snur seg på kartet per piksel musa flyttes sidelengs (radianer)
+const MOUSE_TURN = 0.004;
 function bindInput() {
+  bindTouch();
   addEventListener('keydown', e => {
-    if (e.target.tagName === 'INPUT') { if (e.code === 'Enter' && !G.started) startGame(false); return; }
+    // glidebryteren i bua styres med piltastene; Esc lukker fortsatt
+    if (e.target.type === 'range' && e.code !== 'Escape') return;
+    if (e.target.tagName === 'INPUT' && e.target.type !== 'range') { if (e.code === 'Enter' && !G.started) startGame(false); return; }
     if (e.code === 'Tab' || e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
     // Esc/P: pause og fortsett (Esc lukker også bua og jaktboka). Håndteres før KEYS fordi
     // nettleseren kan svelge keyup for Esc når den slipper musepekeren.
@@ -5639,6 +5952,11 @@ function bindInput() {
       case 'KeyE': openInv(); break;
       case 'KeyM': openMap(); break;
       case 'KeyQ': wheelOpen(); break;
+      // talltastene gjør det samme som plassene i hjulet, i samme rekkefølge
+      default: {
+        const m = /^Digit([1-9])$/.exec(e.code), it = m && !G.paused && !P.aim && !AIM.want && wheelItems()[m[1] - 1];
+        if (it) { if (it.ok) it.act(); else { sfx.deny(); msg(it.d); } }
+      }
     }
   });
   addEventListener('keyup', e => { KEYS[e.code] = false; if (e.code === 'Space') P.hold = false; if (e.code === 'KeyQ') wheelClose(true); });
@@ -5646,7 +5964,7 @@ function bindInput() {
   cv.addEventListener('contextmenu', e => e.preventDefault());
   cv.addEventListener('mousedown', e => {
     e.preventDefault(); auInit();
-    if (!G.started || G.paused) return;
+    if (!G.started || G.paused || performance.now() - TOUCH.t < 800) return;
     if (!MOUSE.locked) lockPointer();
     // i hjulet velger venstreklikk det du peker på, høyreklikk lukker det
     if (WHEEL.open) { wheelClose(e.button === 0); return; }
@@ -5656,8 +5974,11 @@ function bindInput() {
   });
   addEventListener('mouseup', e => { if (e.button === 2) aimRelease(); });
   addEventListener('mousemove', e => {
+    if (performance.now() - TOUCH.t < 800) return;
     if (WHEEL.open) { wheelMove(e.movementX, e.movementY); return; }
-    if (MOUSE.locked) { MOUSE.x = clamp(MOUSE.x + e.movementX * DPR, 0, W); MOUSE.y = clamp(MOUSE.y + e.movementY * DPR, 0, H); }
+    // til fots på kartet snur musa sidelengs jegeren og bildet; pekeren står midt i bildet og flyttes bare fram og tilbake
+    if (G.started && !G.paused && !HORSE.on && !P.aim && !AIM.want) { P.h += e.movementX * MOUSE_TURN; MOUSE.x = W / 2; MOUSE.y = clamp(MOUSE.y + e.movementY * DPR, 0, H); }
+    else if (MOUSE.locked) { MOUSE.x = clamp(MOUSE.x + e.movementX * DPR, 0, W); MOUSE.y = clamp(MOUSE.y + e.movementY * DPR, 0, H); }
     else { MOUSE.x = e.clientX * DPR; MOUSE.y = e.clientY * DPR; }
     // i siktet og i 3D-visningen snur musa blikket
     if (P.aim || AIM.want) aimLook(e.movementX * DPR, e.movementY * DPR);
@@ -5669,13 +5990,13 @@ function bindInput() {
   // lagre når siden lukkes eller skjules
   addEventListener('pagehide', () => { if (G.started) save(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden && G.started) save(); });
-  addEventListener('resize', resize);
+  addEventListener('resize', () => { resize(); if (TOUCH.on) touchPoint(); });
   document.querySelectorAll('#shopTabs button').forEach(bt => bt.onclick = () => { shopCat = bt.dataset.cat; sfx.ui(); renderShop(); });
   // det du drar fra venstre side, kan slippes hvor som helst i bua og havner i salgsfeltet
   const sm = $('shopMain');
   sm.ondragenter = sm.ondragover = e => { if (!dragKey) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; sm.classList.add('over'); };
   sm.ondragleave = e => { if (!sm.contains(e.relatedTarget)) sm.classList.remove('over'); };
-  sm.ondrop = e => { e.preventDefault(); const k = dragKey; dragDone(); if (k) offerFor(k); };
+  sm.ondrop = e => { e.preventDefault(); const k = dragKey; dragDone(); if (k) sellClick(k, e.shiftKey); };
   document.querySelectorAll('[data-close]').forEach(bt => bt.onclick = closePanel);
   $('sleepBtn').onclick = () => { if (mp()) return; sleepToDawn('Du sov godt. Det lysner over skogen.'); closePanel(); };
   $('startBtn').onclick = () => startGame(false);
@@ -6091,12 +6412,12 @@ function aimStart(tx, ty) {
   for (const a of G.animals) {
     if (a.state === 'dead') continue;
     // musa peker på bakken bak dyret: kroppen står like høyt over føttene som punktet ligger bak dem (kartet ses i 45°)
-    const A = SPEC[a.sp], d = hyp(a.x - tx, a.y - ((a.z || 0) + A.leg + A.Hh / 2) * GL_COS / GL_SIN - ty);
+    const A = SPEC[a.sp], k = ((a.z || 0) + A.leg + A.Hh / 2) * GL_COS / GL_SIN, d = hyp(a.x + CAM.fx * k - tx, a.y + CAM.fy * k - ty);
     if (d < A.L / 2 + 8 && d < bd) { bd = d; best = a; }
   }
   if (best) { tx = best.x; ty = best.y; h = SPEC[best.sp].leg + SPEC[best.sp].Hh / 2 + (best.z || 0); }
   const d = hyp(tx - P.x, ty - P.y);
-  AIM.yaw = d > 8 ? Math.atan2(ty - P.y, tx - P.x) : P.face === 'side' ? (P.flip ? Math.PI : 0) : P.face === 'up' ? -Math.PI / 2 : Math.PI / 2;
+  AIM.yaw = d > 8 ? Math.atan2(ty - P.y, tx - P.x) : P.h;
   AIM.pitch = Math.atan((h - aimEye()) / Math.max(d, 30));
   AIM.camYaw = AIM.yaw; AIM.pitch = clamp(AIM.pitch, -pitchMax(), pitchMax());
   AIM.ry = AIM.yaw; AIM.rp = AIM.pitch;
@@ -6655,7 +6976,7 @@ function aimShotgun() {
   return { ang: AIM.camYaw + Math.atan((AIM.sx - AIM.cx) / AIM.f), hits: [...by.values()].filter(e => e.dmg > 0) };
 }
 // ===== 3D-grafikk: én three.js-scene som både kartet og siktet tegnes fra =====
-// Verden er (x, høyde, y). Kartet ses rett nordover og skrått ned (GL_PITCH) uten perspektiv, siktet fra øynene til
+// Verden er (x, høyde, y). Kartet ses i retningen CAM.yaw (dit jegeren ser) og skrått ned (GL_PITCH) uten perspektiv, siktet fra øynene til
 // jegeren med samme projeksjon som strålene i 09-aim3d.js regner med. Bildet tegnes i lav oppløsning i et eget
 // WebGL-lerret og legges så inn i spillets vanlige lerret, der sikter, merker og tekst tegnes oppå som før.
 // Bakken er høydene og den tegnede bakken fra 03-world.js; trær, stein og busker er modeller som settes ut der spillet
@@ -6761,6 +7082,8 @@ function glInit() {
   GL.parts = new THREE.Points(pg, new THREE.PointsMaterial({ size: 1.5, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false, fog: false }));
   GL.parts.frustumCulled = false; sc.add(GL.parts);
   for (const [k, x, y, v] of VOBJ) { const g = SPR[k][v].glow; if (g) for (const [gx, gy, ga] of g) GL.lamps.push([x + gx, y, -gy, ga]); }
+  // gatelyktene har hvert sitt lys, så hele landsbyen er opplyst om natta uansett hvor du står (se glLights)
+  GL.lampL = GL.lamps.map(() => { const p = new THREE.PointLight(0xffc870, 0, 110, 1.5); p.visible = false; sc.add(p); return p; });
 }
 
 // ---------- modellene til det som står stille ----------
@@ -6960,17 +7283,19 @@ class GLModel {
   lamp(u, v, z, a) { this.glow.push([u, v, z, a]); }
   // kors på spiret
   cross(u, v, z) { const g = () => C('#e6b63c'); this.box(u - 0.8, u + 0.8, v - 0.8, v + 0.8, z - 2, z + 8, g, g()); this.box(u - 0.8, u + 0.8, v - 3, v + 3, z + 3.5, z + 5.5, g, g()); }
-  // skilt med navnet på bua, hengt opp foran takskjegget over døra
+  // skilt med navnet på bua, hengt opp foran takskjegget over døra. Skiltet får sitt eget nett (se glSigns)
   sign(txt, u, v, z, nu, nv) {
     const sw = txt.length * 4 + 5, ink = C('#2c1e16'), [ax, ay, w, h] = this.area(sw + 2, 9, (i, j) => i === 0 || j === 0 || i === sw + 1 || j === 8 ? ink : C('#e2d2a8'));
     [...txt].forEach((ch, i) => [...GLYPH[ch]].forEach((bit, k) => { if (bit === '1') this.p.d[(ay + 2 + (k / 3 | 0)) * this.p.w + ax + 4 + i * 4 + k % 3] = ink; }));
-    const tu = -nv, tv = nu, hw = w / 2, P = (t, zz, tx, ty) => [u + tu * t, zz, v + tv * t, tx, ty];
-    this.quad(P(-hw, z, ax + w, ay + h), P(hw, z, ax, ay + h), P(hw, z + h, ax, ay), P(-hw, z + h, ax + w, ay));
+    const g = this.sg = new THREE.BufferGeometry(), U = (x, y) => [(ax + x) / this.p.w, 1 - (ay + y) / this.p.h];
+    g.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, w, 0, 0, w, h, 0, 0, 0, 0, w, h, 0, 0, h, 0], 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute([...U(0, h), ...U(w, h), ...U(w, 0), ...U(0, h), ...U(w, 0), ...U(0, 0)], 2)); g.computeVertexNormals();
+    this.sat = [u, v, z, nu, nv, w / 2];
   }
   finish() {
     const g = new THREE.BufferGeometry(), tex = c => { const t = new THREE.CanvasTexture(c); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; return t; };
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2)); g.computeVertexNormals();
-    return { geo: g, map: tex(this.p.canvas()), emap: tex(this.e.canvas()), glow: this.glow };
+    return { geo: g, map: tex(this.p.canvas()), emap: tex(this.e.canvas()), glow: this.glow, sg: this.sg, sat: this.sat };
   }
 }
 // Fargene som lyser om natta: vinduer, lykter og glør (se drawWindow, houseDef og churchDef)
@@ -7018,7 +7343,7 @@ function glRec(kx, ky) {
 // Det som står i biten: modellene samles per slag (matrise og farge per ting), husene og folkene ved dørene får egne nett
 function glRecObjs(rec) {
   const ch = rec.ch;
-  for (const h of rec.houses) { rec.grp.remove(h); if (h.material && h.material !== GL.matV) h.material.dispose(); }
+  for (const h of rec.houses) { rec.grp.remove(h); if (h.userData.sign) rec.grp.remove(h.userData.sign); if (h.material && h.material !== GL.matV) h.material.dispose(); }
   rec.parts = new Map(); rec.tall = []; rec.houses = [];
   const lists = new Map();
   for (const o of ch.objs) {
@@ -7030,6 +7355,10 @@ function glRecObjs(rec) {
       me.position.set(o.x, o.h, o.y); me.rotation.y = -c.rot; me.castShadow = me.receiveShadow = true; me.userData.o = o;
       const cs = Math.cos(c.rot), sn = Math.sin(c.rot);
       me.userData.glow = d.glow.map(([u, v, z, a]) => [o.x + u * cs - v * sn, o.y + u * sn + v * cs, z, a]);
+      if (d.sg) {
+        const [u, v, z, nu, nv, hw] = d.sat, sg = me.userData.sign = new THREE.Mesh(d.sg, me.material);
+        sg.userData.at = [o.x + u * cs - v * sn, o.h + z, o.y + u * sn + v * cs, nu * cs - nv * sn, nu * sn + nv * cs, hw]; rec.grp.add(sg);
+      }
       rec.grp.add(me); rec.houses.push(me); rec.tall.push(o); o._me = me;
       continue;
     }
@@ -7158,11 +7487,13 @@ function glLights(tint, fx, fy, R) {
   const l = hyp(dx, dy, dz), fh = heightAt(fx, fy), sc = sun.shadow.camera;
   sun.target.position.set(fx, fh, fy); sun.position.set(fx + dx / l * 2200, fh + dy / l * 2200, fy + dz / l * 2200);
   if (sc.right !== R) { sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.updateProjectionMatrix(); }
-  // de nærmeste lysene: bål alltid, lykter og vinduer når det mørkner
+  // gatelyktene lyser alle sammen når det mørkner. De slås helt av om dagen og langt fra landsbyen, så de ikke koster noe der
+  const lit = night > 0.05 && villDist(fx, fy) < 900;
+  GL.lamps.forEach(([x, y, z, a], i) => { const p = GL.lampL[i]; p.visible = lit; if (lit) { p.position.set(x, heightAt(x, y) + z, y); p.intensity = a * 5 * night * (tint ? 1 : 1.6); } });
+  // de nærmeste av de andre lysene: bål alltid, vinduer og vegglykter når det mørkner
   const src = [];
   for (const f of G.fires) src.push([f.x, f.y, 14, 0xff9440, (0.6 + 2.6 * night) * (0.85 + 0.15 * Math.sin(G.t * 11 + f.id * 50) + 0.08 * Math.sin(G.t * 23.7)), 210]);
   if (night > 0.05) {
-    for (const [x, y, z, a] of GL.lamps) src.push([x, y, z, 0xffc870, a * 5 * night, 110]);
     for (const rec of GL.recs.values()) for (const me of rec.houses) if (me.userData.glow) for (const [x, y, z, a] of me.userData.glow) src.push([x, y, z + 2, 0xffc060, a * 5 * night, 80]);
   }
   for (const s of src) s.d = hyp(s[0] - fx, s[1] - fy) - (s[3] === 0xff9440 ? 1e4 : 0);
@@ -7199,33 +7530,54 @@ function glParts(aim, tint) {
 // Skjermpunktet for (wx, wy) i høyden hz (ellers på bakken), og punktet på bakken under et skjermpunkt
 function toScreen(wx, wy, hz) {
   if (hz === undefined) hz = heightAt(wx, wy);
-  return [W / 2 + (wx - CAM.cx) * CAM.S, H / 2 + ((wy - CAM.cy) * GL_SIN - (hz - CAM.hc) * GL_COS) * CAM.S];
+  const dx = wx - CAM.cx, dy = wy - CAM.cy;
+  return [W / 2 + (dx * CAM.rx + dy * CAM.ry) * CAM.S, H / 2 - ((dx * CAM.fx + dy * CAM.fy) * GL_SIN + (hz - CAM.hc) * GL_COS) * CAM.S];
 }
 function toWorld(sx, sy) {
-  const wx = (sx - W / 2) / CAM.S + CAM.cx, v = (sy - H / 2) / CAM.S;
-  const f = wy => (wy - CAM.cy) * GL_SIN - (heightAt(wx, wy) - CAM.hc) * GL_COS - v;
-  // strålen fra øyet treffer bakken første gang fra sør; let nordover fra et punkt som ligger foran alt terreng
-  let y1 = CAM.cy + (v + 300 * GL_COS) / GL_SIN;
-  if (f(y1) <= 0) return [wx, y1];
+  const u = (sx - W / 2) / CAM.S, v = (sy - H / 2) / CAM.S;
+  // punktet t piksler mot kameraet fra midten av bildet, på linja under skjermpunktet
+  const at = t => [CAM.cx + CAM.rx * u - CAM.fx * t, CAM.cy + CAM.ry * u - CAM.fy * t];
+  const f = t => { const p = at(t); return t * GL_SIN - (heightAt(p[0], p[1]) - CAM.hc) * GL_COS - v; };
+  // strålen fra øyet treffer bakken første gang fra kamerasida; let innover fra et punkt som ligger foran alt terreng
+  let t1 = (v + 300 * GL_COS) / GL_SIN;
+  if (f(t1) <= 0) return at(t1);
   for (let i = 0; i < 160; i++) {
-    let y0 = y1 - 6;
-    if (f(y0) <= 0) { for (let k = 0; k < 7; k++) { const ym = (y0 + y1) / 2; if (f(ym) <= 0) y0 = ym; else y1 = ym; } return [wx, (y0 + y1) / 2]; }
-    y1 = y0;
+    let t0 = t1 - 6;
+    if (f(t0) <= 0) { for (let k = 0; k < 7; k++) { const tm = (t0 + t1) / 2; if (f(tm) <= 0) t0 = tm; else t1 = tm; } return at((t0 + t1) / 2); }
+    t1 = t0;
   }
-  return [wx, y1];
+  return at(t1);
 }
-// Tegner kartet: scenen sett skrått ovenfra rundt (CAM.cx, CAM.cy), lagt inn i lerretet i hele piksler på ZM
+// Skiltene på husene. På kartet vender de mot kameraet med én piksel i skiltet per piksel i bildet, lagt i hele piksler,
+// så bokstavene står skarpt også når kameraet er i ro. De vises bare når huset ses forfra. I siktet henger de på veggen
+function glSigns(map, gw, gh) {
+  const k = 1 / CAM.z, fx = CAM.fx, fy = CAM.fy, rx = CAM.rx, ry = CAM.ry;
+  for (const rec of GL.recs.values()) for (const me of rec.houses) {
+    const s = me.userData.sign; if (!s) continue;
+    const [x, h, y, nx, ny, hw] = s.userData.at;
+    if (!map) { s.visible = true; s.scale.setScalar(1); s.rotation.set(0, Math.PI / 2 - Math.atan2(ny, nx), 0); s.position.set(x - ny * hw, h, y + nx * hw); continue; }
+    if (!(s.visible = nx * fx + ny * fy < -0.6)) continue;
+    // litt mot kameraet, så skiltet ikke skjærer inn i veggen bak
+    const px = x - fx * GL_COS * 16 - rx * hw * k, ph = h + GL_SIN * 16, py = y - fy * GL_COS * 16 - ry * hw * k;
+    const u = ((px - CAM.cx) * rx + (py - CAM.cy) * ry) * CAM.z + gw / 2, v = (((px - CAM.cx) * fx + (py - CAM.cy) * fy) * GL_SIN + (ph - CAM.hc) * GL_COS) * CAM.z + gh / 2;
+    const du = (Math.round(u) - u) * k, dv = (Math.round(v) - v) * k;
+    s.quaternion.copy(GL.camO.quaternion); s.scale.setScalar(k);
+    s.position.set(px + rx * du + fx * GL_SIN * dv, ph + GL_COS * dv, py + ry * du + fy * GL_SIN * dv);
+  }
+}
+// Tegner kartet: scenen sett skrått ovenfra mot CAM.yaw rundt (CAM.cx, CAM.cy), lagt inn i lerretet i hele piksler på ZM
 function glMap(dt) {
   const r = GL.r, gw = Math.ceil(W / ZM), gh = Math.ceil(H / ZM), cam = GL.camO, S = CAM.S;
   if (GL.w !== gw || GL.h !== gh) { r.setSize(gw, gh, false); GL.w = gw; GL.h = gh; }
   const vw = gw * ZM / S, vh = gh * ZM / S, cx = CAM.cx, cy = CAM.cy, hc = CAM.hc, dep = vh / 2 / GL_SIN;
-  // bitene vi ser: litt lenger mot sør, der høye trær og åser stikker opp i bildet
-  const kx0 = Math.floor((cx - vw / 2 - 60) / CS), kx1 = Math.floor((cx + vw / 2 + 60) / CS), ky0 = Math.floor((cy - dep - 120) / CS), ky1 = Math.floor((cy + dep + 260) / CS);
+  // bitene vi ser: litt lenger mot kameraet, der høye trær og åser stikker opp i bildet
+  const fx = CAM.fx, fy = CAM.fy, sd = vw / 2 + 60, fw = dep + 120, bk = dep + 260, ex = Math.abs(CAM.rx) * sd, ey = Math.abs(CAM.ry) * sd;
+  const kx0 = Math.floor((cx - ex + Math.min(fx * fw, -fx * bk)) / CS), kx1 = Math.floor((cx + ex + Math.max(fx * fw, -fx * bk)) / CS), ky0 = Math.floor((cy - ey + Math.min(fy * fw, -fy * bk)) / CS), ky1 = Math.floor((cy + ey + Math.max(fy * fw, -fy * bk)) / CS);
   for (let ky = ky0; ky <= ky1; ky++) for (let kx = kx0; kx <= kx1; kx++) { const ch = getChunk(kx, ky); if (!ch.gpix) genGround(ch); }
   glWant(kx0, ky0, kx1, ky1, cx, cy, 99);
   glSync(dt, true, cx, cy, Math.max(vw / 2, dep) + 220, null);
   cam.left = -vw / 2; cam.right = vw / 2; cam.top = vh / 2; cam.bottom = -vh / 2; cam.updateProjectionMatrix();
-  cam.position.set(cx, hc + GL_SIN * 3000, cy + GL_COS * 3000); cam.lookAt(cx, hc, cy);
+  cam.position.set(cx - fx * GL_COS * 3000, hc + GL_SIN * 3000, cy - fy * GL_COS * 3000); cam.lookAt(cx, hc, cy); glSigns(true, gw, gh);
   GL.scene.fog.near = 1e5; GL.scene.fog.far = 1e6; GL.clip.constant = 1e9;
   GL.parts.material.size = 1.4; GL.parts.material.sizeAttenuation = false;
   r.setClearColor(0x121a16, 1); r.render(GL.scene, cam);
@@ -7242,7 +7594,7 @@ function glAim(o, bw, bh) {
   // bitene i synsfeltet, ut til synsranda
   const ex = (o.cx + 8) / o.f * o.far, xs = [o.x, o.x + vx * o.far - vy * ex, o.x + vx * o.far + vy * ex], ys = [o.y, o.y + vy * o.far + vx * ex, o.y + vy * o.far - vx * ex];
   glWant(Math.floor((Math.min(...xs) - 40) / CS), Math.floor((Math.min(...ys) - 40) / CS), Math.floor((Math.max(...xs) + 40) / CS), Math.floor((Math.max(...ys) + 40) / CS), o.x, o.y, 5);
-  glSync(0, false, o.x + vx * 260, o.y + vy * 260, 520, o);
+  glSync(0, false, o.x + vx * 260, o.y + vy * 260, 520, o); glSigns(false);
   cam.position.set(o.x, o.camZ, o.y); cam.lookAt(o.x + vx, o.camZ, o.y + vy); cam.updateMatrixWorld();
   cam.projectionMatrix.makePerspective(-o.cx / o.f * n, (bw - o.cx) / o.f * n, o.hy / o.f * n, -(bh - o.hy) / o.f * n, n, o.far + 50);
   cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();
@@ -7519,7 +7871,7 @@ function figSync(dt, map, view) {
   hu.root.visible = !HORSE.on && (map || !!(view && view.third && view.fade < 0.75));
   if (P.aim) { hu.px = P.x; hu.py = P.y; }
   const k = P.aim ? 1 : !map ? Math.max(0.22, AIM.tp) : AIM.raise > 0 && !P.moving ? (AIM.want ? 0.22 : AIM.raise) : 0;
-  figWalker(hu, P, dt, tree ? figChop({}, chopFrame(P.work)) : k > 0 ? figAim({}, k) : null, tree ? Math.atan2(tree.y - P.y, tree.x - P.x) : raising && G.started ? AIM.yaw : null, P.deep ? 9 : P.wet ? 2.5 : 0);
+  figWalker(hu, P, dt, tree ? figChop({}, chopFrame(P.work)) : k > 0 ? figAim({}, k) : null, tree ? Math.atan2(tree.y - P.y, tree.x - P.x) : raising && G.started ? AIM.yaw : G.started && !P.moving ? P.h : null, P.deep ? 9 : P.wet ? 2.5 : 0);
   // hakket i stammen på siden mot jegeren blir dypere for hvert hogg
   const nt = F.notch || (F.notch = (() => { const me = glMesh([G3.box(1.4, 2.6, 3.4, '#e8d0a0'), G3.box(0.7, 1.1, 3.5, '#2a1c12')], true); GL.scene.add(me); return me; })());
   nt.visible = !!(tree && P.work.hits && CHOP[tree.k]);

@@ -156,7 +156,8 @@ const rackKr = () => G.rack.reduce((s, l) => s + l.kr, 0);
 const horseKg = () => kg1(rackKg() + G.cargo.wood * WOOD_KG);
 const horseNear = (r = HORSE_REACH) => lv('horse') > 0 && (HORSE.on || hyp(HORSE.x - P.x, HORSE.y - P.y) < r);
 // rådet når sekken er full og hesten ikke er her
-const horseHint = () => lv('horse') ? `hent hesten: den bærer ${horseCap()} kg` : `kjøp en hest i stallen: den bærer ${ST.hbag[0]} kg`;
+const horseCalls = () => lv('horse') > 0 && !horseNear() && hyp(HORSE.x - P.x, HORSE.y - P.y) <= HORSE_CALL;
+const horseHint = () => lv('horse') ? `${horseCalls() ? 'kall på hesten (hold Q)' : 'hent hesten'}: den bærer ${horseCap()} kg` : `kjøp en hest i stallen: den bærer ${ST.hbag[0]} kg`;
 const rackFree = () => horseNear() ? Math.max(0, kg1(horseCap() - horseKg())) : 0;
 // plass til kjøtt der du står: sekken, og hesten hvis den er like ved
 const meatFree = () => kg1(sackFree() + rackFree());
@@ -182,7 +183,7 @@ const G = {
 };
 for (const u of UPG) G.up[u.id] = 0;
 for (const k of CARGO) G.cargo[k] = 0;
-const P = { x: 0, y: 30, face: 'down', flip: false, walkT: 0, moving: false, sneak: false, aim: false, breath: 1, hold: false, mag: { rifle: 0, hagle: 0, bue: 0 }, cycle: 0, reload: 0, callCd: 0, stepT: 0, wet: false, deep: false, cold: 0, chill: false, sway: [0, 0], unrest: 0, winded: false, bph: 0, hp: 100, sick: false, risk: 0, warm: false, work: null, sneezeT: 20 };
+const P = { x: 0, y: 30, h: -Math.PI / 2, face: 'down', flip: false, walkT: 0, moving: false, sneak: false, aim: false, breath: 1, hold: false, mag: { rifle: 0, hagle: 0, bue: 0 }, cycle: 0, reload: 0, callCd: 0, stepT: 0, wet: false, deep: false, cold: 0, chill: false, sway: [0, 0], unrest: 0, winded: false, bph: 0, hp: 100, sick: false, risk: 0, warm: false, work: null, sneezeT: 20 };
 const lv = id => G.up[id];
 // Våpnene: rifla har du fra start, hagla og buen når du har kjøpt dem (trinn over 0). De to våpenplassene i inventaret
 // (G.arms) er det du har med deg; de andre ligger i utstyret (eller på hesten) som { gun } til du drar dem opp.
@@ -730,6 +731,14 @@ function moveCargo(k, toHorse) {
   }
   save(); return '';
 }
+// F ved hesten: alt kjøttet i sekken som får plass, lastes over på den
+function horseLoad() {
+  const was = meatKg();
+  for (const l of [...G.meat]) moveCargo('meat:' + l.sp, true);
+  const kg = kg1(was - meatKg());
+  if (!(kg > 0)) { sfx.deny(); msg('Hesten er full.', 'warn'); return; }
+  sfx.kneel(); msg(fmtKg(kg) + ' kjøtt lastet på hesten (' + String(horseKg()).replace('.', ',') + ' / ' + horseCap() + ' kg).' + (G.meat.length ? ' Hesten er full, resten ligger i sekken.' : ''), 'good');
+}
 // Hva F gjør der du står: [tekst til hjelpelinja, handling]
 function action() {
   if (HORSE.on) return ['Gå av hesten', horseDismount];
@@ -738,13 +747,18 @@ function action() {
     const A = SPEC[a.sp], rest = ROT_H - deadH(a);
     // råttent kjøtt kan ikke tas vare på; de siste tre timene står det hvor lenge det holder seg
     if (rest <= 0) return [A.name + ' · har råtnet, kjøttet kan ikke selges', () => { sfx.deny(); msg('Dyret har ligget for lenge og har råtnet. Kjøttet kan ikke selges.', 'warn'); }];
-    if (meatFree() / knifeK() < 0.1) return [horseNear() ? 'Sekken og hesten er fulle · selg i landsbyen' : 'Sekken er full · selg i landsbyen', meatFull];
+    if (meatFree() / knifeK() < 0.1) return [horseNear() ? 'Sekken og hesten er fulle · selg i landsbyen' : horseCalls() ? 'Sekken er full · kall på hesten (hold Q)' : 'Sekken er full · selg i landsbyen', meatFull];
+    // hvor kjøttet havner: hesten først når den står like ved, resten i sekken
+    const get = kg1(Math.min((a.left ?? carcassKg(a)) * knifeK(), meatFree())), onH = kg1(Math.min(get, rackFree())), inS = kg1(get - onH);
     return [(a.left === undefined ? 'Ta vare på ' + A.name.toLowerCase() + ' (' + A.sexn[a.sex] + ')' : 'Skjær ut mer kjøtt (' + A.name.toLowerCase() + ', ' + fmtKg(kg1(a.left * knifeK())) + ' igjen)')
-      + (rest <= 3 ? rest < 1 ? ' · råtner snart' : ' · råtner om ' + Math.ceil(rest) + ' t' : '') + (rackFree() > 0 ? ' · lastes på hesten' : ''), () => collect(a)];
+      + (rest <= 3 ? rest < 1 ? ' · råtner snart' : ' · råtner om ' + Math.ceil(rest) + ' t' : '') + (onH > 0 ? inS > 0 ? ' · ' + fmtKg(onH) + ' på hesten, ' + fmtKg(inS) + ' i sekken' : ' · lastes på hesten' : ''), () => collect(a)];
   }
   const c = cabinsNear(P.x, P.y).find(c => hyp(P.x - c.door[0], P.y - c.door[1]) < 18);
   if (c) return [doorText(c), () => openShop(c)];
-  if (lv('horse') && hyp(HORSE.x - P.x, HORSE.y - P.y) < 18) return lv('saddle') ? ['Ri hesten', horseMount] : ['Hesten mangler sal', () => { sfx.deny(); msg('Du trenger sal for å ri. Stallen i landsbyen selger en. Hesten bærer likevel for deg her (E).'); }];
+  const atHorse = lv('horse') && hyp(HORSE.x - P.x, HORSE.y - P.y) < 18;
+  // har du kjøtt i sekken og hesten har plass, laster F over først; neste F rir
+  if (atHorse && G.meat.length && horseCap() - horseKg() >= 0.1) return ['Last kjøttet på hesten (' + fmtKg(meatKg()) + ')', horseLoad];
+  if (atHorse) return lv('saddle') ? ['Ri hesten', horseMount] : ['Hesten mangler sal', () => { sfx.deny(); msg('Du trenger sal for å ri. Stallen i landsbyen selger en. Hesten bærer likevel for deg her (F laster over kjøttet, E for resten).'); }];
   // i åpningen av gapahuken sover du; ellers ved bålet steker du
   const h = nearHut(P.x, P.y, 18);
   if (h) return nearFire(h.x, h.y, 60) ? ['Sov i gapahuken', sleepHut] : ['Tenn bål foran gapahuken for å sove her', () => msg('Du trenger et bål foran gapahuken for å holde varmen i natt. Tenn et fra hjulet (hold Q).')];
@@ -855,10 +869,10 @@ function dogCell(i, j) {
   const x = (i + 0.5) * DG, y = (j + 0.5) * DG, cabs = cabinsNear(x, y), w = (dx, dy) => fields(x + dx, y + dy, cabs)[2];
   const w0 = inWorld(x, y) ? w(0, 0) : 0, R = BR_MAX + 16, c = q => Math.floor(q / CS);
   v = 0;
-  // langt fra vann er det verken bru eller bredd å se etter, og bruer ligger bare der en sti går
+  // langt fra vann er det verken bru eller bredd å se etter
   if (w0 >= 9) v = 1;
   else {
-    if (Math.abs(trailN(x, y)) < 0.14) for (let b = c(y - R); b <= c(y + R) && !v; b++) for (let a = c(x - R); a <= c(x + R) && !v; a++) v = inBridge(bridgesOf(a, b), x, y, 6) || 0;
+    for (let b = c(y - R); b <= c(y + R) && !v; b++) for (let a = c(x - R); a <= c(x + R) && !v; a++) v = inBridge(bridgesOf(a, b), x, y, 6) || 0;
     if (!v) v = w0 >= 3 || (w0 >= 1 && w(-4, -4) >= 1 && w(4, -4) >= 1 && w(-4, 4) >= 1 && w(4, 4) >= 1) ? 1 : 0;
   }
   _dw.set(k, v); return v;
@@ -1384,6 +1398,8 @@ function fireUpdate(dt) {
 
 // ---------- oppdatering ----------
 const KEYS = {}, MOUSE = { x: 0, y: 0, wx: 0, wy: 0, locked: false };
+// spaken og knappene på berøringsskjerm (se bindTouch i 07-ui.js): x svinger, y er fram (-1) eller bak (1)
+const STICK = { x: 0, y: 0, run: false, sneak: false, hold: false };
 function playerUpdate(dt) {
   P.cycle = Math.max(0, P.cycle - dt); P.callCd = Math.max(0, P.callCd - dt);
   if (P.reload > 0) { P.reload -= dt; if (P.reload <= 0) { const k = ammoKey(), n = Math.min(gunCap() - inGun(), G[k]); P.reload = 0; if (G.gun) { P.mag[G.gun] += n; G[k] -= n; } } }
@@ -1393,16 +1409,24 @@ function playerUpdate(dt) {
   if (G.started && !G.paused && !P.aim && !AIM.want) {
     if (KEYS.KeyA || KEYS.ArrowLeft) mx -= 1; if (KEYS.KeyD || KEYS.ArrowRight) mx += 1;
     if (KEYS.KeyW || KEYS.ArrowUp) my -= 1; if (KEYS.KeyS || KEYS.ArrowDown) my += 1;
+    mx += STICK.x; my += STICK.y;
   } else if (G.started && !G.paused && P.aim && AIM.want && !P.deep) {
     if (KEYS.KeyA || KEYS.ArrowLeft) mx -= 1; if (KEYS.KeyD || KEYS.ArrowRight) mx += 1;
+    mx += STICK.x;
   }
   // på hesten driver W den fram, S holder igjen og A/D styrer, både på kartet og i 3D
+  // til fots på kartet snur musa jegeren (P.h, se mousemove i 07-ui.js) og bildet med ham, W/S går fram og tilbake dit
+  // han ser og A/D til sidene. På hesten og i siktet følger retningen hans hesten og blikket, så kartet står riktig vei
+  // når han er tilbake på beina
+  if (HORSE.on) P.h = HORSE.h;
+  else if (P.aim || AIM.want) P.h = AIM.yaw;
+  else { const c = Math.cos(P.h), s = Math.sin(P.h), f = -my, r = mx; mx = c * f - s * r; my = s * f + c * r; if (G.started) faceTo(P.h); }
   const ride = HORSE.on, fl = fields(P.x, P.y, cabinsNear(P.x, P.y)), br = bridgeAt(P.x, P.y), wv = br ? 9 : fl[2];
   if (ride) horseDrive(dt, mx, -my, wv, fl[3], br);
   else if (HORSE.come && G.started && !G.paused) horseCome(dt);
   // i 3D og i siktet går W/S fram og tilbake dit du ser, og A/D til sidene
   if (!ride && P.aim && (mx || my)) { const c = Math.cos(AIM.yaw), s = Math.sin(AIM.yaw), f = -my, r = mx; mx = c * f - s * r; my = s * f + c * r; }
-  P.sneak = !ride && !!(KEYS.ShiftLeft || KEYS.ShiftRight);
+  P.sneak = !ride && !!(KEYS.ShiftLeft || KEYS.ShiftRight || STICK.sneak);
   // på hesten holder du deg tørr
   P.wet = !ride && wv < 1.1; P.deep = !ride && wv < 0.55;
   // vassing gjør deg våt og kald, svømming enda mer; på land tørker klærne sakte. Gode støvler holder deg tørr i grunt
@@ -1415,7 +1439,7 @@ function playerUpdate(dt) {
   else if (P.chill && P.cold === 0) { P.chill = false; msg('Klærne har tørket. Du er varm igjen.', 'good'); }
   P.moving = ride ? Math.abs(HORSE.v) > 2 : mx !== 0 || my !== 0;
   // Space mens du går: spring. Det går fort, men bråker og tar pusten, og er lufta tom, må du hente deg inn
-  P.run = !ride && P.moving && !P.aim && !P.sneak && !P.winded && !!KEYS.Space;
+  P.run = !ride && P.moving && !P.aim && !P.sneak && !P.winded && !!(KEYS.Space || STICK.run);
   // på kne i siktet flytter du deg sakte og stille, som når du sniker
   const low = P.sneak || P.aim;
   if (P.moving) {
@@ -1469,7 +1493,7 @@ function playerUpdate(dt) {
   // noen få sekunder; går lufta tom, hiver du etter pusten, og du kan ikke holde den igjen før du har hentet deg inn
   const swayA = (hagle() ? HST.sway : bue() ? BST.sway[lv('bue')] : ST.sway[lv('stock')]) * (P.sneak ? 0.85 : 1) * (1 + 1.2 * P.cold * cloMul('steady'));
   if (P.winded && P.breath >= 0.8) P.winded = false;
-  P.hold = P.aim && !P.winded && !!KEYS.Space;
+  P.hold = P.aim && !P.winded && !!(KEYS.Space || STICK.hold);
   // hvileretningen følger siktet etter; hvor langt siktet er fra den, sier hvor stort svinget er (radianer)
   const ra = 1 - Math.exp(-dt / 0.6);
   AIM.ry += (AIM.yaw - AIM.ry) * ra; AIM.rp += (AIM.pitch - AIM.rp) * ra;

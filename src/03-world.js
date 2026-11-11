@@ -150,9 +150,17 @@ function nearestCabin(x, y, ok) {
   return { x: b.x, y: b.y, d: bd, c: b };
 }
 
-// Elver og stier følger nullkonturen til hvert sitt støyfelt
+// Elvene følger nullkonturen til et støyfelt
 const riverN = (x, y) => fbm(x / 560, y / 560, SEED + 37, 2) - 0.5;
-const trailN = (x, y) => fbm(x / 310 + 40, y / 310 + 40, SEED + 53, 2) - 0.5;
+// Stiene er lagt mellom stedene (se «stier» lenger ned). _trail har stykkene [x0, y0, x1, y1] som går gjennom eller
+// like forbi hver rute på TG × TG piksler, og trailAt gir avstanden til nærmeste sti i halve stibredder (under 1 er sti)
+const TG = 32, TR_HW = 4, TR_FAR = 12, _trail = new Map(), tkey = (i, j) => (i + 512) * 1024 + j + 512;
+function trailAt(x, y) {
+  const L = _trail.get(tkey(Math.floor(x / TG), Math.floor(y / TG)));
+  let d = TR_FAR;
+  if (L) for (const s of L) d = Math.min(d, segDist(x, y, s));
+  return d / TR_HW;
+}
 // Klimaet over jaktfeltet: 1 er kaldt fjell i nord, −1 er mildt lavland i sørvest og 0 er skogen rundt bua.
 // Grov støy gjør overgangene ujevne, så de ikke følger rette linjer
 function climate(x, y) {
@@ -167,7 +175,7 @@ function fields(x, y, cabs) {
   const Cn = clamp((fbm(x / 470, y / 470, SEED + 23, 2) - 0.5) * 2.8 + 0.5 + 0.35 * kc - 0.45 * km, 0, 1);
   const r = Math.abs(riverN(x, y)), pd = vnoise(x / 820 + 5.2, y / 820 - 3.1, SEED + 41);
   let Wv = r / (0.010 + Math.max(0, pd - 0.6) * 0.18);
-  let Tr = Math.abs(trailN(x, y)) / 0.011;
+  let Tr = trailAt(x, y);
   const He = vnoise(x / 110, y / 110, SEED + 61), Va = vnoise(x / 37, y / 37, SEED + 5);
   for (const c of cabs) {
     const d = hyp(x - c.x, (y - c.y) * 1.3);
@@ -276,27 +284,11 @@ function regionAt(x, y) {
 }
 
 // ---------- bruer der stiene krysser bekker og elver ----------
-// Krysningspunktet finnes med Newton-iterasjon på de to støyfeltene, så alle biter (og alle
-// jegere på nettet) finner nøyaktig samme punkt. Biten punktet ligger i eier brua.
-const _br = new Map(), BR_HW = 5, BR_MAX = 64;
-function crossing(x, y) {
-  for (let i = 0; i < 24; i++) {
-    const a = trailN(x, y), c = riverN(x, y);
-    const ax = trailN(x + 0.5, y) - trailN(x - 0.5, y), ay = trailN(x, y + 0.5) - trailN(x, y - 0.5);
-    const cx = riverN(x + 0.5, y) - riverN(x - 0.5, y), cy = riverN(x, y + 0.5) - riverN(x, y - 0.5);
-    const det = ax * cy - ay * cx; if (Math.abs(det) < 1e-12) return null;
-    let dx = (a * cy - ay * c) / det, dy = (ax * c - cx * a) / det;
-    const l = hyp(dx, dy); if (l > 6) { dx *= 6 / l; dy *= 6 / l; } // dempede steg: støyen er ikke lineær langt unna
-    x -= dx; y -= dy;
-    if (dx * dx + dy * dy < 1e-8) return [x, y];
-  }
-  return null;
-}
-function makeBridge(x, y) {
+// Brua ligger rett over elva i retningen (tx, ty) stien har der den krysser (x, y). Biten punktet ligger i eier brua.
+const _br = new Map(), BR_HW = 5, BR_MAX = 64, NO_BR = [];
+function makeBridge(x, y, tx, ty) {
   const cabs = cabinsNear(x, y), wv = (px, py) => fields(px, py, cabs)[2];
   if (wv(x, y) >= 1) return null;
-  const gx = trailN(x + 0.5, y) - trailN(x - 0.5, y), gy = trailN(x, y + 0.5) - trailN(x, y - 0.5), gl = hyp(gx, gy);
-  const tx = -gy / gl, ty = gx / gl;
   // gå langs stien til land på begge sider; begge kantene av dekket må også nå land
   const reach = dir => {
     let m = 0;
@@ -316,17 +308,120 @@ function makeBridge(x, y) {
   }
   return { x, y, tx, ty, a: -a, b, hw: BR_HW, id: (hash2(x | 0, y | 0, 5) * 1e6) | 0, bb };
 }
-function bridgesOf(cx, cy) {
-  const key = cx + ',' + cy; let L = _br.get(key);
-  if (L) return L;
-  L = []; const seen = [], x0 = cx * CS, y0 = cy * CS;
-  for (let y = y0 - 12; y < y0 + CS + 12; y += 8) for (let x = x0 - 12; x < x0 + CS + 12; x += 8) {
-    if (Math.abs(trailN(x, y)) > 0.04 || Math.abs(riverN(x, y)) > 0.04) continue;
-    const c = crossing(x, y);
-    if (!c || c[0] < x0 || c[0] >= x0 + CS || c[1] < y0 || c[1] >= y0 + CS || seen.some(p => hyp(p[0] - c[0], p[1] - c[1]) < 3)) continue;
-    seen.push(c); const br = makeBridge(c[0], c[1]); if (br) L.push(br);
+const bridgesOf = (cx, cy) => _br.get(cx + ',' + cy) || NO_BR;
+
+// ---------- stier ----------
+// Ingen sti går på måfå: alle fører til et sted. Stiene går fra de fire portene i landsbyen og ut til hver utpost, hver
+// koie og hvert landemerke. Stedene kobles på ett og ett, det nærmeste først, med en sti som legges (A*) i rutenettet
+// høydene står i, fra stedet og mot det nærmeste stedet som alt har sti. Den stopper der den møter en sti som ligger
+// der fra før, så stiene møtes i stidele og henger sammen i ett nett: følger du en sti, kommer du alltid fram til noe.
+// Stien går helst der det er slakt: stigning langs stien og bratt sideli koster mye, så den går rundt skrentene
+// i stedet for rett opp. Den krysser elver der de er smale (med bru) og går rundt innsjøene, om det ikke er eneste
+// vei fram (en koie på en holme). Alt regnes ut fra støyfeltene, så alle jegere på nettet får de samme stiene.
+{
+  const N = 2 * WORLD / TG + 1, O = WORLD / TG, NN = N * N;
+  // per punkt i rutenettet: høyde, elvefelt, hvor bratt det er, BL (1 sperret av landsbyen, 2 innsjø), på en sti (ON) og hvor
+  // stien går der (PX, PY: punktet etter at stien er glattet)
+  const H = new Float32Array(NN).fill(NaN), RV = new Float32Array(NN), SG = new Float32Array(NN).fill(-1), BL = new Uint8Array(NN), ON = new Uint8Array(NN);
+  const PX = new Float32Array(NN), PY = new Float32Array(NN), GS = new Float32Array(NN), FR = new Int32Array(NN), ST = new Int32Array(NN), CL = new Int32Array(NN);
+  const nx = a => (a % N - O) * TG, ny = a => ((a / N | 0) - O) * TG, at = (x, y) => clamp(Math.round(y / TG) + O, 0, N - 1) * N + clamp(Math.round(x / TG) + O, 0, N - 1);
+  const node = a => {
+    if (H[a] === H[a]) return a;
+    const x = nx(a), y = ny(a);
+    RV[a] = riverN(x, y); H[a] = heightRaw(x, y);
+    BL[a] = Math.abs(x) < 400 && Math.abs(y + 150) < 300 && villDist(x, y) < 30 ? 1 : H[a] === 0 && vnoise(x / 820 + 5.2, y / 820 - 3.1, SEED + 41) > 0.65 ? 2 : 0;
+    return a;
+  };
+  const steep = a => {
+    if (SG[a] < 0) { const i = a % N, j = a / N | 0; SG[a] = hyp(H[node(i < N - 1 ? a + 1 : a)] - H[node(i ? a - 1 : a)], H[node(j < N - 1 ? a + N : a)] - H[node(j ? a - N : a)]) / (2 * TG); }
+    return SG[a];
+  };
+  // haug med de åpne punktene, det billigste øverst
+  const hk = [], hv = [];
+  const push = (v, k) => {
+    let i = hk.length; hk.push(k); hv.push(v);
+    while (i) { const p = (i - 1) >> 1; if (hk[p] <= k) break; hk[i] = hk[p]; hv[i] = hv[p]; i = p; }
+    hk[i] = k; hv[i] = v;
+  };
+  const pop = () => {
+    const top = hv[0], k = hk.pop(), v = hv.pop(), n = hk.length;
+    if (n) {
+      let i = 0;
+      for (;;) { let c = i * 2 + 1; if (c >= n) break; if (c + 1 < n && hk[c + 1] < hk[c]) c++; if (hk[c] >= k) break; hk[i] = hk[c]; hv[i] = hv[c]; i = c; }
+      hk[i] = k; hv[i] = v;
+    }
+    return top;
+  };
+  // billigste vei fra punktet sa mot (gx, gy), til første punkt som alt ligger på en sti
+  let sid = 0;
+  const route = (sa, gx, gy) => {
+    sid++; hk.length = hv.length = 0;
+    node(sa); GS[sa] = 0; ST[sa] = sid; FR[sa] = -1; push(sa, 0);
+    while (hk.length) {
+      const a = pop(); if (CL[a] === sid) continue; CL[a] = sid;
+      if (ON[a]) { const L = []; for (let q = a; q >= 0; q = FR[q]) L.push(q); return L.reverse(); }
+      const i = a % N, j = a / N | 0;
+      for (let k = 0; k < 8; k++) {
+        const di = [1, -1, 0, 0, 1, 1, -1, -1][k], dj = [0, 0, 1, -1, 1, -1, 1, -1][k], bi = i + di, bj = j + dj;
+        if (bi < 0 || bj < 0 || bi >= N || bj >= N) continue;
+        const b = node(bj * N + bi); if (CL[b] === sid || BL[b] === 1 && !ON[b]) continue;
+        const len = k < 4 ? TG : TG * Math.SQRT2, s = Math.abs(H[b] - H[a]) / len, sg = steep(b), s2 = Math.max(0, s - 0.45);
+        const g = GS[a] + len * (1 + 40 * s * s + 400 * s2 * s2 + 10 * sg * sg) + ((RV[a] < 0) !== (RV[b] < 0) ? 400 : 0) + (BL[b] === 2 ? 2000 : H[b] === 0 ? 600 : 0);
+        if (ST[b] !== sid || g < GS[b]) { GS[b] = g; ST[b] = sid; FR[b] = a; push(b, g + hyp(bi - gx, bj - gy) * TG); }
+      }
+    }
+    return null;
+  };
+  // legger et stykke sti i rutene det går gjennom eller like forbi, og bygger bru der det krysser en elv
+  const seg = (x0, y0, x1, y1, onBr) => {
+    const l = hyp(x1 - x0, y1 - y0); if (l < 0.01) return;
+    const s = [x0, y0, x1, y1];
+    for (let j = Math.floor((Math.min(y0, y1) - TR_FAR) / TG); j <= Math.floor((Math.max(y0, y1) + TR_FAR) / TG); j++)
+      for (let i = Math.floor((Math.min(x0, x1) - TR_FAR) / TG); i <= Math.floor((Math.max(x0, x1) + TR_FAR) / TG); i++) { const k = tkey(i, j), L = _trail.get(k); if (L) L.push(s); else _trail.set(k, [s]); }
+    const neg = riverN(x0, y0) < 0;
+    if (onBr || neg === riverN(x1, y1) < 0) return;
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 14; i++) { const m = (lo + hi) / 2; if (riverN(lerp(x0, x1, m), lerp(y0, y1, m)) < 0 === neg) lo = m; else hi = m; }
+    const tx = (x1 - x0) / l, ty = (y1 - y0) / l, bx = lerp(x0, x1, lo), by = lerp(y0, y1, lo);
+    let br = makeBridge(bx, by, tx, ty);
+    // når stien ikke fram på skrå over elva, legges brua tvers over, der det er kortest
+    if (!br) { const gx = riverN(bx + 0.5, by) - riverN(bx - 0.5, by), gy = riverN(bx, by + 0.5) - riverN(bx, by - 0.5), gl = hyp(gx, gy) * (gx * tx + gy * ty < 0 ? -1 : 1); if (gl) br = makeBridge(bx, by, gx / gl, gy / gl); }
+    if (!br) return;
+    const k = Math.floor(bx / CS) + ',' + Math.floor(by / CS), L = _br.get(k); if (L) L.push(br); else _br.set(k, [br]);
+    // stien går rett fram til begge endene av brua
+    seg(bx + br.tx * (br.a - 4), by + br.ty * (br.a - 4), bx + br.tx * (br.b + 4), by + br.ty * (br.b + 4), 1);
+  };
+  // legger en sti fra d mot t, fram til første sti på veien
+  const lay = (d, t) => {
+    const path = route(at(d[0], d[1]), t[0] / TG + O, t[1] / TG + O);
+    if (!path) return false;
+    // punktene skyves litt hit og dit, så stien bukter seg i stedet for å følge rutenettet på rette strekk
+    const wob = (a, k) => (vnoise(nx(a) / 75, ny(a) / 75, SEED + 53 + k) - 0.5) * 30;
+    const pts = [d, ...path.map(a => ON[a] ? [PX[a], PY[a]] : [nx(a) + wob(a, 0), ny(a) + wob(a, 1)])];
+    // og knekkene glattes ut; endene ligger fast
+    for (let n = 0; n < 3; n++) for (let i = 1, p = pts[0]; i < pts.length - 1; i++) { const q = pts[i], r = pts[i + 1]; pts[i] = [(p[0] + 2 * q[0] + r[0]) / 4, (p[1] + 2 * q[1] + r[1]) / 4]; p = q; }
+    path.forEach((a, i) => { ON[a] = 1; PX[a] = pts[i + 1][0]; PY[a] = pts[i + 1][1]; });
+    for (let i = 0; i < pts.length - 1; i++) seg(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
+    return true;
+  };
+  // stiene ut av portene er der fra før (de fire første i V_PATH)
+  const gates = V_PATH.slice(0, 4).map(p => p[1]), tree = gates.slice();
+  for (const [x, y] of gates) { const a = node(at(x, y)); ON[a] = 1; PX[a] = x; PY[a] = y; }
+  // til døra på husene og til foten av landemerkene
+  const dests = [...PLACES.filter(c => !inVillage(c)).map(c => [c.door[0] + c.out[0] * 6, c.door[1] + c.out[1] * 6]), ...MARKS.map(q => [q.x, q.y + 3])];
+  const join = (i, t) => { const d = dests.splice(i, 1)[0]; if (lay(d, t)) tree.push(d); };
+  // først en sti ut av hver port, til det nærmeste stedet på den kanten av landsbyen
+  for (const g of gates) {
+    let bi = -1, bd = 1e9;
+    dests.forEach((d, i) => { const dx = d[0] - g[0], dy = d[1] - g[1], q = hyp(dx, dy); if (q < bd && dx * g[0] + dy * (g[1] + 150) > 0.5 * q * hyp(g[0], g[1] + 150)) { bd = q; bi = i; } });
+    if (bi >= 0) join(bi, g);
   }
-  _br.set(key, L); return L;
+  // så resten, det som ligger nærmest et sted med sti først
+  while (dests.length) {
+    let bi = 0, bt = null, bd = 1e9;
+    dests.forEach((d, i) => { for (const t of tree) { const q = hyp(d[0] - t[0], d[1] - t[1]); if (q < bd) { bd = q; bi = i; bt = t; } } });
+    join(bi, bt);
+  }
 }
 // Står (x, y) på en av bruene i lista? m utvider brua i alle retninger
 function inBridge(list, x, y, m) {

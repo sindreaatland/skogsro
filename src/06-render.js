@@ -1,9 +1,12 @@
 // ===== Tegning: lavoppløst piksel-buffer som skaleres opp =====
 let cv, m, buf, b, W = 0, H = 0, DPR = 1, ZB = 3, ZM = 3;
 // zs: zoom etter farten og utsynet (aldri under ZMIN); vx, vy: farten kameraet ser foran seg etter; px, py: der jegeren sto sist;
-// bob: hvor mye bildet duver med stegene; idle: 1 når du har stått i ro en stund
-const CAM = { x: 0, y: 0, z: 1, w: 400, h: 300, ox: 0, oy: 0, S: 3, dx: 0, dy: 0, zs: 1, vx: 0, vy: 0, px: 0, py: 0, bob: 0, idle: 0 };
+// bob: hvor mye bildet duver med stegene; idle: 1 når du har stått i ro en stund; yaw: retningen kartet ses i (opp på
+// skjermen), som følger jegeren når musa snur ham; (fx, fy) og (rx, ry): fram og til høyre på bakken i den retningen
+const CAM = { x: 0, y: 0, z: 1, w: 400, h: 300, ox: 0, oy: 0, S: 3, dx: 0, dy: 0, zs: 1, vx: 0, vy: 0, px: 0, py: 0, bob: 0, idle: 0, yaw: -Math.PI / 2, fx: 0, fy: -1, rx: 1, ry: 0 };
 const ZMIN = 0.78;
+// Det forteste bildet kan snu seg etter hesten, i radianer per sekund
+const CAM_TURN = 1.2;
 // Lufta: vindkastene (gx, gy) og skyskyggene (cx, cy) driver med vinden
 const AIR = { gx: 0, gy: 0, cx: 0, cy: 0 };
 // Vindkast som ruller gjennom skogen: trærne står nesten stille mellom kastene (0.35) og bøyer seg i dem (opp mot 1.9)
@@ -44,13 +47,16 @@ function render(dt) {
   // kamera
   const re = smooth(0, 1, AIM.raise);
   let tx, ty, bx = 0, by = 0;
+  // bildet snur seg med jegeren: til fots følger det musa tett, på hesten svinger det rolig etter (høyst CAM_TURN)
+  if (G.started) { const d = figAng(P.h, CAM.yaw); CAM.yaw += HORSE.on ? clamp(d * Math.min(1, dt * 4.5), -CAM_TURN * dt, CAM_TURN * dt) : d * Math.min(1, dt * 18); }
+  const fx = CAM.fx = Math.cos(CAM.yaw), fy = CAM.fy = Math.sin(CAM.yaw), rx = CAM.rx = -fy, ry = CAM.ry = fx;
   if (!G.started) { tx = P.x + Math.sin(G.t * 0.05) * 70; ty = P.y - 30 + Math.cos(G.t * 0.04) * 30; }
   else {
     // kameraet ser litt foran deg dit du går, og lenger jo fortere det går (ikke etter et sprang, som ut av bua)
     const jx = P.x - CAM.px, jy = P.y - CAM.py, ok = dt > 0 && hyp(jx, jy) < 30, kv = Math.min(1, dt * 2.5);
     CAM.vx = lerp(CAM.vx, ok ? jx / dt : 0, kv); CAM.vy = lerp(CAM.vy, ok ? jy / dt : 0, kv);
     const sp = hyp(CAM.vx, CAM.vy), lead = Math.min(0.4, 48 / Math.max(sp, 1)) * (1 - re);
-    tx = P.x + CAM.vx * lead; ty = P.y - 10 + CAM.vy * lead;
+    tx = P.x + fx * 10 + CAM.vx * lead; ty = P.y + fy * 10 + CAM.vy * lead;
     // det zoomer litt ut når du springer eller rir, og litt inn når du sniker
     // og fra en topp ser du lenger: jo høyere du står over landet rundt, jo mer zoomer det ut
     let hs = 0; for (let i = 0; i < 8; i++) hs += heightAt(P.x + Math.cos(i * TAU / 8) * 160, P.y + Math.sin(i * TAU / 8) * 160);
@@ -65,15 +71,16 @@ function render(dt) {
   CAM.px = P.x; CAM.py = P.y;
   // når børsa tas opp, går kameraet inn mot jegeren
   let tz = CAM.zs;
-  if (re > 0) { ty -= 7 * re; tz = CAM.zs * (1 + 1.2 * re); }
+  if (re > 0) { tx += fx * 7 * re; ty += fy * 7 * re; tz = CAM.zs * (1 + 1.2 * re); }
   CAM.z = re > 0 ? tz : lerp(CAM.z, tz, Math.min(1, dt * 9));
   if (Math.abs(CAM.z - tz) < 0.01) CAM.z = tz;
   const fk = re > 0 ? Math.min(1, dt * 14) : Math.min(1, dt * 5);
   CAM.x = lerp(CAM.x, tx, fk); CAM.y = lerp(CAM.y, ty, fk);
   // S: skjermpiksler per piksel i verden; (cx, cy, hc): punktet på bakken midt i bildet; w, h: bakken bildet dekker
   const S = CAM.S = ZM * CAM.z;
-  CAM.w = W / S; CAM.h = H / S / GL_SIN;
-  CAM.cx = CAM.x + bx; CAM.cy = CAM.y + by; CAM.hc = heightAt(CAM.x, CAM.y);
+  const vw = W / S, vh = H / S / GL_SIN;
+  CAM.w = Math.abs(rx) * vw + Math.abs(fx) * vh; CAM.h = Math.abs(ry) * vw + Math.abs(fy) * vh;
+  CAM.cx = CAM.x + rx * bx - fx * by; CAM.cy = CAM.y + ry * bx - fy * by; CAM.hc = heightAt(CAM.x, CAM.y);
   [MOUSE.wx, MOUSE.wy] = toWorld(MOUSE.x, MOUSE.y);
   glMap(dt);
   mapMarks(dt);
@@ -112,9 +119,11 @@ function mapMarks(dt) {
   m.globalAlpha = 1;
   // skyskygger som glir over skogen med vinden, og solstråler mellom trærne; i tåka er de borte
   if (G.dayl > 0.2) {
+    // flisene ligger flatt på bakken og snur seg med kartet
     const tile = (img, n, ax, ay) => {
-      const x0 = Math.floor((CAM.cx - CAM.w / 2 - ax) / n) * n + ax, y0 = Math.floor((CAM.cy - CAM.h / 2 - ay) / n) * n + ay;
-      for (let y = y0; y < CAM.cy + CAM.h / 2; y += n) for (let x = x0; x < CAM.cx + CAM.w / 2; x += n) m.drawImage(img, Math.round(W / 2 + (x - CAM.cx) * S), Math.round(H / 2 + (y - CAM.cy) * GL_SIN * S), Math.ceil(n * S), Math.ceil(n * GL_SIN * S));
+      const pat = img.pat || (img.pat = m.createPattern(img, 'repeat')), ox = (ax - CAM.cx) % n, oy = (ay - CAM.cy) % n, k = GL_SIN * S;
+      pat.setTransform(new DOMMatrix([CAM.rx * S, -CAM.fx * k, CAM.ry * S, -CAM.fy * k, W / 2 + (ox * CAM.rx + oy * CAM.ry) * S, H / 2 - (ox * CAM.fx + oy * CAM.fy) * k]));
+      m.fillStyle = pat; m.fillRect(0, 0, W, H);
     };
     m.globalAlpha = 0.2 * G.dayl * (1 - mist(G.hour)); tile(FX.cloud, 512, AIR.cx % 512, AIR.cy % 512);
     m.globalCompositeOperation = 'screen'; m.globalAlpha = 0.07 * G.dayl * (1 - mist(G.hour) * 0.5); tile(FX.rays, 256, -G.t * 2 % 256, 0);

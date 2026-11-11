@@ -256,7 +256,7 @@ function figSync(dt, map, view) {
   hu.root.visible = !HORSE.on && (map || !!(view && view.third && view.fade < 0.75));
   if (P.aim) { hu.px = P.x; hu.py = P.y; }
   const k = P.aim ? 1 : !map ? Math.max(0.22, AIM.tp) : AIM.raise > 0 && !P.moving ? (AIM.want ? 0.22 : AIM.raise) : 0;
-  figWalker(hu, P, dt, tree ? figChop({}, chopFrame(P.work)) : k > 0 ? figAim({}, k) : null, tree ? Math.atan2(tree.y - P.y, tree.x - P.x) : raising && G.started ? AIM.yaw : null, P.deep ? 9 : P.wet ? 2.5 : 0);
+  figWalker(hu, P, dt, tree ? figChop({}, chopFrame(P.work)) : k > 0 ? figAim({}, k) : null, tree ? Math.atan2(tree.y - P.y, tree.x - P.x) : raising && G.started ? AIM.yaw : G.started && !P.moving ? P.h : null, P.deep ? 9 : P.wet ? 2.5 : 0);
   // hakket i stammen på siden mot jegeren blir dypere for hvert hogg
   const nt = F.notch || (F.notch = (() => { const me = glMesh([G3.box(1.4, 2.6, 3.4, '#e8d0a0'), G3.box(0.7, 1.1, 3.5, '#2a1c12')], true); GL.scene.add(me); return me; })());
   nt.visible = !!(tree && P.work.hits && CHOP[tree.k]);

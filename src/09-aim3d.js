@@ -100,12 +100,12 @@ function aimStart(tx, ty) {
   for (const a of G.animals) {
     if (a.state === 'dead') continue;
     // musa peker på bakken bak dyret: kroppen står like høyt over føttene som punktet ligger bak dem (kartet ses i 45°)
-    const A = SPEC[a.sp], d = hyp(a.x - tx, a.y - ((a.z || 0) + A.leg + A.Hh / 2) * GL_COS / GL_SIN - ty);
+    const A = SPEC[a.sp], k = ((a.z || 0) + A.leg + A.Hh / 2) * GL_COS / GL_SIN, d = hyp(a.x + CAM.fx * k - tx, a.y + CAM.fy * k - ty);
     if (d < A.L / 2 + 8 && d < bd) { bd = d; best = a; }
   }
   if (best) { tx = best.x; ty = best.y; h = SPEC[best.sp].leg + SPEC[best.sp].Hh / 2 + (best.z || 0); }
   const d = hyp(tx - P.x, ty - P.y);
-  AIM.yaw = d > 8 ? Math.atan2(ty - P.y, tx - P.x) : P.face === 'side' ? (P.flip ? Math.PI : 0) : P.face === 'up' ? -Math.PI / 2 : Math.PI / 2;
+  AIM.yaw = d > 8 ? Math.atan2(ty - P.y, tx - P.x) : P.h;
   AIM.pitch = Math.atan((h - aimEye()) / Math.max(d, 30));
   AIM.camYaw = AIM.yaw; AIM.pitch = clamp(AIM.pitch, -pitchMax(), pitchMax());
   AIM.ry = AIM.yaw; AIM.rp = AIM.pitch;

@@ -1,5 +1,5 @@
 // ===== 3D-grafikk: én three.js-scene som både kartet og siktet tegnes fra =====
-// Verden er (x, høyde, y). Kartet ses rett nordover og skrått ned (GL_PITCH) uten perspektiv, siktet fra øynene til
+// Verden er (x, høyde, y). Kartet ses i retningen CAM.yaw (dit jegeren ser) og skrått ned (GL_PITCH) uten perspektiv, siktet fra øynene til
 // jegeren med samme projeksjon som strålene i 09-aim3d.js regner med. Bildet tegnes i lav oppløsning i et eget
 // WebGL-lerret og legges så inn i spillets vanlige lerret, der sikter, merker og tekst tegnes oppå som før.
 // Bakken er høydene og den tegnede bakken fra 03-world.js; trær, stein og busker er modeller som settes ut der spillet
@@ -105,6 +105,8 @@ function glInit() {
   GL.parts = new THREE.Points(pg, new THREE.PointsMaterial({ size: 1.5, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false, fog: false }));
   GL.parts.frustumCulled = false; sc.add(GL.parts);
   for (const [k, x, y, v] of VOBJ) { const g = SPR[k][v].glow; if (g) for (const [gx, gy, ga] of g) GL.lamps.push([x + gx, y, -gy, ga]); }
+  // gatelyktene har hvert sitt lys, så hele landsbyen er opplyst om natta uansett hvor du står (se glLights)
+  GL.lampL = GL.lamps.map(() => { const p = new THREE.PointLight(0xffc870, 0, 110, 1.5); p.visible = false; sc.add(p); return p; });
 }
 
 // ---------- modellene til det som står stille ----------
@@ -304,17 +306,19 @@ class GLModel {
   lamp(u, v, z, a) { this.glow.push([u, v, z, a]); }
   // kors på spiret
   cross(u, v, z) { const g = () => C('#e6b63c'); this.box(u - 0.8, u + 0.8, v - 0.8, v + 0.8, z - 2, z + 8, g, g()); this.box(u - 0.8, u + 0.8, v - 3, v + 3, z + 3.5, z + 5.5, g, g()); }
-  // skilt med navnet på bua, hengt opp foran takskjegget over døra
+  // skilt med navnet på bua, hengt opp foran takskjegget over døra. Skiltet får sitt eget nett (se glSigns)
   sign(txt, u, v, z, nu, nv) {
     const sw = txt.length * 4 + 5, ink = C('#2c1e16'), [ax, ay, w, h] = this.area(sw + 2, 9, (i, j) => i === 0 || j === 0 || i === sw + 1 || j === 8 ? ink : C('#e2d2a8'));
     [...txt].forEach((ch, i) => [...GLYPH[ch]].forEach((bit, k) => { if (bit === '1') this.p.d[(ay + 2 + (k / 3 | 0)) * this.p.w + ax + 4 + i * 4 + k % 3] = ink; }));
-    const tu = -nv, tv = nu, hw = w / 2, P = (t, zz, tx, ty) => [u + tu * t, zz, v + tv * t, tx, ty];
-    this.quad(P(-hw, z, ax + w, ay + h), P(hw, z, ax, ay + h), P(hw, z + h, ax, ay), P(-hw, z + h, ax + w, ay));
+    const g = this.sg = new THREE.BufferGeometry(), U = (x, y) => [(ax + x) / this.p.w, 1 - (ay + y) / this.p.h];
+    g.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, w, 0, 0, w, h, 0, 0, 0, 0, w, h, 0, 0, h, 0], 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute([...U(0, h), ...U(w, h), ...U(w, 0), ...U(0, h), ...U(w, 0), ...U(0, 0)], 2)); g.computeVertexNormals();
+    this.sat = [u, v, z, nu, nv, w / 2];
   }
   finish() {
     const g = new THREE.BufferGeometry(), tex = c => { const t = new THREE.CanvasTexture(c); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; return t; };
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2)); g.computeVertexNormals();
-    return { geo: g, map: tex(this.p.canvas()), emap: tex(this.e.canvas()), glow: this.glow };
+    return { geo: g, map: tex(this.p.canvas()), emap: tex(this.e.canvas()), glow: this.glow, sg: this.sg, sat: this.sat };
   }
 }
 // Fargene som lyser om natta: vinduer, lykter og glør (se drawWindow, houseDef og churchDef)
@@ -362,7 +366,7 @@ function glRec(kx, ky) {
 // Det som står i biten: modellene samles per slag (matrise og farge per ting), husene og folkene ved dørene får egne nett
 function glRecObjs(rec) {
   const ch = rec.ch;
-  for (const h of rec.houses) { rec.grp.remove(h); if (h.material && h.material !== GL.matV) h.material.dispose(); }
+  for (const h of rec.houses) { rec.grp.remove(h); if (h.userData.sign) rec.grp.remove(h.userData.sign); if (h.material && h.material !== GL.matV) h.material.dispose(); }
   rec.parts = new Map(); rec.tall = []; rec.houses = [];
   const lists = new Map();
   for (const o of ch.objs) {
@@ -374,6 +378,10 @@ function glRecObjs(rec) {
       me.position.set(o.x, o.h, o.y); me.rotation.y = -c.rot; me.castShadow = me.receiveShadow = true; me.userData.o = o;
       const cs = Math.cos(c.rot), sn = Math.sin(c.rot);
       me.userData.glow = d.glow.map(([u, v, z, a]) => [o.x + u * cs - v * sn, o.y + u * sn + v * cs, z, a]);
+      if (d.sg) {
+        const [u, v, z, nu, nv, hw] = d.sat, sg = me.userData.sign = new THREE.Mesh(d.sg, me.material);
+        sg.userData.at = [o.x + u * cs - v * sn, o.h + z, o.y + u * sn + v * cs, nu * cs - nv * sn, nu * sn + nv * cs, hw]; rec.grp.add(sg);
+      }
       rec.grp.add(me); rec.houses.push(me); rec.tall.push(o); o._me = me;
       continue;
     }
@@ -502,11 +510,13 @@ function glLights(tint, fx, fy, R) {
   const l = hyp(dx, dy, dz), fh = heightAt(fx, fy), sc = sun.shadow.camera;
   sun.target.position.set(fx, fh, fy); sun.position.set(fx + dx / l * 2200, fh + dy / l * 2200, fy + dz / l * 2200);
   if (sc.right !== R) { sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.updateProjectionMatrix(); }
-  // de nærmeste lysene: bål alltid, lykter og vinduer når det mørkner
+  // gatelyktene lyser alle sammen når det mørkner. De slås helt av om dagen og langt fra landsbyen, så de ikke koster noe der
+  const lit = night > 0.05 && villDist(fx, fy) < 900;
+  GL.lamps.forEach(([x, y, z, a], i) => { const p = GL.lampL[i]; p.visible = lit; if (lit) { p.position.set(x, heightAt(x, y) + z, y); p.intensity = a * 5 * night * (tint ? 1 : 1.6); } });
+  // de nærmeste av de andre lysene: bål alltid, vinduer og vegglykter når det mørkner
   const src = [];
   for (const f of G.fires) src.push([f.x, f.y, 14, 0xff9440, (0.6 + 2.6 * night) * (0.85 + 0.15 * Math.sin(G.t * 11 + f.id * 50) + 0.08 * Math.sin(G.t * 23.7)), 210]);
   if (night > 0.05) {
-    for (const [x, y, z, a] of GL.lamps) src.push([x, y, z, 0xffc870, a * 5 * night, 110]);
     for (const rec of GL.recs.values()) for (const me of rec.houses) if (me.userData.glow) for (const [x, y, z, a] of me.userData.glow) src.push([x, y, z + 2, 0xffc060, a * 5 * night, 80]);
   }
   for (const s of src) s.d = hyp(s[0] - fx, s[1] - fy) - (s[3] === 0xff9440 ? 1e4 : 0);
@@ -543,33 +553,54 @@ function glParts(aim, tint) {
 // Skjermpunktet for (wx, wy) i høyden hz (ellers på bakken), og punktet på bakken under et skjermpunkt
 function toScreen(wx, wy, hz) {
   if (hz === undefined) hz = heightAt(wx, wy);
-  return [W / 2 + (wx - CAM.cx) * CAM.S, H / 2 + ((wy - CAM.cy) * GL_SIN - (hz - CAM.hc) * GL_COS) * CAM.S];
+  const dx = wx - CAM.cx, dy = wy - CAM.cy;
+  return [W / 2 + (dx * CAM.rx + dy * CAM.ry) * CAM.S, H / 2 - ((dx * CAM.fx + dy * CAM.fy) * GL_SIN + (hz - CAM.hc) * GL_COS) * CAM.S];
 }
 function toWorld(sx, sy) {
-  const wx = (sx - W / 2) / CAM.S + CAM.cx, v = (sy - H / 2) / CAM.S;
-  const f = wy => (wy - CAM.cy) * GL_SIN - (heightAt(wx, wy) - CAM.hc) * GL_COS - v;
-  // strålen fra øyet treffer bakken første gang fra sør; let nordover fra et punkt som ligger foran alt terreng
-  let y1 = CAM.cy + (v + 300 * GL_COS) / GL_SIN;
-  if (f(y1) <= 0) return [wx, y1];
+  const u = (sx - W / 2) / CAM.S, v = (sy - H / 2) / CAM.S;
+  // punktet t piksler mot kameraet fra midten av bildet, på linja under skjermpunktet
+  const at = t => [CAM.cx + CAM.rx * u - CAM.fx * t, CAM.cy + CAM.ry * u - CAM.fy * t];
+  const f = t => { const p = at(t); return t * GL_SIN - (heightAt(p[0], p[1]) - CAM.hc) * GL_COS - v; };
+  // strålen fra øyet treffer bakken første gang fra kamerasida; let innover fra et punkt som ligger foran alt terreng
+  let t1 = (v + 300 * GL_COS) / GL_SIN;
+  if (f(t1) <= 0) return at(t1);
   for (let i = 0; i < 160; i++) {
-    let y0 = y1 - 6;
-    if (f(y0) <= 0) { for (let k = 0; k < 7; k++) { const ym = (y0 + y1) / 2; if (f(ym) <= 0) y0 = ym; else y1 = ym; } return [wx, (y0 + y1) / 2]; }
-    y1 = y0;
+    let t0 = t1 - 6;
+    if (f(t0) <= 0) { for (let k = 0; k < 7; k++) { const tm = (t0 + t1) / 2; if (f(tm) <= 0) t0 = tm; else t1 = tm; } return at((t0 + t1) / 2); }
+    t1 = t0;
   }
-  return [wx, y1];
+  return at(t1);
 }
-// Tegner kartet: scenen sett skrått ovenfra rundt (CAM.cx, CAM.cy), lagt inn i lerretet i hele piksler på ZM
+// Skiltene på husene. På kartet vender de mot kameraet med én piksel i skiltet per piksel i bildet, lagt i hele piksler,
+// så bokstavene står skarpt også når kameraet er i ro. De vises bare når huset ses forfra. I siktet henger de på veggen
+function glSigns(map, gw, gh) {
+  const k = 1 / CAM.z, fx = CAM.fx, fy = CAM.fy, rx = CAM.rx, ry = CAM.ry;
+  for (const rec of GL.recs.values()) for (const me of rec.houses) {
+    const s = me.userData.sign; if (!s) continue;
+    const [x, h, y, nx, ny, hw] = s.userData.at;
+    if (!map) { s.visible = true; s.scale.setScalar(1); s.rotation.set(0, Math.PI / 2 - Math.atan2(ny, nx), 0); s.position.set(x - ny * hw, h, y + nx * hw); continue; }
+    if (!(s.visible = nx * fx + ny * fy < -0.6)) continue;
+    // litt mot kameraet, så skiltet ikke skjærer inn i veggen bak
+    const px = x - fx * GL_COS * 16 - rx * hw * k, ph = h + GL_SIN * 16, py = y - fy * GL_COS * 16 - ry * hw * k;
+    const u = ((px - CAM.cx) * rx + (py - CAM.cy) * ry) * CAM.z + gw / 2, v = (((px - CAM.cx) * fx + (py - CAM.cy) * fy) * GL_SIN + (ph - CAM.hc) * GL_COS) * CAM.z + gh / 2;
+    const du = (Math.round(u) - u) * k, dv = (Math.round(v) - v) * k;
+    s.quaternion.copy(GL.camO.quaternion); s.scale.setScalar(k);
+    s.position.set(px + rx * du + fx * GL_SIN * dv, ph + GL_COS * dv, py + ry * du + fy * GL_SIN * dv);
+  }
+}
+// Tegner kartet: scenen sett skrått ovenfra mot CAM.yaw rundt (CAM.cx, CAM.cy), lagt inn i lerretet i hele piksler på ZM
 function glMap(dt) {
   const r = GL.r, gw = Math.ceil(W / ZM), gh = Math.ceil(H / ZM), cam = GL.camO, S = CAM.S;
   if (GL.w !== gw || GL.h !== gh) { r.setSize(gw, gh, false); GL.w = gw; GL.h = gh; }
   const vw = gw * ZM / S, vh = gh * ZM / S, cx = CAM.cx, cy = CAM.cy, hc = CAM.hc, dep = vh / 2 / GL_SIN;
-  // bitene vi ser: litt lenger mot sør, der høye trær og åser stikker opp i bildet
-  const kx0 = Math.floor((cx - vw / 2 - 60) / CS), kx1 = Math.floor((cx + vw / 2 + 60) / CS), ky0 = Math.floor((cy - dep - 120) / CS), ky1 = Math.floor((cy + dep + 260) / CS);
+  // bitene vi ser: litt lenger mot kameraet, der høye trær og åser stikker opp i bildet
+  const fx = CAM.fx, fy = CAM.fy, sd = vw / 2 + 60, fw = dep + 120, bk = dep + 260, ex = Math.abs(CAM.rx) * sd, ey = Math.abs(CAM.ry) * sd;
+  const kx0 = Math.floor((cx - ex + Math.min(fx * fw, -fx * bk)) / CS), kx1 = Math.floor((cx + ex + Math.max(fx * fw, -fx * bk)) / CS), ky0 = Math.floor((cy - ey + Math.min(fy * fw, -fy * bk)) / CS), ky1 = Math.floor((cy + ey + Math.max(fy * fw, -fy * bk)) / CS);
   for (let ky = ky0; ky <= ky1; ky++) for (let kx = kx0; kx <= kx1; kx++) { const ch = getChunk(kx, ky); if (!ch.gpix) genGround(ch); }
   glWant(kx0, ky0, kx1, ky1, cx, cy, 99);
   glSync(dt, true, cx, cy, Math.max(vw / 2, dep) + 220, null);
   cam.left = -vw / 2; cam.right = vw / 2; cam.top = vh / 2; cam.bottom = -vh / 2; cam.updateProjectionMatrix();
-  cam.position.set(cx, hc + GL_SIN * 3000, cy + GL_COS * 3000); cam.lookAt(cx, hc, cy);
+  cam.position.set(cx - fx * GL_COS * 3000, hc + GL_SIN * 3000, cy - fy * GL_COS * 3000); cam.lookAt(cx, hc, cy); glSigns(true, gw, gh);
   GL.scene.fog.near = 1e5; GL.scene.fog.far = 1e6; GL.clip.constant = 1e9;
   GL.parts.material.size = 1.4; GL.parts.material.sizeAttenuation = false;
   r.setClearColor(0x121a16, 1); r.render(GL.scene, cam);
@@ -586,7 +617,7 @@ function glAim(o, bw, bh) {
   // bitene i synsfeltet, ut til synsranda
   const ex = (o.cx + 8) / o.f * o.far, xs = [o.x, o.x + vx * o.far - vy * ex, o.x + vx * o.far + vy * ex], ys = [o.y, o.y + vy * o.far + vx * ex, o.y + vy * o.far - vx * ex];
   glWant(Math.floor((Math.min(...xs) - 40) / CS), Math.floor((Math.min(...ys) - 40) / CS), Math.floor((Math.max(...xs) + 40) / CS), Math.floor((Math.max(...ys) + 40) / CS), o.x, o.y, 5);
-  glSync(0, false, o.x + vx * 260, o.y + vy * 260, 520, o);
+  glSync(0, false, o.x + vx * 260, o.y + vy * 260, 520, o); glSigns(false);
   cam.position.set(o.x, o.camZ, o.y); cam.lookAt(o.x + vx, o.camZ, o.y + vy); cam.updateMatrixWorld();
   cam.projectionMatrix.makePerspective(-o.cx / o.f * n, (bw - o.cx) / o.f * n, o.hy / o.f * n, -(bh - o.hy) / o.f * n, n, o.far + 50);
   cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();

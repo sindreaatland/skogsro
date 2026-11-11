@@ -194,7 +194,6 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 /* bekledningen i kors: hatt øverst, hansker, jakke og jaktkniv i midten, så bukse og sko */
 .mc-cross { display: grid; grid-template-columns: repeat(3, var(--s)); grid-auto-rows: var(--s); gap: 4px; grid-template-areas: ". hat ." "gloves jacket knife" ". pants ." ". shoes ."; }
 .mc-row + .mc-lab { margin-top: 6px; }
-.mc-kr { align-items: center; gap: 10px; }
 .mc-krn { font-size: 20px; color: #2c3326; font-variant-numeric: tabular-nums; }
 /* hesten: lasten i seks kolonner med ledige ruter */
 .mc-horse .mc-grid { grid-template-columns: repeat(6, var(--s)); }
@@ -206,7 +205,16 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 /* tom plass på kroppen: omrisset av det som hører hjemme der; ruta du drar over, lyser opp */
 .mc-slot.mc-empty img { filter: brightness(0); opacity: .18; }
 .mc-slot.over { outline: 3px solid var(--amber); outline-offset: 1px; }
-.mc-slot[tabindex]:hover, .mc-slot[tabindex]:focus-visible { background: #a2aa96; outline-color: var(--amber); }
+.mc-slot[tabindex]:focus-visible { background: #a2aa96; outline-color: var(--amber); }
+/* ruta under pekeren får et hvitt slør; det du har tatt opp, henger på pekeren, og ruta det lå i, er blek */
+.mc-slot[tabindex]:hover::after { content: ""; position: absolute; inset: 0; background: rgba(255,255,255,.4); pointer-events: none; }
+.mc-slot.held img, .mc-slot.held .mc-n { opacity: .25; }
+.mc-slot.nosell img, .mc-slot.nosell .mc-n { opacity: .35; }
+#mcHeld { position: fixed; z-index: 31; width: 40px; height: 40px; margin: -20px 0 0 -20px; object-fit: contain; image-rendering: pixelated; pointer-events: none; }
+.mc-foot { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; color: #2c3326; }
+.mc-foot .warn { color: #8a2a12; }
+.qty { width: 100%; min-width: 150px; accent-color: var(--amber); cursor: pointer; }
+.wh-k { position: absolute; left: 5px; top: 2px; font-family: var(--f-lab); font-size: 13px; font-weight: 400; color: var(--muted); }
 .mc-dur { position: absolute; left: 3px; right: 3px; bottom: 2px; height: 3px; background: #1a1c18; }
 .mc-dur b { display: block; height: 100%; }
 .mc-n { position: absolute; right: 1px; bottom: -1px; font-family: var(--f-lab); font-size: 13px; color: #fff; text-shadow: 2px 2px 0 #3f3f3f; font-variant-numeric: tabular-nums; }
@@ -246,12 +254,12 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 
 /* Vinduene har fast høyde tilpasset skjermen: lange lister blar inni vinduet, og vinduet verken vokser,
    krymper eller flytter seg når innholdet endres. Inventaret krymper rutene sine til det får plass uten å bla */
-.card { display: flex; flex-direction: column; max-height: calc(100dvh - 48px); overflow: hidden; }
+.card { display: flex; flex-direction: column; max-height: var(--vh); overflow: hidden; }
 .card > .card-h, .card > .menu-h { flex: none; }
 .card > :last-child { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-.shop-card { height: min(860px, 100dvh - 48px); }
-#book .card { height: min(760px, 100dvh - 48px); }
-.menu-card { height: min(600px, 100dvh - 48px); }
+.shop-card { height: min(860px, var(--vh)); }
+#book .card { height: min(760px, var(--vh)); }
+.menu-card { height: min(600px, var(--vh)); }
 .book-body { align-content: start; grid-template-rows: auto auto minmax(0, 1fr); }
 #bookList { overflow-y: auto; align-content: start; min-height: 0; }
 #plSheet .menu-body { grid-template-rows: minmax(0, 1fr) auto; overflow: hidden; }
@@ -303,6 +311,53 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 .map-leg i { width: 12px; height: 12px; flex: none; border: 2px solid #0c110e; }
 .map-leg img { width: 22px; margin: 0 -5px; flex: none; }
 @media (max-width: 900px) { #keys { display: none; } #log { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); } #bar { max-width: none; } }
+
+/* Telefon: vinduene holder seg innenfor de trygge kantene, og rutene i inventaret fyller bredden */
+body { overscroll-behavior: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-text-size-adjust: 100%; }
+#cv { touch-action: none; }
+.sheet { --pad: 24px; --vh: calc(100dvh - 2 * var(--pad) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); padding-block: calc(var(--pad) + env(safe-area-inset-top, 0px)) calc(var(--pad) + env(safe-area-inset-bottom, 0px)); }
+@media (max-width: 700px) { #mapCv { width: min(100dvh - 200px, 100vw - 70px); } }
+@media (max-width: 480px) {
+  .sheet { padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
+  .card-h { padding: 10px 12px; gap: 10px; } .card-h h2 { font-size: 22px; }
+  .mc { margin: 8px; padding: 8px; }
+  .inv-card .mc, .shop-mine .mc { --s: clamp(20px, (100vw - 122px) / 9, 44px); }
+  .shop-mine, .shop-main { padding: 8px; }
+  .sub-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* telefonen på tvers: lavt, så vinduene går nesten helt ut, og inventaret blar heller enn å krympe rutene */
+@media (max-height: 500px) {
+  .sheet { --pad: 8px; }
+  .inv-card .mc { --s: clamp(28px, 4vw, 36px); }
+  #shopStats { position: static; }
+  .menu-h { padding: 10px 20px 8px; } .menu-name { font-size: 40px; }
+  .t-wrap { gap: 10px; } .t-name { font-size: clamp(48px, 20vh, 168px); } .t-sub { font-size: 16px; }
+}
+
+/* Berøring (body.touch, se bindTouch): spaken der venstre tommel settes ned, og runde knapper nede til høyre.
+   Av linja nederst står bare våpenet igjen; resten ligger i hjulet og inventaret */
+#tc { display: none; }
+#stick { position: fixed; z-index: 3; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%; background: rgba(0,0,0,.25); border: 2px solid rgba(236,228,207,.35); pointer-events: none; }
+#stick i { position: absolute; left: 32px; top: 32px; width: 44px; height: 44px; border-radius: 50%; background: rgba(236,228,207,.55); }
+body.touch #tc { position: fixed; z-index: 3; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: repeat(3, 62px); grid-auto-rows: 62px; grid-template-areas: ". sneak load" "wheel fire aim"; gap: 10px; }
+.tc { border-radius: 50%; background: var(--panel); border: 2px solid var(--edge); font-size: 16px; padding: 0; touch-action: none; }
+.tc:active { background: #26332b; border-color: var(--moss); }
+#tcSneak { grid-area: sneak; } #tcLoad { grid-area: load; } #tcWheel { grid-area: wheel; } #tcFire { grid-area: fire; border-color: var(--rust); } #tcAim { grid-area: aim; border-color: var(--moss); }
+#tcSneak[aria-pressed="true"], body.aiming #tcAim { color: var(--amber); border-color: var(--amber); }
+/* i siktet holder venstre tommel pusten mens høyre flytter siktet og skyter */
+#tcHold { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 62px; height: 62px; }
+body:not(.aiming) #tcHold, body.aiming #tcWheel { visibility: hidden; }
+body.touch #wheel { pointer-events: auto; }
+body.touch #tbtns { flex-wrap: wrap; justify-content: flex-end; max-width: 52vw; }
+body.touch .tbtn { padding: 8px 10px; font-size: 12px; }
+body.touch #bar { bottom: calc(166px + env(safe-area-inset-bottom, 0px)); max-width: none; }
+body.touch #bar .slot:not(:first-child), body.touch .slot .k, body.touch #prompt kbd, body.touch .t-keys, body.touch #keysBtn { display: none; }
+body.touch #gunName { padding-right: 0; }
+body.touch #prompt { pointer-events: auto; padding: 12px 18px; }
+body.touch #breath { bottom: calc(26vh + 60px + env(safe-area-inset-bottom, 0px)); }
+/* meldingene står oppe under klokka, så tomlene og handlingsknappen har nedre del av bildet for seg selv */
+body.touch #log { top: calc(180px + env(safe-area-inset-top, 0px)); bottom: auto; max-width: calc(100vw - 32px); }
+@media (orientation: landscape) { body.touch #log { top: 130px; max-width: 40vw; } }
 @media (prefers-reduced-motion: reduce) { #windArrow, .msg { transition: none; } }
 </style>
 
@@ -322,7 +377,9 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
   <div class="slot box"><img id="campIco" alt=""><div><div class="slot-t" id="campN">Ved × 0 · kjøtt × 0</div><div class="slot-s" id="campS">Sekken 0 / 20 kg</div></div></div>
   <div class="slot box"><img id="treatIco" alt=""><div><div class="slot-t" id="treatN">× 3</div><div class="slot-s" id="dogTxt">Send ut hunden</div></div></div>
 </div>
-<div id="keys" class="hud"><span><kbd>WASD</kbd>gå</span><span><kbd>Høyreklikk</kbd>sikt</span><span><kbd>Venstreklikk</kbd>skyt</span><span><kbd>F</kbd>handling</span><span><kbd>Q</kbd>hold for hjulet</span><span><kbd>E</kbd>inventar</span><span><kbd>M</kbd>kart</span><span><kbd>Esc</kbd>pause</span></div>
+<div id="keys" class="hud"><span><kbd>WASD</kbd>gå</span><span><kbd>Høyreklikk</kbd>sikt</span><span><kbd>Venstreklikk</kbd>skyt</span><span><kbd>F</kbd>handling</span><span><kbd>Q</kbd>hold for hjulet</span><span><kbd>1–9</kbd>rett fra hjulet</span><span><kbd>E</kbd>inventar</span><span><kbd>M</kbd>kart</span><span><kbd>Esc</kbd>pause</span></div>
+<div id="stick" hidden><i></i></div>
+<div id="tc" hidden><button class="tc" id="tcSneak" type="button" aria-pressed="false">Snik</button><button class="tc" id="tcLoad" type="button">Lad</button><button class="tc" id="tcWheel" type="button">Hjul</button><button class="tc" id="tcFire" type="button">Skyt</button><button class="tc" id="tcAim" type="button">Sikt</button><button class="tc" id="tcHold" type="button">Pust</button></div>
 <div id="wheel" hidden><div id="wheelRing"><div id="wheelIts"></div><div id="wheelMid"><div id="wheelN"></div><div id="wheelD"></div></div><div id="wheelDot"></div></div></div>
 
 <div id="shop" class="sheet" hidden>
@@ -332,7 +389,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
       <div class="shop-mine">
         <div class="lab">Det du har</div>
         <div id="shopMc"></div>
-        <div class="side-note">Det som kan selges her, står under Selg. Klikk på noe her, eller dra det over, så står det øverst der. Våpnene lades fra sekken når du går inn.</div>
+        <div class="side-note">Klikk på noe for å selge det. Shift+klikk selger hele stabelen med en gang. Det som er dempet, kjøpes ikke her. Våpnene lades fra sekken når du går inn.</div>
         <div class="side-acts"><button class="act" type="button" id="sleepBtn">Sov til morgengry</button></div>
       </div>
       <div class="shop-main" id="shopMain">
@@ -405,6 +462,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 </div>
 
 <div id="mcTip" role="tooltip" hidden></div>
+<img id="mcHeld" alt="" hidden>
 
 <div id="notice" class="sheet" hidden>
   <div class="card pause-card" role="alertdialog" aria-labelledby="noticeT" aria-describedby="noticeD">
@@ -428,7 +486,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
     <div class="card-h"><h2 id="keysT">Taster</h2><button class="xbtn" type="button" data-back>Tilbake (Esc)</button></div>
     <div class="menu-body">
       <div class="key-list">
-        <kbd>WASD</kbd><span>Gå · A/D flytter deg rolig til sidene i siktet</span>
+        <kbd>WASD</kbd><span>Gå · musa snur deg og bildet · A/D flytter deg rolig til sidene i siktet</span>
         <kbd>Shift</kbd><span>Snik</span>
         <kbd>Space</kbd><span>Spring · hold pusten i siktet</span>
         <kbd>Høyreklikk</kbd><span>Sikt (hold)</span>
@@ -438,6 +496,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
         <kbd>E</kbd><span>Inventar · dra ting dit du vil, og klær over på kroppen</span>
         <kbd>M</kbd><span>Oversiktskart over hele jaktfeltet</span>
         <kbd>Q</kbd><span>Hold for hjulet, pek med musa og slipp</span>
+        <kbd>1–9</kbd><span>Det samme som plassene i hjulet, uten å åpne det</span>
         <kbd>Esc</kbd><span>Pause</span>
       </div>
       <div class="menu-sec"><div class="lab">I hjulet</div><p class="side-note">Lokk · luktstoff · send ut eller kall inn hunden · bål · gapahuk · bytt mellom rifle og hagle · jaktbok · til en annen jeger</p></div>
@@ -464,7 +523,7 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
     <div id="titleBtns" hidden><button class="big" id="startBtn" type="button">Gå inn i skogen</button><button class="ghost" id="newBtn" type="button" hidden>Start på nytt</button></div>
     <div id="saveTxt" hidden></div>
     <div class="t-keys">
-      <div><kbd>WASD</kbd>Gå · <kbd>Shift</kbd>snik</div>
+      <div><kbd>WASD</kbd>Gå · <kbd>Mus</kbd>snu · <kbd>Shift</kbd>snik</div>
       <div><kbd>Høyreklikk</kbd>Sikt (hold)</div>
       <div><kbd>Venstreklikk</kbd>Skyt</div>
       <div><kbd>Space</kbd>Spring · hold pusten i siktet</div>
