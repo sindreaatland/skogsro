@@ -1,0 +1,81 @@
+- generic [active] [ref=e1]:
+  - generic "Skogen sett ovenfra" [ref=e2]
+  - generic:
+    - generic: 0 kr
+    - generic: Dag 1 · 06:30
+  - generic:
+    - img "Vindretning"
+    - generic:
+      - generic: Vind
+      - generic: Lett bris
+      - generic: fra øst
+  - generic [ref=e3]:
+    - button "Pause (Esc)" [ref=e4] [cursor=pointer]
+    - button "Inventar (E)" [ref=e5] [cursor=pointer]
+    - button "Kart (M)" [ref=e6] [cursor=pointer]
+    - button "Jaktbok" [ref=e7] [cursor=pointer]
+    - button "Lyd" [ref=e8] [cursor=pointer]
+  - generic:
+    - generic:
+      - generic:
+        - generic: Rifle
+        - generic: Tomt · R · 20 i sekken
+      - generic: R
+    - generic:
+      - generic:
+        - generic: Rådyrpipe
+        - generic: Lokk
+    - generic:
+      - generic:
+        - generic: × 2
+        - generic: Luktstoff
+    - generic:
+      - generic:
+        - generic: Ved × 0 · kjøtt 0 kg
+        - generic: Sekken 0 / 20 kg
+    - generic:
+      - generic:
+        - generic: × 3
+        - generic: Send ut hunden
+  - generic [ref=e10]:
+    - heading "Ud på jakt" [level=1] [ref=e11]
+    - paragraph [ref=e12]: Gå stille gjennom en skog som aldri tar slutt. Les vinden, lokk på dyrene og vent på det rette skuddet.
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - text: Navnet ditt
+        - textbox "Navnet ditt" [ref=e15]: Jeger 69
+      - generic [ref=e16]: 1 annen jeger er koblet til. Andre på samme nett kan åpne http://192.168.1.147:8090
+    - button "Gå inn i skogen" [ref=e18] [cursor=pointer]
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - generic [ref=e21]: WASD
+        - text: Gå ·
+        - generic [ref=e22]: Shift
+        - text: snik
+      - generic [ref=e23]:
+        - generic [ref=e24]: Høyreklikk
+        - text: Sikt (hold)
+      - generic [ref=e25]:
+        - generic [ref=e26]: Venstreklikk
+        - text: Skyt
+      - generic [ref=e27]:
+        - generic [ref=e28]: Space
+        - text: Spring · hold pusten i siktet
+      - generic [ref=e29]:
+        - generic [ref=e30]: R
+        - text: Lad om
+      - generic [ref=e31]:
+        - generic [ref=e32]: F
+        - text: Ta vare på dyr · bua · hogg · stek · sov · ri hesten
+      - generic [ref=e33]:
+        - generic [ref=e34]: Q
+        - text: "Hold for hjulet: lokk, hund, bål og mer"
+      - generic [ref=e35]:
+        - generic [ref=e36]: E
+        - text: Inventar
+      - generic [ref=e37]:
+        - generic [ref=e38]: M
+        - text: Oversiktskart
+      - generic [ref=e39]:
+        - generic [ref=e40]: Esc
+        - text: Pause

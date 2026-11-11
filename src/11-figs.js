@@ -2,7 +2,7 @@
 // Figurene er satt sammen av avrundede former (se G3 i 10-gl.js) med ledd i hofter, knær, skuldre og albuer, hals og hode.
 // Modellen vender mot +x (samme vinkel som retningene i spillet), +z er høyre side. Målene til dyra er de samme som
 // pikselbildene er tegnet etter (SPEC i 02-sprites.js), så treffpunktene i siktet stemmer med det du ser.
-function glFigInit() { GL.figs = { hunter: null, dog: null, horse: null, animals: new Map(), peers: new Map(), vill: new Map(), fires: new Map(), huts: new Map(), scents: new Map(), falls: new Map() }; }
+function glFigInit() { GL.figs = { hunter: null, dog: null, horse: null, notch: null, animals: new Map(), peers: new Map(), vill: new Map(), fires: new Map(), huts: new Map(), scents: new Map(), falls: new Map() }; }
 const figAng = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 const figFace = (face, flip) => face === 'side' ? (flip ? Math.PI : 0) : face === 'up' ? -Math.PI / 2 : Math.PI / 2;
 // Ledd: en gruppe i (x, y, z) med overdelen og en gruppe til (kn) i enden med underdelen
@@ -255,8 +255,12 @@ function figSync(dt, map, view) {
   const tree = P.work && P.work.tree, raising = P.aim || AIM.want || AIM.raise > 0;
   hu.root.visible = !HORSE.on && (map || !!(view && view.third && view.fade < 0.75));
   if (P.aim) { hu.px = P.x; hu.py = P.y; }
-  const k = P.aim ? 1 : !map ? (view && view.walk ? 0 : Math.max(0.22, AIM.tp)) : AIM.raise > 0 && !P.moving ? (AIM.want ? 0.22 : AIM.raise) : 0;
+  const k = P.aim ? 1 : !map ? Math.max(0.22, AIM.tp) : AIM.raise > 0 && !P.moving ? (AIM.want ? 0.22 : AIM.raise) : 0;
   figWalker(hu, P, dt, tree ? figChop({}, chopFrame(P.work)) : k > 0 ? figAim({}, k) : null, tree ? Math.atan2(tree.y - P.y, tree.x - P.x) : raising && G.started ? AIM.yaw : null, P.deep ? 9 : P.wet ? 2.5 : 0);
+  // hakket i stammen på siden mot jegeren blir dypere for hvert hogg
+  const nt = F.notch || (F.notch = (() => { const me = glMesh([G3.box(1.4, 2.6, 3.4, '#e8d0a0'), G3.box(0.7, 1.1, 3.5, '#2a1c12')], true); GL.scene.add(me); return me; })());
+  nt.visible = !!(tree && P.work.hits && CHOP[tree.k]);
+  if (nt.visible) { const d = Math.min(3, (P.work.hits + 1) >> 1); nt.scale.x = d; nt.position.set(tree.x + P.work.side * (2.6 - d * 0.5), heightAt(tree.x, tree.y) + 6, tree.y + 0.4); }
   // de andre jegerne, med hund og hest
   const peers = [...NET.peers.values()].filter(r => r.started && near(r.x, r.y));
   figPool('peers', peers, r => r, () => { const f = figHuman(); f.dog = figQuad(DOG, 'm'); f.horse = figQuad(FIG_HORSE, 'm'); f.root0 = f.root; f.root = glGroup(0, 0, 0, f.root0, f.dog.root, f.horse.root); return f; }, (f, r) => {

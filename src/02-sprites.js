@@ -1,7 +1,7 @@
 // ===== Sprites: all grafikk tegnes prosedyrisk som pikselkunst ved oppstart =====
 const SPR = {};   // statiske ting i skogen, SPR[type][variant]
 const ANI = {};   // dyr, ANI[art][kjønn][positur][bilde]
-const HUN = {};   // jeger, HUN[retning][0 går, 1 sikter, 2 tar opp børsa][bilde]; HUN.ots[bilde]: tar opp børsa, sett bakfra i 3D; HUN.chop[bilde]: hogger med øks
+const HUN = {};   // jeger, HUN[retning][0][0]: stående, til ikoner
 const FX = {};    // effekter
 let ICON = {};    // butikk-ikoner
 
@@ -354,7 +354,7 @@ const NPC_PAL = [
 ];
 const NPC_V = { store: 0, gun: 1, game: 2, farm: 3, post: 4, smith: 5, stable: 3, pub: 4 };
 
-// Folk som går rundt i landsbyen (VSPR[i] har bildene, se VILL i 05-game.js): bakeren, smedgutten, bonden, kona ved
+// Folk som går rundt i landsbyen (se VILL i 05-game.js): bakeren, smedgutten, bonden, kona ved
 // brønnen, presten, to som møtes på torget, vedhoggeren, en som rusler gata og en ved nordgrinda, og de to som står i bodene
 const SKIN = '#e4b48c';
 const VIL_PAL = [
@@ -371,7 +371,6 @@ const VIL_PAL = [
   { civ: 1, cap: 1, hat: '#d8a83c', hatD: '#a87e28', hatL: '#ecc460', band: '#d8a83c', jac: '#8c3a34', jacD: '#642824', jacL: '#aa5048', dress: '#8c3a34', apron: '#e8e2d2', beard: SKIN, hair: '#3a2a20' },
   { civ: 1, cap: 1, hat: '#3a4e6a', hatD: '#28384e', hatL: '#506886', band: '#3a4e6a', jac: '#c8c0a8', jacD: '#9c947e', jacL: '#e0d8c0', pant: '#3a3e4a', pantD: '#282c36', apron: '#6a7c84', beard: '#a04a22' },
 ];
-const VSPR = [];
 
 // ---------- Hus ----------
 // Hvert slags hus har sitt eget utseende (HOUSE_STYLE): vegg (wall: laft, stående panel, gråstein eller bindingsverk, i
@@ -996,109 +995,6 @@ function genAnimal(sp, sex, pose, f, spec) {
   p.outlineAuto(0.42);
   return mkSpr(p, AOX, AOY, { hc: { x: hx + Math.cos(hang) * A.sl * 0.3 - ox, y: hy - oy, r: Math.max(A.hl, A.hh) / 2 + 1.3 }, nk: [Sx - ox, Sy - oy, hx - ox, hy - oy], bob });
 }
-// Hunden sett bakfra (back) eller forfra, til 3D, litt ovenfra som kameraet bak jegeren: står, går (bilde f) eller
-// står for vilt (alert) med halen til værs. Vesten ses over ryggen bortover, og det som er lengst unna, tegnes først
-function genDogEnd(back, pose, f) {
-  const c = DOG.col, p = new Pix(13, 19), cx = 6, g = 16, seed = DOG.seed;
-  const tn = T(c.dk, c.body, c.lt), belly = C(c.belly), legU = C(c.body), legLo = C(c.legLo), legF = C(c.legFar);
-  const vest = T('#c45a1c', '#ee7c2a', '#ffb050'), up = pose === 'alert', wag = pose === 'walk' ? [0, 1, 0, -1][f] : 0;
-  // hvor mye hver fot er løftet: [venstre fram, høyre fram, venstre bak, høyre bak], diagonalt parvis som i profil
-  const lift = pose === 'walk' ? [[0, 0, 0, 0], [2, 0, 0, 2], [0, 0, 0, 0], [0, 2, 2, 0]][f] : [0, 0, 0, 0];
-  // halen rett til værs med lys tupp; forfra stikker den opp bak hodet
-  const tailUp = y0 => { for (let i = 0; i < 6; i++) p.set(cx, y0 - i, i > 3 ? belly : tn[1]); };
-  // hodet med to spisse ører som peker litt utover
-  const head = (y, inner) => {
-    shEll(p, cx, y, 2, 1.6, tn, 0, seed + 5);
-    for (const s of [-1, 1]) { p.set(cx + s, y - 2, inner || tn[1]); p.set(cx + s * 2, y - 2, s < 0 ? tn[2] : tn[0]); p.set(cx + s * 2, y - 3, tn[1]); }
-  };
-  // ryggen bortover, med vesten øverst
-  const backTop = () => {
-    shEll(p, cx, g - 9.2, 2.3, 1.4, tn, 0, seed);
-    for (let y = g - 10; y <= g - 9; y++) for (let x = cx - 2; x <= cx + 2; x++) if (p.get(x, y)) p.set(x, y, vest[y < g - 9 ? 2 : 1]);
-  };
-  // beina: de nærmeste lyse nederst, de bortenfor mørke og en piksel høyere
-  const legs = (ix, near) => [cx - (near ? 2 : 1), cx + (near ? 2 : 1)].forEach((x, j) => {
-    const foot = g - lift[ix[j]] - (near ? 0 : 1);
-    if (near) { p.line(x, g - 4, x, Math.min(g - 3, foot), legU, 1); p.line(x, g - 2, x, foot, legLo, 1); }
-    else p.line(x, g - 4, x, foot, legF, 1);
-  });
-  if (back) {
-    head(g - 11);
-    legs([0, 1], false);
-    backTop();
-    shEll(p, cx, g - 6.6, 3.2, 2.8, tn, 0, seed + 1);
-    legs([2, 3], true);
-    if (up) tailUp(g - 9); else { p.set(cx + wag, g - 10, tn[2]); p.set(cx + wag, g - 9, tn[1]); p.set(cx + wag, g - 8, tn[0]); }
-  } else {
-    if (up) tailUp(g - 12);
-    legs([3, 2], false);
-    backTop();
-    // brystet: vesten rundt skuldrene, hvitt bryst midt på
-    shEll(p, cx, g - 6.6, 3, 2.6, tn, 0, seed + 1);
-    for (let y = g - 8; y <= g - 6; y++) for (const x of [cx - 2, cx + 2]) if (p.get(x, y)) p.set(x, y, vest[y < g - 7 ? 2 : 1]);
-    p.ell(cx, g - 6.2, 1.1, 1.8, belly);
-    legs([1, 0], true);
-    head(g - 10, tn[0]);
-    p.set(cx - 1, g - 10, C('#141010')); p.set(cx + 1, g - 10, C('#141010'));
-    p.set(cx - 1, g - 9, tn[2]); p.set(cx + 1, g - 9, tn[2]); p.set(cx, g - 9, C(c.nose)); p.set(cx, g - 8, belly);
-  }
-  p.outlineAuto(0.42);
-  return mkSpr(p, cx + 0.5, g, {});
-}
-// Hunden på skrå mot høyre (speilvendes for venstre): away går den skrått fra deg, ellers skrått mot deg. Bygd av kuler
-// og streker med de samme målene og gangartene som i profil, dreid 45° og sett litt ovenfra; det som er lengst unna,
-// tegnes først. Hodet, vesten og halen havner da der de skal fra begge kanter
-function genDogQuarter(away, pose, f) {
-  const A = DOG, c = A.col, p = new Pix(26, 24), cx = 12, g = 20, seed = A.seed, L = A.L, Hh = A.Hh;
-  const tn = T(c.dk, c.body, c.lt), belly = C(c.belly), legU = C(c.body), legLo = C(c.legLo), legF = C(c.legFar), paw = C('#1c1614');
-  const vest = T('#c45a1c', '#ee7c2a', '#ffb050'), ps = away ? Math.PI / 4 : -Math.PI / 4, ca = Math.cos(ps), sa = Math.sin(ps);
-  // a fram langs ryggen, b ut mot høyre side, h opp: gir skjermpunkt og dybde (større er lenger unna)
-  const pr = (a, b, h) => [cx + a * ca + b * sa, g - h * 0.95 - (a * sa - b * ca) * 0.35, a * sa - b * ca];
-  let off = [0, 0, 0, 0], lift = [0, 0, 0, 0], bob = 0, nA = A.neckA, earB = 0.3, wag = 0;
-  if (pose === 'walk') { const s = [1, 0, -1, 0][f] * A.sw; off = [s, -s, -s, s]; if (f === 1) lift = [1, 0, 0, 1]; if (f === 3) lift = [0, 1, 1, 0]; nA -= 6; wag = [0, 1, 0, -1][f]; }
-  else if (pose === 'run') {
-    const k = A.sw * 1.7;
-    off = [[1, 0.6, -1, -0.7], [0.3, 0.9, -0.2, -0.8], [-0.9, -0.5, 0.9, 0.6], [-0.2, -0.7, 0.3, 0.9]][f].map(v => v * k);
-    lift = [[0, 0, 0, 0], [1, 0, 2, 1], [1, 2, 0, 0], [2, 1, 1, 0]][f]; bob = [-1, 0, 0, -1][f]; nA -= 16; earB = 1.4;
-  } else if (pose === 'alert') nA = Math.min(86, nA + 18);
-  const ops = [], put = (z, fn) => ops.push([z, fn]);
-  const ball = (a, b, h, r, tns, fill) => { const [x, y, z] = pr(a, b, h); put(z, () => fill ? p.ell(x, y, r * 0.82, r * 0.95, fill) : shEll(p, x, y, r * 0.82, r * 0.95, tns, 0, seed)); };
-  // kroppen: kuler langs ryggen fra baken til brystet, med vesten midt på
-  const hb = A.leg + Hh / 2 - bob, vestF = (x, y, dx, dy) => dy < -0.55 ? vest[2] : dy < 0.2 ? vest[1] : dy < 0.45 ? vest[0] : tone(tn, 0.55 - dy * 0.52, x, y, 3);
-  for (let a = -L / 2 + 1.2; a <= L / 2 - 1.2; a += 0.5) {
-    const t = (a + L / 2) / L, r = t < 0.35 ? lerp(A.rumpR + 0.1, Hh / 2, t / 0.35) : t > 0.65 ? lerp(Hh / 2, A.chestR + 0.2, (t - 0.65) / 0.35) : Hh / 2;
-    ball(a, 0, hb + (t < 0.5 ? 0.4 : -0.3) * Math.abs(t - 0.5) * 2, r, tn, Math.abs(a) <= 2 ? vestF : null);
-  }
-  { const [x, y, z] = pr(L / 2 - 0.4, 0, hb - 0.8); put(z - 0.5, () => p.ell(x, y, 1.1, 1.7, belly)); }
-  // hals, hode, snute med nese, øyne og spisse ører (lagt bakover når den løper)
-  const Sa = L / 2 - A.chestR * 0.7, Sh = hb + Hh * 0.2, na = nA * Math.PI / 180, Ha = Sa + Math.cos(na) * A.neckL, Hv = Sh + Math.sin(na) * A.neckL;
-  for (let i = 0; i <= 4; i++) { const t = i / 4; ball(lerp(Sa, Ha, t), 0, lerp(Sh, Hv, t), lerp(A.neckW, A.neckW * 0.74, t), tn); }
-  ball(Ha - 0.4, 0, Hv, A.hh / 2, tn); ball(Ha + 0.4, 0, Hv - 0.1, A.hh / 2, tn);
-  const hang = A.hd * Math.PI / 180, sd = A.hl / 2 + A.sl / 2 - 0.9, Na = Ha + Math.cos(hang) * sd, Nv = Hv - Math.sin(hang) * sd - A.sdy;
-  ball(Na, 0, Nv, A.sh / 2 + 0.3, tn);
-  { const [x, y, z] = pr(Na + A.sl / 2, 0, Nv - 0.2); put(z - 0.1, () => p.set(x, y, C(c.nose))); }
-  for (const b of [-0.9, 0.9]) { const [x, y, z] = pr(Ha + 0.9, b, Hv + 0.4); put(z - 1.2, () => p.set(x, y, C('#141010'))); }
-  for (const b of [-0.8, 0.8]) {
-    const [x0, y0, z] = pr(Ha - 0.5, b, Hv + A.hh / 2 - 0.3), [x1, y1] = pr(Ha - 0.5 - earB, b * 1.4, Hv + A.hh / 2 + 2.2);
-    put(z - 0.6, () => { p.line(x0, y0, x1, y1, tn[1], 1); p.set(x1, y1, C('#2a201c')); });
-  }
-  // halen bakover, logrende når den går; rett til værs med lys tupp når den står for vilt
-  const up = pose === 'alert', ta = -L / 2 + 1, th = hb + 0.5, tip = T('#c8c0b0', '#ece4d4', '#ffffff');
-  for (let i = 0; i <= 10; i++) {
-    const t = i / 10, a = up ? ta - 0.5 + 1.2 * t * t : ta - 5 * t, h = up ? th + 7 * t : th + (pose === 'run' ? t : 3 * t - 1.2 * t * t);
-    ball(a, wag * t * 1.5, h, (up ? 1.1 : 0.8) + 0.4 * Math.sin(t * Math.PI), up && t > 0.7 ? tip : tn);
-  }
-  // beina [nær fram, fjern fram, nær bak, fjern bak]; de nære lyse nederst og lagt over kroppen, de fjerne mørke
-  [[L / 2 - A.legIn, 1.3, 0], [L / 2 - A.legIn, -1.3, 0], [-L / 2 + A.legIn, 1.3, 1], [-L / 2 + A.legIn, -1.3, 1]].forEach(([la, lb, back], i) => {
-    const ht = A.leg + 2 - bob, o = off[i], hf = lift[i], far = lb < 0;
-    const P0 = pr(la, lb, ht), K0 = pr(la + o * 0.4 - (back ? A.hock : 0), lb, ht + (hf - ht) * 0.52), F0 = pr(la + o, lb, hf);
-    put(P0[2] - (far ? 0 : 3), () => { p.line(P0[0], P0[1], K0[0], K0[1], far ? legF : legU, A.lw); p.line(K0[0], K0[1], F0[0], F0[1], far ? legF : legLo, A.ll); p.set(F0[0], F0[1], paw); });
-  });
-  ops.sort((u, v) => v[0] - u[0]).forEach(o => o[1]());
-  p.outlineAuto(0.42);
-  return mkSpr(p, cx + 0.5, g, {});
-}
-
 // ---------- Fugler (i profil, mot høyre) ----------
 const BW = 44, BH = 40, BOX = 22, BOY = 32;
 function genBird(sp, sex, pose, f) {
@@ -1252,126 +1148,8 @@ function genHunter(dir, i, r = -1, ots = false, ax = -1, pal = {}) {
   return mkSpr(p, HOX, HOY, {});
 }
 
-// ---------- hesten ----------
-// En fjording bygget av små terninger (x fram, y mot høyre, z opp) og tegnet ved å stable lagene nedenfra og opp, sett
-// på skrå ovenfra med dybden presset sammen (HORSE_K). Slik får den HORSE_N retninger som passer både på kartet og i 3D.
-// Se horseSpr for hva den kan ha på seg, og stegene i gangen
-const HORSE_N = 16, HORSE_K = 0.5, HVX = 16, HVY = 5, HVZ = 30;
-const HORSEM = {
-  coat: T('#8a6a40', '#b08a56', '#cca870', '#e0c490'), dark: T('#1c1612', '#2a2018', '#3c3026'), muzzle: T('#4e4234', '#6a5a48', '#84725c'),
-  leather: T('#3e2616', '#5c3a22', '#7c5232', '#9a6c44'), bag: T('#3a4228', '#566038', '#74804c'), steel: T('#5a5e5c', '#8a8e88', '#b4b8b0'),
-  jac: T('#3f502e', '#586c3e', '#718648'), pant: T('#382e26', '#4c3f32', '#5e4e3e'), skin: T('#c48e68', '#e4b48c', '#f0c8a0'),
-  hat: T('#2c4430', '#3f5c3a', '#56784a'), pack: T('#5c3e28', '#80583a', '#a07448'),
-  hair: C('#6b4a30'), band: C('#ee7c2a'), eye: C('#1a1412'), boot: C('#231c18'),
-};
-const HORSEK = Object.keys(HORSEM);
-// Materialet i terningen (x, y, z), eller null. kit: 1 jegeren i salen, 2 sal, 4 ekstra ryggsekk; fr: 0 står, 1 og 2 går
-function horseVox(x, y, z, kit, fr) {
-  const ay = Math.abs(y);
-  // beina: forbein og bakbein, diagonalt i takt når den går; lårene er litt kraftigere, og hovene mørke
-  if (z <= 6) {
-    if (ay >= 2 && ay <= 3) for (const [lx, sy, ph] of [[6, 1, 1], [6, -1, -1], [-8, 1, -1], [-8, -1, 1]]) {
-      if (y * sy < 0) continue;
-      const dx = x - lx - Math.round((fr ? (fr === 1 ? 2 : -2) * ph : 0) * (1 - z / 6));
-      if (dx >= (lx < 0 && z >= 4 ? -1 : 0) && dx <= 1) return z === 0 ? 'dark' : 'coat';
-    }
-    if (z < 3) return null;
-  }
-  // resten står på beina: u er høyden regnet fra en terning under bakken
-  const u = z + 1;
-  if (kit & 1) {
-    const k = riderVox(x, ay, u); if (k) return k;
-    // tøylene langs halsen
-    if (ay === 2 && u === 18 && x >= 6 && x <= 14) return 'dark';
-  }
-  if (kit & 2) {
-    // sete med forsvissel og bakvissel, sveteklaffer ned langs sidene og stigbøyler
-    if (u === 15 && ay <= 2 && x >= -3 && x <= 2) return 'leather';
-    if (u === 16 && ay <= 1 && (x === -3 || x === 2)) return 'leather';
-    if (x >= -2 && x <= 1 && (ay === 3 && u === 14 || ay === 4 && u >= 11 && u <= 13)) return 'leather';
-    if (ay === 4 && x === 0 && u >= 8 && u <= 10) return u === 8 ? 'steel' : 'dark';
-  }
-  // ekstra ryggsekk bak salen
-  if (kit & 4 && x >= -8 && x <= -5 && ay <= 2 && u >= 15 && u <= 18) return u === 18 || x === -8 && ay === 0 ? 'leather' : 'pack';
-  // kløvveskene på hver side, med reim over ryggen
-  if (x >= -8 && x <= -5 && ay === 4 && u >= 10 && u <= 13) return u === 13 ? 'leather' : 'bag';
-  if (x >= -7 && x <= -6 && (ay === 3 && u === 14 || ay <= 2 && u === 15)) return 'leather';
-  // hale, og ståman fra nakken til panneluggen
-  if (x === -10 && u >= 5 && u <= 13 && ay <= (u >= 9 ? 1 : 0) || x === -11 && y === 0 && u >= 4 && u <= 11) return 'dark';
-  if (y === 0 && (u === 22 && x >= 9 && x <= 12 || x === 9 && u >= 20 && u <= 21)) return 'dark';
-  // kroppen
-  if (x >= -9 && x <= 8 && u >= 8 && u <= 14 && ay <= (u === 8 || u === 14 ? 2 : 3) && !((x === -9 || x === 8) && (u === 8 || u === 14))) return 'coat';
-  // halsen skrår fram og opp, med mana langs nakken
-  if (u >= 13 && u <= 19) {
-    const cx = 7.2 + (u - 13) * 0.5;
-    if (y === 0 && u >= 15 && x === Math.round(cx - 3)) return 'dark';
-    if (ay <= (u <= 16 ? 2 : 1) && Math.abs(x - cx) <= 2.3) return 'coat';
-  }
-  // hode med øyne og ører, og mørk mule
-  if (u >= 18 && u <= 21 && x >= 10 && x <= 14 && ay <= 1) return x === 13 && ay === 1 && u === 20 ? 'eye' : 'coat';
-  if (u >= 17 && u <= 19 && x >= 15 && x <= 16 && ay <= 1) return 'muzzle';
-  if (u === 22 && x === 10 && ay === 1) return 'coat';
-  return null;
-}
-// Jegeren i salen med ansiktet fram: hatt, hode, sekk på ryggen, hendene på tøylene og beina ned i stigbøylene
-function riderVox(x, ay, z) {
-  if (z === 29 && x >= -1 && x <= 1 && ay <= 1) return 'hat';
-  if (z === 28 && x >= -1 && x <= 1 && ay <= 1) return 'band';
-  if (z === 27 && x >= -2 && x <= 2 && ay <= 2) return 'hat';
-  if (z >= 23 && z <= 26 && x >= -1 && x <= 1 && ay <= 1) return x === -1 ? 'hair' : x === 1 && z === 25 && ay === 1 ? 'eye' : z === 23 || x === 1 && z === 24 && ay === 1 ? 'hair' : 'skin';
-  if (z >= 17 && z <= 21 && x >= -3 && x <= -2 && ay <= 2) return 'pack';
-  if (z >= 16 && z <= 22 && x >= -1 && x <= 1 && ay <= 2) return 'jac';
-  if (x === 5 && ay === 1 && z === 18) return 'skin';
-  for (let t = 0; t <= 1; t += 0.1) { const zz = Math.round(21 - 3 * t); if (Math.round(4 * t) === x && Math.round(3 - 2 * t) === ay && (zz === z || zz === z + 1)) return 'jac'; }
-  if (ay === 3 && x >= 0 && x <= 2 && z >= 15 && z <= 16) return 'pant';
-  if (ay === 4 && x >= 1 && x <= 2 && z >= 9 && z <= 15) return z === 9 ? 'boot' : 'pant';
-  if (ay === 4 && x === 3 && z === 9) return 'boot';
-  return null;
-}
-function horseGrid(kit, fr) {
-  const NX = 2 * HVX + 1, NY = 2 * HVY + 1, g = new Uint8Array(NX * NY * HVZ);
-  for (let z = 0; z < HVZ; z++) for (let y = -HVY; y <= HVY; y++) for (let x = -HVX; x <= HVX; x++) { const k = horseVox(x, y, z, kit, fr); if (k) g[(z * NY + y + HVY) * NX + x + HVX] = HORSEK.indexOf(k) + 1; }
-  return g;
-}
-// Hesten sett fra vinkelen rel (retningen dens minus blikkretningen). Hver piksel i et lag viser den nærmeste terningen
-// i laget; høyere lag tegnes over. Lyset kommer ovenfra og fra venstre i bildet, som ellers i spillet
-function genHorse(rel, g) {
-  const s = Math.sin(rel), c = Math.cos(rel), NX = 2 * HVX + 1, NY = 2 * HVY + 1, R = 18, rk = Math.ceil(R * HORSE_K);
-  const w = 2 * R + 4, cx = w >> 1, cy = rk + HVZ + 2, h = cy + rk + 2, p = new Pix(w, h);
-  const at = (x, y, z) => x < -HVX || x > HVX || y < -HVY || y > HVY || z < 0 || z >= HVZ ? 0 : g[(z * NY + y + HVY) * NX + x + HVX];
-  for (let z = 0; z < HVZ; z++) for (let py = Math.max(0, cy - z - rk - 3); py < Math.min(h, cy - z + rk + 2); py++) {
-    const d0 = (cy - z - py - 1) / HORSE_K;
-    for (let px = 0; px < w; px++) {
-      const lat = px + 0.5 - cx;
-      for (const dd of [-0.7, 0, 0.7]) {
-        const d = d0 + dd, x = Math.round(lat * s + d * c), y = Math.round(lat * c - d * s), k = at(x, y, z);
-        if (!k) continue;
-        const M = HORSEM[HORSEK[k - 1]];
-        let v = 0.8;
-        if (at(x, y, z + 1)) {
-          const ex = (at(x + 1, y, z) ? 0 : 1) - (at(x - 1, y, z) ? 0 : 1), ey = (at(x, y + 1, z) ? 0 : 1) - (at(x, y - 1, z) ? 0 : 1), l = hyp(ex, ey);
-          v = l ? 0.46 - 0.2 * (ex * s + ey * c) / l : 0.38;
-        }
-        p.d[py * w + px] = typeof M === 'number' ? M : tone(M, v, px, py, 2.5);
-        break;
-      }
-    }
-  }
-  p.outlineAuto(0.42);
-  return mkSpr(p, cx, cy, {});
-}
-// Hesten med retning hd sett fra retningen v (på kartet ser du mot nord, −π/2). kit er det den har på seg og hvem som
-// sitter på (1 jegeren, 2 sal, 4 ekstra ryggsekk), fr steget i gangen. Bildene lages første gang de trengs
-const HORSESPR = [], HORSEGRID = [];
-function horseSpr(hd, v, kit, fr = 0) {
-  const k = kit * 3 + fr, i = ((Math.round((hd - v) / TAU * HORSE_N) % HORSE_N) + HORSE_N) % HORSE_N, L = HORSESPR[k] || (HORSESPR[k] = []);
-  return L[i] || (L[i] = genHorse(i / HORSE_N * TAU, HORSEGRID[k] || (HORSEGRID[k] = horseGrid(kit, fr))));
-}
-
 // ---------- Effekter og ikoner ----------
 function genFx() {
-  const glow = (size, col) => { const p = new Pix(size, size), c = size / 2; for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) { const d = hyp(x + 0.5 - c, y + 0.5 - c) / c, a = Math.pow(clamp(1 - d, 0, 1), 1.6); if (a > dith(x, y) * 0.9) p.d[y * size + x] = col; } return p.canvas(); };
-  FX.glow = glow(72, C('#ffbe5a')); FX.glowS = glow(9, C('#e8f08a'));
   FX.wisp = [];
   for (let k = 0; k < 4; k++) {
     const w = 150, h = 34, p = new Pix(w, h);
@@ -1411,24 +1189,6 @@ function genFx() {
     ['....m.b....', '...mmbb....', '...mbbbb...', '..mmbbebb..', '..mbbbbbbb.', '..mbbbddbkk', '.mmbbd..kk.', '.mbbbd.....', '.bbbbd.....', '.bbbbd.....'].forEach((r, j) => r.split('').forEach((b, i) => { if (cl[b]) p.set(i, j, cl[b]); }));
     p.outlineAuto(0.3); FX.horse = p.canvas(); }
   { const p = new Pix(7, 7); p.set(3, 0, C('#f2efe2')); p.rect(2, 1, 3, 1, C('#f2efe2')); p.rect(1, 2, 5, 1, C('#f2efe2')); p.outlineAuto(0.25); FX.arrow = p.canvas(); }
-  // bål i steinring, tre bilder med flammer som blafrer
-  FX.fire = [0, 1, 2].map(f => {
-    const p = new Pix(17, 19), st = T('#4a4e50', '#6e7472', '#979c94'), wd = T('#3a2618', '#5e3c24', '#84583a'), cx = 8, by = 15;
-    const stones = front => { for (let i = 0; i < 10; i++) { const a = i / 10 * TAU, s = Math.sin(a); if ((s >= 0) !== front) continue; const x = Math.round(cx + Math.cos(a) * 6.5), y = Math.round(by + s * 2.4); p.rect(x - 1, y - 1, 2, 2, st[1]); p.set(x - 1, y - 1, st[2]); p.set(x, y, st[0]); } };
-    stones(false);
-    p.line(cx - 5, by, cx + 4, by - 3, wd[1], 2); p.line(cx - 5, by - 3, cx + 4, by, wd[2], 2);
-    const h = [10, 12, 11][f], top = by - 1 - h;
-    for (let y = top; y <= by - 1; y++) {
-      const t = (y - top) / h, w = Math.sin(t * Math.PI * 0.85) * 3.8 * (0.5 + 0.5 * t), sx = t < 0.45 ? [-1, 0, 1][(f + (y >> 1)) % 3] : 0;
-      for (let x = Math.floor(cx - w); x <= cx + w; x++) {
-        const v = (1 - Math.abs(x - cx) / (w + 0.5)) * 0.75 + t * 0.35 + (hash2(x, y, f + 7) - 0.5) * 0.2;
-        p.set(x + sx, y, C(v > 0.78 ? '#fff0a0' : v > 0.5 ? '#f4a034' : '#d8502a'));
-      }
-    }
-    stones(true);
-    p.outlineAuto(0.4, true);
-    return mkSpr(p, cx, by + 1, { nosh: 1 });
-  });
   // gapahuk: stokker reist mot hverandre som et telt (omvendt V) og krysset i mønet, åpen front med granbar på golvet
   { const p = new Pix(43, 35), by = 33, cx = 21, half = 16, rise = 16, D = 12, LW = 4, s = rise / half, top = by - rise;
     const bk = T('#231a14', '#3a2c20', '#56432f', '#76603f', '#988060'), gr = T('#182c24', '#22402f', '#2e5238', '#3e6440'), ms = T('#4e6a30', '#6a8a3a');
@@ -1654,8 +1414,6 @@ function genAll() {
   genCairn(); genBauta(); genTower(); genFence(); genPalisade(); genGates();
   genWell(); for (let k = 0; k < 3; k++) genStall(k); genLamp(); genVProps();
   [...NPC_PAL, ...VIL_PAL].forEach(pal => (SPR.npc = SPR.npc || []).push(Object.assign(genHunter('down', 0, -1, false, -1, pal), { r: 3 })));
-  // folkene som går rundt i landsbyen: står og går i tre retninger, og hogger (smedgutten, bonden og vedhoggeren)
-  for (const pal of VIL_PAL) { const o = { chop: [0, 1, 2, 3].map(k => genHunter('side', 0, -1, false, k, pal)) }; for (const d of ['side', 'down', 'up']) o[d] = [0, 1, 2, 3, 4].map(i => genHunter(d, i, -1, false, -1, pal)); VSPR.push(o); }
   for (const sp of SPECIES) {
     ANI[sp] = {};
     for (const sex of ['m', 'f']) {
@@ -1668,15 +1426,8 @@ function genAll() {
       o.dead = [gen(sp, sex, 'dead', 0)];
     }
   }
-  DOGSPR.stand = [genAnimal(null, 'm', 'stand', 0, DOG)]; DOGSPR.mark = [genAnimal(null, 'm', 'alert', 0, DOG)];
-  DOGSPR.walk = [0, 1, 2, 3].map(f => genAnimal(null, 'm', 'walk', f, DOG)); DOGSPR.run = [0, 1, 2, 3].map(f => genAnimal(null, 'm', 'run', f, DOG));
-  // bakfra (up, går fra deg) og forfra (down, kommer mot deg); de bruker gangen også når den løper
-  for (const [d, back] of [['up', true], ['down', false]]) { const w = [0, 1, 2, 3].map(f => genDogEnd(back, 'walk', f)); DOGSPR[d] = { stand: genDogEnd(back, 'stand', 0), mark: genDogEnd(back, 'alert', 0), walk: w, run: w }; }
-  // på skrå mot høyre: ur skrått fra deg, dr skrått mot deg
-  for (const [d, away] of [['ur', true], ['dr', false]]) DOGSPR[d] = { stand: genDogQuarter(away, 'stand', 0), mark: genDogQuarter(away, 'alert', 0), walk: [0, 1, 2, 3].map(f => genDogQuarter(away, 'walk', f)), run: [0, 1, 2, 3].map(f => genDogQuarter(away, 'run', f)) };
-  // HUN[retning]: [står/går, sikter (siste løftebilde), de fire bildene der børsa tas opp]
-  for (const d of ['side', 'down', 'up']) { const r = [0, 1, 2, 3].map(k => genHunter(d, 0, k)); HUN[d] = [[0, 1, 2, 3, 4].map(i => genHunter(d, i)), [r[3], r[3], r[3], r[3], r[3]], r]; }
-  HUN.ots = [0, 1, 2, 3].map(k => genHunter('up', 0, k, true));
-  HUN.chop = [0, 1, 2, 3].map(k => genHunter('side', 0, -1, false, k));
+  // hunden og jegeren tegnes i 3D (11-figs.js); pikselbildene brukes bare som ikoner
+  DOGSPR.stand = [genAnimal(null, 'm', 'stand', 0, DOG)];
+  for (const d of ['side', 'down', 'up']) HUN[d] = [[genHunter(d, 0)]];
   genFx(); ICON = genIcons();
 }

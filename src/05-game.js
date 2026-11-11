@@ -170,7 +170,7 @@ const ZONES = { head: ['Hodeskudd', 2.2, 0.95], vital: ['Hjerte/lunge', 1.6, 1],
 const fmtKg = kg => String(kg).replace('.', ',') + ' kg';
 
 const G = {
-  t: 0, hour: 6.6, day: 1, money: 0, scents: 2, treats: TREAT_START, wood: 0, matches: 0, rounds: AMMO.rifle.start, shells: 0, arrows: 0, meat: [], rack: [], fires: [], huts: [], falls: [], cut: new Set(), crackT: 0, journal: [], up: {}, started: false, paused: false, panel: null, gun: 'rifle', view3d: false,
+  t: 0, hour: 6.6, day: 1, money: 0, scents: 2, treats: TREAT_START, wood: 0, matches: 0, rounds: AMMO.rifle.start, shells: 0, arrows: 0, meat: [], rack: [], fires: [], huts: [], falls: [], cut: new Set(), crackT: 0, journal: [], up: {}, started: false, paused: false, panel: null, gun: 'rifle',
   wind: { a: 0, s: 0.5, x: 1, y: 0 }, animals: [], scentObjs: [], blood: [], parts: [], msgs: [], spawnT: 0, quiet: [], dayl: 1, hunters: [], saveT: 15, pauseT: 0,
   wear: { ...CLO_START }, shoeHp: 100, cargo: {},
   // oppdraget du har tatt hos grunneieren (se QUEST), og hvilke av dagens tilbud som er brukt opp
@@ -824,7 +824,7 @@ function doorText(c) {
 // ---------- jakthunden ----------
 // Hunden går ved foten. Sendt ut (fra hjulet) søker den opp nærmeste dyr og står for det: dyret blir stående, og hunden
 // gjør los til du kommer. Hver gang den står for et dyr, går det med en godbit; finner den ingenting, beholder du den.
-const DOG_R = 1000, DOG_ST = ['heel', 'search', 'mark', 'back'], DOG_SIDE = 13;
+const DOG_R = 1000, DOG_ST = ['heel', 'search', 'mark', 'back'];
 const D = { x: 0, y: 0, st: 'heel', face: 1, hd: 0, anim: 0, spd: 0, a: null, tx: 0, ty: 0, t: 0, ph: 0, barkT: 0, waterT: 0, wet: false, netT: 0,
   path: null, plan: null, wi: 0, planT: 0, pst: '', reach: false, swim: false, blk: false, stuck: 0, skip: [], pa: null };
 const dogOk = a => !!a && a.state !== 'dead' && a.state !== 'flee' && !(a.z > 0) && G.animals.includes(a);
@@ -987,10 +987,9 @@ function dogUpdate(dt) {
   if (D.st === 'heel') {
     // følger etter et par steg unna; har du flyttet deg langt (til en annen jeger), er den straks hos deg igjen
     if (dp > 600) { dogReset(); return; }
-    if (G.view3d || HORSE.on) {
-      // i 3D går den ved venstre side av deg, der kameraet bak høyre skulder ser den, og holder følge; små
-      // rykk når du snur deg, venter den ut. Rir du, springer den ved venstre side av den
-      const a = HORSE.on ? HORSE.h : AIM.yaw, o = HORSE.on ? 20 : DOG_SIDE, b = HORSE.on ? 6 : 0, mx = HORSE.on ? 190 : 110;
+    if (HORSE.on) {
+      // rir du, springer den ved venstre side av hesten og holder følge
+      const a = HORSE.h, o = 20, b = 6, mx = 190;
       tx = P.x + Math.sin(a) * o - Math.cos(a) * b; ty = P.y - Math.cos(a) * o - Math.sin(a) * b;
       const eh = hyp(tx - D.x, ty - D.y);
       spd = eh > 3 || D.spd > 3 ? (eh > 60 ? mx : clamp(eh * 8, 0, mx)) : 0;
@@ -1054,23 +1053,8 @@ function dogUpdate(dt) {
     if (Math.abs(vx) > 2) D.face = vx > 0 ? 1 : -1;
   } else D.spd = 0;
   // står den ved foten i 3D, ser den samme vei som du
-  if (D.st === 'heel' && G.view3d && D.spd <= 3) D.hd = AIM.yaw;
   D.anim += D.spd * dt * (D.spd > 60 ? 0.085 : 0.14);
 }
-function dogSprite(d) {
-  if (d.st === 'mark') return DOGSPR.mark[0];
-  return d.spd > 60 ? DOGSPR.run[(d.anim | 0) & 3] : d.spd > 3 ? DOGSPR.walk[(d.anim | 0) & 3] : DOGSPR.stand[0];
-}
-// Hunden i en av åtte retninger: fw og sd er hvor mye den går bort fra deg og mot høyre. Bakfra, skrått fra, profil,
-// skrått mot eller forfra, i åttendeler; den bytter først litt forbi grensa, så den ikke blinker mellom to. Gir [sprite, speilvendt]
-function dogDir(d, fw, sd) {
-  const k = Math.abs(Math.atan2(sd, fw)) / (Math.PI / 4), n = d.dk != null && Math.abs(k - d.dk) < 0.62 ? d.dk : Math.round(k);
-  d.dk = n;
-  if (n === 2) return [dogSprite(d), sd < 0];
-  const V = DOGSPR[['up', 'ur', , 'dr', 'down'][n]];
-  return [d.st === 'mark' ? V.mark : d.spd > 60 ? V.run[(d.anim | 0) & 3] : d.spd > 3 ? V.walk[(d.anim | 0) & 3] : V.stand, sd < 0 && n !== 0 && n !== 4];
-}
-
 // ---------- hesten ----------
 // Kjøpes i stallen i landsbyen (lv('horse')) og står ved stallen når du kommer til skogen; ellers blir den stående der
 // du går av den. Med sal (lv('saddle')) setter F deg på og tar deg av. W driver den fram, S holder igjen og rygger, A og D
@@ -1078,9 +1062,8 @@ function dogDir(d, fw, sd) {
 // Hovslagene høres lenger enn skritt, så viltet blir urolig før du er der
 const HORSE = { x: 0, y: 0, h: Math.PI, v: 0, on: false, odo: 0, splashT: 0, noiseT: 0, warnT: 0, tip: false };
 const HORSE_MAX = 150, HORSE_REV = 25, HORSE_ACC = 75, HORSE_BRAKE = 170, HORSE_TURN = 2.3, HORSE_STRIDE = 9;
-// det hesten har på seg og hvem som sitter på (se horseSpr), og steget i gangen: 0 står, 1 og 2 går
+// det hesten har på seg og hvem som sitter på: 1 jegeren i salen, 2 sal, 4 ekstra ryggsekk
 const horseKit = on => (on ? 1 : 0) | (lv('saddle') ? 2 : 0) | (lv('hbag') ? 4 : 0);
-const horseStep = () => (HORSE.on || HORSE.come) && Math.abs(HORSE.v) > 8 ? 1 + ((HORSE.odo / HORSE_STRIDE) | 0) % 2 : 0;
 const angD = (a, b) => ((a - b + Math.PI) % TAU + TAU) % TAU - Math.PI;
 // Ved veggen til høyre for stalldøra
 function horsePark() { const c = VB.stable; Object.assign(HORSE, { x: c.door[0] + Math.cos(c.rot) * 30 + c.out[0] * 8, y: c.door[1] + Math.sin(c.rot) * 30 + c.out[1] * 8, h: c.rot + Math.PI, v: 0, on: false, come: false }); }
@@ -1089,7 +1072,6 @@ function onHorse() { if (!HORSE.on) return false; sfx.deny(); msg('Gå av hesten
 function horseMount() {
   if (P.aim || AIM.want) return;
   HORSE.on = true; HORSE.come = false; HORSE.v = 0; P.x = HORSE.x; P.y = HORSE.y; P.work = null; faceTo(HORSE.h); sfx.neigh();
-  if (G.view3d) { AIM.yaw = HORSE.h; AIM.pitch = 0; }
   if (!HORSE.tip) { HORSE.tip = true; msg('W driver hesten fram, S holder igjen og rygger, A og D styrer. Hovslagene høres lenger enn skritt, så sett den fra deg et stykke fra der du skal jakte.'); }
 }
 // Ut av salen uten å flytte jegeren (båret til bua)
@@ -1176,8 +1158,6 @@ function horseCome(dt) {
   HORSE.stuckT = moved < sp * dt * 0.3 ? HORSE.stuckT + dt : 0;
   if (HORSE.stuckT > 2.5 || (HORSE.comeT += dt) > 30) { HORSE.come = false; HORSE.v = 0; msg('Hesten kommer ikke fram til deg.'); }
 }
-// Den gynger i takt med gangen (1 piksel opp annethvert steg)
-const horseBob = () => horseStep() === 2 ? 1 : 0;
 // steer: −1 venstre (A), 1 høyre (D); gas: 1 fram (W), −1 hold igjen og rygg (S). wv og tr er vann og sti der den står,
 // br brua den står på
 function horseDrive(dt, steer, gas, wv, tr, br) {
@@ -1213,7 +1193,6 @@ function horseDrive(dt, steer, gas, wv, tr, br) {
   HORSE.x = nx; HORSE.y = ny; HORSE.v = v; HORSE.odo += moved;
   P.x = nx; P.y = ny; faceTo(HORSE.h);
   // i 3D følger kameraet med i svingene, og når den går, finner det tilbake bak hesten
-  if (G.view3d) { AIM.yaw += dh; if (Math.abs(v) > 20) AIM.yaw += angD(HORSE.h, AIM.yaw) * Math.min(1, dt * 1.5); }
   // vannsprut i vann
   if ((HORSE.splashT -= dt) <= 0) {
     HORSE.splashT = 0.2;
@@ -1307,7 +1286,6 @@ function fallUpdate(dt) {
   }
   G.falls = G.falls.filter(f => f.t < FALL_T + 1 || Math.abs(f.x - CAM.x) < CAM.w / 2 + 120 && Math.abs(f.y - CAM.y) < CAM.h / 2 + 40);
 }
-const fireSpr = f => FX.fire[((G.t * 8 + f.id * 7) | 0) % 3];
 const nearFire = (x, y, r) => G.fires.find(f => f.t > 0 && hyp(f.x - x, f.y - y) < r);
 const nearHut = (x, y, r) => G.huts.find(h => hyp(h.x - x, h.y - y) < r);
 function addFire(f) { G.fires.push({ id: Math.random(), x: +f.x, y: +f.y, t: FIRE_T, pt: 0 }); }
@@ -1423,7 +1401,7 @@ function playerUpdate(dt) {
   if (ride) horseDrive(dt, mx, -my, wv, fl[3], br);
   else if (HORSE.come && G.started && !G.paused) horseCome(dt);
   // i 3D og i siktet går W/S fram og tilbake dit du ser, og A/D til sidene
-  if (!ride && (G.view3d || P.aim) && (mx || my)) { const c = Math.cos(AIM.yaw), s = Math.sin(AIM.yaw), f = -my, r = mx; mx = c * f - s * r; my = s * f + c * r; }
+  if (!ride && P.aim && (mx || my)) { const c = Math.cos(AIM.yaw), s = Math.sin(AIM.yaw), f = -my, r = mx; mx = c * f - s * r; my = s * f + c * r; }
   P.sneak = !ride && !!(KEYS.ShiftLeft || KEYS.ShiftRight);
   // på hesten holder du deg tørr
   P.wet = !ride && wv < 1.1; P.deep = !ride && wv < 0.55;
@@ -1473,7 +1451,7 @@ function playerUpdate(dt) {
     if (!ride) {
       P.walkT += dt * (low ? 0.55 : P.run ? 1.7 : 1);
       shoeWear(dt);
-      if (!G.view3d) { if (Math.abs(mx) >= Math.abs(my)) { P.face = 'side'; P.flip = mx < 0; } else P.face = my > 0 ? 'down' : 'up'; }
+      if (Math.abs(mx) >= Math.abs(my)) { P.face = 'side'; P.flip = mx < 0; } else P.face = my > 0 ? 'down' : 'up';
       P.stepT -= dt;
       if (P.stepT <= 0) {
         P.stepT = P.aim ? 0.8 : P.sneak ? 0.55 : P.run ? 0.2 : 0.32; sfx.step(low, P.wet);
@@ -1484,10 +1462,8 @@ function playerUpdate(dt) {
       }
     }
   }
-  // i 3D snur jegeren seg dit du ser (på kartet og for de andre jegerne); på hesten dit den går
-  if (G.view3d && !P.work && !ride) faceTo(AIM.yaw);
   // står hunden for vilt, snur jegeren seg mot dyret mens han står i ro
-  else if (D.st === 'mark' && D.a && !P.moving && !P.work && !ride && !P.aim && !AIM.want && !AIM.raise && hyp(D.a.x - P.x, D.a.y - P.y) > 12) faceTo(Math.atan2(D.a.y - P.y, D.a.x - P.x));
+  if (D.st === 'mark' && D.a && !P.moving && !P.work && !ride && !P.aim && !AIM.want && !AIM.raise && hyp(D.a.x - P.x, D.a.y - P.y) > 12) faceTo(Math.atan2(D.a.y - P.y, D.a.x - P.x));
   // sikte: pust og ro. Små justeringer går greit, men svinger du børsa langt (f.eks. fra ett dyr til et annet),
   // kommer den i uro som tar rundt et sekund å roe seg. Holder du pusten (Space), står siktet stille, og bare i
   // noen få sekunder; går lufta tom, hiver du etter pusten, og du kan ikke holde den igjen før du har hentet deg inn
@@ -1533,8 +1509,6 @@ const VILL = [
 const VILL_SMOKE = [VB.bakery, VB.smith].map(c => { const cu = (HOUSE_STYLE[CABIN_V[c.kind]].L || 48) * 0.225; return [c.x + Math.cos(c.rot) * cu, c.y + Math.sin(c.rot) * cu, HOUSE_HW + HOUSE_HR + 5]; });
 // Bildet i hoggingen: øksa opp, ned, i, og løs igjen
 const villChop = v => { const u = (G.t + v.pal * 0.37) % 1.2; return u < 0.45 ? 0 : u < 0.55 ? 1 : u < 0.85 ? 2 : 3; };
-// d er retningen han ses fra i 3D (ellers den han vender på kartet)
-const villSpr = (v, d) => v.act === 'chop' || v.act === 'smith' ? VSPR[v.pal].chop[villChop(v)] : VSPR[v.pal][d || v.face][v.moving ? 1 + ((v.walkT * 7.5) | 0) % 4 : 0];
 function villUpdate(dt) {
   if (hyp(P.x, P.y + 150) > 800) return;
   const night = G.hour > 21.5 || G.hour < 5.5;

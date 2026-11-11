@@ -219,7 +219,7 @@ function netUi() {
 // Spillet åpner med pausemenyen, siden nettleseren vil ha et klikk før den gir fra seg musepekeren og lyden
 const RELOAD_KEY = 'skogsro.reload';
 function devReload() {
-  try { if (G.started) { save(); sessionStorage.setItem(RELOAD_KEY, JSON.stringify({ x: P.x, y: P.y, f: P.face, fl: P.flip, v3: G.view3d, yaw: AIM.yaw, pitch: AIM.pitch })); } } catch (e) { }
+  try { if (G.started) { save(); sessionStorage.setItem(RELOAD_KEY, JSON.stringify({ x: P.x, y: P.y, f: P.face, fl: P.flip })); } } catch (e) { }
   location.reload();
 }
 function devResume() {
@@ -228,7 +228,6 @@ function devResume() {
   if (!s) return;
   P.x = +s.x || 0; P.y = +s.y || 0; CAM.x = P.x; CAM.y = P.y - 30; if (HUN[s.f]) P.face = s.f; P.flip = !!s.fl;
   startGame(false);
-  G.view3d = VIEW3D && !!s.v3; AIM.yaw = +s.yaw || 0; AIM.pitch = +s.pitch || 0;
   G.msgs = []; msg('Koden er oppdatert.', 'good');
   openPause();
 }

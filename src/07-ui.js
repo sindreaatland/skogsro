@@ -831,8 +831,6 @@ function wheelItems() {
       d: lv('axe') ? 'Tar ' + HUT_WOOD + ' ved. Du har ' + G.wood + '.' : 'Du trenger en øks. Kjøp en hos smeden i landsbyen.' },
     { ico: other ? GUNS[other].ico : 'rifle', n: other ? 'Ta ' + GUNS[other].the : 'Bytt våpen', ok: !!other, act: switchGun,
       d: other ? gunDesc(other) : 'Du har bare ett våpen i våpenplassene. Dra et til opp i inventaret (E).' },
-    ...(VIEW3D ? [{ ico: G.view3d ? 'map' : 'back', n: G.view3d ? 'Kart' : '3D', ok: true, act: toggleView,
-      d: G.view3d ? 'Se skogen ovenfra.' : 'Gå rundt i skogen bak jegeren. Musa snur deg.' }] : []),
     { ico: 'an_radyr', n: 'Jaktbok', ok: true, act: openBook, d: G.journal.length + ' dyr felt.' },
   ];
   if ([...NET.peers.values()].some(r => r.started)) L.push({ ico: 'hunter', n: 'Til en jeger', ok: !P.aim, act: goToHunter, d: 'Gå bort til en av de andre jegerne. Velg igjen for den neste.' });
@@ -972,7 +970,7 @@ function bindInput() {
     if (MOUSE.locked) { MOUSE.x = clamp(MOUSE.x + e.movementX * DPR, 0, W); MOUSE.y = clamp(MOUSE.y + e.movementY * DPR, 0, H); }
     else { MOUSE.x = e.clientX * DPR; MOUSE.y = e.clientY * DPR; }
     // i siktet og i 3D-visningen snur musa blikket
-    if (P.aim || AIM.want || G.view3d && G.started && !G.paused) aimLook(e.movementX * DPR, e.movementY * DPR);
+    if (P.aim || AIM.want) aimLook(e.movementX * DPR, e.movementY * DPR);
   });
   document.addEventListener('pointerlockchange', () => {
     MOUSE.locked = document.pointerLockElement === cv; document.body.classList.toggle('locked', MOUSE.locked);
@@ -1010,7 +1008,6 @@ function bindInput() {
 function boot() {
   cv = $('cv'); m = cv.getContext('2d');
   buf = document.createElement('canvas'); b = buf.getContext('2d');
-  shL = document.createElement('canvas'); sh = shL.getContext('2d');
   genAll(); glInit();
   for (const k in ICON) ICONURL[k] = dataURL(ICON[k]);
   for (const sp of SPECIES) ICONURL['an_' + sp] = dataURL(cropSprite(ANI[sp].m.stand[0], 2));
