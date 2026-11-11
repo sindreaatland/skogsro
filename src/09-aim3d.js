@@ -9,7 +9,8 @@
 const AIM = { yaw: 0, pitch: 0, ry: 0, rp: 0, camYaw: 0, f: 300, eye: 15, far: 900, cx: 0, cy: 0, sx: 0, sy: 0, hy: 0, kick: 0, range: null, pick: null, list: [], list2: [], im: null, px: null,
   want: false, raise: 0, tp: 0, tpF: -1, open: 0, in: false, ex: 0, ey: 0, ringX: 0, ringY: 0, ringR: 0, lc: null, lensX: 0, lensY: 0, upB: 0, brT: 0, brIn: true, hbT: 0, held: false,
   v3: 0, camX: 0, camY: 0, snap: null, snapTmp: null, snapT: 0, pat: {}, masks: new Map() };
-const EYE = 15, NEAR = 14, FAR = 900, SWAY_K = 0.005, PITCH_MAX = 0.35;
+// FAR er hvor langt du ser i klarvær, FOG0 hvor disen begynner, og GND_FAR hvor langt ut bakken tegnes piksel for piksel
+const EYE = 15, NEAR = 14, FAR = 1800, FOG0 = 280, GND_FAR = 1000, SWAY_K = 0.0035, PITCH_MAX = 0.35;
 // Høyreklikk: kartet går inn mot jegeren (IN_T), så ser du ham bakfra i 3D ta børsa opp (TP_T, synsvidde TP_FOV grader),
 // og kikkerten kommer opp foran øyet (OPEN_T). Slipper du, tas kikkerten ned (CLOSE_T) og kartet kommer tilbake (LOWER_T).
 // Bytte mellom kart og 3D løses opp i rutemønster over DISS_T sekunder. Rundt kikkerten ser du skogen med synsvidde
@@ -19,16 +20,16 @@ const IN_T = 0.12, TP_T = 0.55, TP_FOV = 60, OPEN_T = 0.22, CLOSE_T = 0.14, LOWE
 // Bildet jegeren er på i 3D: griper reima, børsa foran brystet, ned på kne, kolben i skulderen
 const tpFrame = () => Math.min(3, (AIM.tp / 0.19) | 0);
 const aimThird = () => !P.aim && AIM.want && AIM.raise >= 1;
-// I 3D-visningen (V) går du rundt med kameraet bak jegeren, der det står når han begynner å ta opp børsa
+// I 3D-visningen (fra hjulet) går du rundt med kameraet bak jegeren, der det står når han begynner å ta opp børsa
 const walk3D = () => G.view3d && !P.aim && !AIM.want;
 const FOG_HEX = '#a9b6a2', FOG = C(FOG_HEX), SKY_HEX = '#c6d4d2', GROUND0 = C('#3d5334'), CSB = Math.log2(CS);
 // Gress, bregner, siv og lyng stopper ikke kula; alt annet du ser, gjør det
 const SOFT = { fern: 1, grassT: 1, reed: 1, heather: 1 };
-const HITN = { rock: 'en stein', stump: 'en stubbe', log: 'en stokk', juniper: 'en einer', shrub: 'en busk', cabin: 'bua' };
+const HITN = { rock: 'en stein', stump: 'en stubbe', log: 'en stokk', juniper: 'en einer', shrub: 'en busk', cabin: 'en husvegg', npc: 'like ved en av folkene', cairn: 'varden', bauta: 'bautasteinen', tower: 'jakttårnet', fence: 'skigarden', pal: 'palisaden', gate: 'porten', well: 'brønnen', stall: 'en markedsbod', lamp: 'en lyktestolpe', vprop: 'noe på tunet' };
 const CHIP = { rock: '#b4b8ac', juniper: '#4e8270', shrub: '#6a8a3a' };
 
-// Brennvidde i bufferpiksler; synsfeltet blir smalere jo bedre kikkert, og hagla ser vidt uten forstørrelse
-const aimFocal = () => Math.ceil(H / ZB) / 2 / Math.tan((hagle() ? HST.fov : ST.fov[lv('scope')]) * Math.PI / 360);
+// Brennvidde i bufferpiksler; synsfeltet blir smalere jo bedre kikkert, og hagla og buen ser vidt uten forstørrelse
+const aimFocal = () => Math.ceil(H / ZB) / 2 / Math.tan((hagle() ? HST.fov : bue() ? BST.fov : ST.fov[lv('scope')]) * Math.PI / 360);
 const tpFocal = () => Math.ceil(H / ZB) / 2 / Math.tan(TP_FOV * Math.PI / 360);
 const surrFocal = () => Math.ceil(H / ZB) / 2 / Math.tan(SURR_FOV * Math.PI / 360);
 // Med hagla kan du se høyt opp etter fugl i lufta
@@ -38,13 +39,15 @@ const aimEye = () => P.deep ? EYE - 5 : EYE;
 const fogSil = s => s._fog || (s._fog = s.pix.sil(FOG).canvas());
 
 // ---------- kart eller 3D ----------
-// V bytter mellom kartet og 3D. I 3D snur musa deg, W/S går fram og tilbake og A/D til sidene. Ikke mens børsa er oppe
+// Hjulet bytter mellom kartet og 3D. I 3D snur musa deg, W/S går fram og tilbake og A/D til sidene. Ikke mens børsa er oppe.
+// 3D-visningen er skjult inntil videre; sett VIEW3D til true for å få valget tilbake i hjulet
+const VIEW3D = false;
 function toggleView() {
   if (!G.started || G.paused || P.aim || AIM.want) return;
   G.view3d = !G.view3d; AIM.raise = 0; sfx.ui();
   // 3D starter med blikket den veien jegeren står
-  if (G.view3d) { AIM.yaw = P.face === 'side' ? (P.flip ? Math.PI : 0) : P.face === 'up' ? -Math.PI / 2 : Math.PI / 2; AIM.pitch = 0; }
-  msg(G.view3d ? '3D: musa snur deg, WASD går. V tilbake til kartet.' : 'Kartet. V for 3D.');
+  if (G.view3d) { AIM.yaw = HORSE.on ? HORSE.h : P.face === 'side' ? (P.flip ? Math.PI : 0) : P.face === 'up' ? -Math.PI / 2 : Math.PI / 2; AIM.pitch = 0; }
+  msg(G.view3d ? '3D: musa snur deg, WASD går. Kartet finner du i hjulet (hold Q).' : 'Kartet. 3D finner du i hjulet (hold Q).');
 }
 // Jegeren snur seg den av de fire retningene på kartet som ligger nærmest vinkelen
 function faceTo(yaw) {
@@ -57,7 +60,8 @@ function faceTo(yaw) {
 // Slipper du, tas kikkerten ned og kartet kommer tilbake mens jegeren senker børsa. I 3D-visningen står kameraet
 // alt bak ham, så der går du rett til å ta børsa opp, og etterpå tilbake til å gå
 function aimPress() {
-  if (AIM.want) return;
+  if (AIM.want || onHorse()) return;
+  if (!G.gun) return noGun();
   AIM.want = true;
   if (P.aim) return; // kikkerten var på vei ned og kommer opp igjen
   aimStart(MOUSE.wx, MOUSE.wy); P.sway = [0, 0];
@@ -137,8 +141,8 @@ function aimLook(dx, dy) {
 function render3D(dt) {
   AIM.kick = Math.max(0, AIM.kick - dt * 4); AIM.upB = performance.now() + 4;
   const third = !P.aim, walk = walk3D(), bw = Math.ceil(W / ZB), bh = Math.ceil(H / ZB), ix = bw >> 1, need = new Map();
-  const e = smooth(0, 1, AIM.open), scope = !third && !hagle() && lv('scope') > 0;
-  let yaw, pitch, eye, camX = P.x, camY = P.y, fWide, fade = 0;
+  const e = smooth(0, 1, AIM.open), scope = !third && G.gun === 'rifle' && lv('scope') > 0;
+  let yaw, pitch, eye, camX = P.x, camY = P.y, fWide, fade = 0, ox = 0, oy = 0;
   if (third) {
     // bak og til høyre for jegeren, litt over hodet hans (AIM.tp er 0 mens han går); mens han tar børsa opp,
     // glir kameraet sakte nærmere, og til slutt inn i hodet hans mens han tones bort
@@ -146,11 +150,12 @@ function render3D(dt) {
     yaw = AIM.yaw; pitch = AIM.pitch - 0.07 * (1 - dive); eye = lerp(24, aimEye(), dive); fWide = tpFocal(); fade = smooth(0.72, 0.95, AIM.tp);
     camX = P.x - Math.cos(yaw) * back - Math.sin(yaw) * side; camY = P.y - Math.sin(yaw) * back + Math.cos(yaw) * side;
   } else {
-    // fra øynene: siktelinja fra musa, pluss pust, skjelving og rekyl. Kikkerten og siktene står fast foran øyet, og
-    // det er skogen som duver. Mens børsa kommer opp, snevres synsfeltet inn fra det vide bildet bak skulderen
-    const [swx, swy] = aimSway();
-    yaw = AIM.yaw + swx * SWAY_K; pitch = AIM.pitch - swy * SWAY_K + AIM.kick * AIM.kick * 0.06; eye = aimEye();
+    // fra øynene: siktelinja fra musa, pluss rekyl. Skogen står stille; pust og skjelving flytter kikkerten eller
+    // siktene (ox, oy bufferpiksler) over bildet. Mens børsa kommer opp, snevres synsfeltet inn fra det vide bildet bak skulderen
+    yaw = AIM.yaw; pitch = AIM.pitch + AIM.kick * AIM.kick * 0.06; eye = aimEye();
     fWide = lerp(tpFocal(), scope ? surrFocal() : aimFocal(), e);
+    const [swx, swy] = aimSway(), fk = SWAY_K * (scope ? aimFocal() : fWide);
+    ox = Math.round(swx * fk); oy = Math.round(swy * fk);
   }
   const cam = { x: camX, y: camY, yaw, pitch, eye }, iy = (bh >> 1) + Math.round((1 - e) * bh * 0.55), R = Math.round(bh * LENS_K);
   // kikkert: det forstørrede bildet tegnes først i et utsnitt rundt linsa, lyssettes og klippes ut som en rund linse.
@@ -159,20 +164,21 @@ function render3D(dt) {
   if (scope) {
     const sp = Math.exp(-dt * 7), om = Math.round(R * 0.2); AIM.ex *= sp; AIM.ey *= sp;
     const eo = hyp(AIM.ex, AIM.ey); if (eo > om) { AIM.ex *= om / eo; AIM.ey *= om / eo; }
-    AIM.ringX = ix + Math.round(AIM.ex); AIM.ringY = iy + Math.round(AIM.ey + AIM.kick * AIM.kick * bh * 0.04); AIM.ringR = R;
-    const pad = R + om + 2, x0 = Math.max(0, ix - pad), y0 = Math.max(0, iy - pad), x1 = Math.min(bw, ix + pad + 1), y1 = Math.min(bh, iy + pad + 1);
+    AIM.ringX = ix + ox + Math.round(AIM.ex); AIM.ringY = iy + oy + Math.round(AIM.ey + AIM.kick * AIM.kick * bh * 0.04); AIM.ringR = R;
+    const pad = R + om + 2, x0 = Math.max(0, ix + ox - pad), y0 = Math.max(0, iy + oy - pad), x1 = Math.min(bw, ix + ox + pad + 1), y1 = Math.min(bh, iy + oy + pad + 1);
     if (x1 > x0 && y1 > y0) {
       shotView(world({ ...cam, f: aimFocal(), cy: iy + 0.5, clip: [x0, y0, x1, y1] }, bw, bh, need, AIM.list));
-      reticle(ix, iy, R, lv('scope'));
+      reticle(ix + ox, iy + oy, R, lv('scope'));
       b.globalCompositeOperation = 'multiply'; b.fillStyle = lightAt(G.hour); b.fillRect(x0, y0, x1 - x0, y1 - y0); b.globalCompositeOperation = 'source-over';
-      lens = cutLens(x0, y0, x1 - x0, y1 - y0, ix, iy, R, om);
+      lens = cutLens(x0, y0, x1 - x0, y1 - y0, ix + ox, iy + oy, R, om);
     }
   }
   // synsfeltet over hele skjermen; rundt kikkerten litt dempet, som det andre øyet ser det
-  const wv = world({ ...cam, f: fWide, third, walk, fade, nmax: lens ? 6 : 16, hole: lens && [AIM.ringX + 0.5, AIM.ringY + 0.5, R + Math.round(bh * 0.07)] }, bw, bh, need, lens ? AIM.list2 : AIM.list);
+  const wv = world({ ...cam, f: fWide, third, walk, fade, zb2: !!lens, hole: lens && [AIM.ringX + 0.5, AIM.ringY + 0.5, R + Math.round(bh * 0.07)] }, bw, bh, need, lens ? AIM.list2 : AIM.list);
   if (!lens) shotView(wv);
+  AIM.sx += ox; AIM.sy += oy;
   if (scope) { b.globalAlpha = 0.25; b.fillStyle = MASK; b.fillRect(0, 0, bw, bh); b.globalAlpha = 1; scopeBody(AIM.ringX, AIM.ringY, R, bh); }
-  else if (!third) drawSights(bw, bh, iy);
+  else if (!third) drawSights(bw, bh, ix + ox, iy + oy);
   // døgnlys over skog, kikkert og børse; linsa er alt lyssatt, så munningsglimtet til slutt
   b.globalCompositeOperation = 'multiply'; b.fillStyle = lightAt(G.hour); b.fillRect(0, 0, bw, bh);
   b.globalCompositeOperation = 'source-over';
@@ -183,7 +189,7 @@ function render3D(dt) {
   m.setTransform(1, 0, 0, 1, 0, 0); m.imageSmoothingEnabled = false;
   m.drawImage(buf, 0, 0, bw, bh, 0, 0, bw * ZB, bh * ZB);
   // avstandsmåleren leser det som ligger i trådkorset, ellers bakken
-  const pk = AIM.pick = aimPick(AIM.sx, AIM.sy), zg = AIM.sy > AIM.hy ? AIM.eye * AIM.f / (AIM.sy - AIM.hy) : Infinity;
+  const pk = AIM.pick = aimPick(AIM.sx, AIM.sy), zg = groundZ(AIM.sx, AIM.sy);
   AIM.range = pk ? pk.it.z : zg < AIM.far ? zg : null;
   // mens du går i 3D, følger kartet med, og «musa på kartet» (hunden, skudd fra hofta) er bakken midt i bildet
   if (walk) {
@@ -196,52 +202,87 @@ function render3D(dt) {
   for (const [kx, ky] of [...need.values()].sort((p, q) => p[2] - q[2])) { genGround(getChunk(kx, ky)); if (performance.now() - t0 > 6) break; }
   if ((G.t | 0) % 5 === 0) evictChunks(anchors());
 }
+// Åsene bak synsranda, nærmest først: [farge, laveste høyde og utslag (radianer), hvor fort den skifter, frø]
+const RIDGES = [['#8ea39c', 0.006, 0.03, 5.5, 301], ['#a0b3b2', 0.02, 0.045, 3.6, 302], ['#b4c5c8', 0.04, 0.06, 2.4, 303]];
+// Bakken der biten ikke er tegnet (langt unna, eller ikke rukket ennå): én farge per rute på 32 × 32 piksler, snittet av
+// fire punkter i ruta, husket i en liten tabell
+const FARN = 1 << 14, farK = new Int32Array(FARN * 2).fill(1 << 30), farV = new Uint32Array(FARN);
+function farCol(ix, iy) {
+  const gx = ix >> 5, gy = iy >> 5, h = (Math.imul(gx, 73856093) ^ Math.imul(gy, 19349663)) & (FARN - 1);
+  if (farK[h * 2] === gx && farK[h * 2 + 1] === gy) return farV[h];
+  const x = (gx << 5) + 16, y = (gy << 5) + 16, fl = fields(x, y, cabinsNear(x, y));
+  let r = 0, g = 0, bl = 0;
+  const hx = (heightRaw(x + 16, y) - heightRaw(x - 16, y)) / 32, hy = (heightRaw(x, y + 16) - heightRaw(x, y - 16)) / 32, hh = heightRaw(x, y), sg = hyp(hx, hy);
+  for (let i = 0; i < 4; i++) { const c = groundColor(x + (i & 1) * 11 - 5, y + (i >> 1) * 11 - 5, fl, hh, sg); r += c & 255; g += (c >>> 8) & 255; bl += (c >>> 16) & 255; }
+  farK[h * 2] = gx; farK[h * 2 + 1] = gy;
+  // skyggelagt etter hellingen, som den tegnede bakken
+  return farV[h] = lightC((0xff000000 | (bl >> 2) << 16 | (g >> 2) << 8 | r >> 2) >>> 0, shadeK(hx + hy));
+}
 // Bildet kula følger: midten er trådkorset
-function shotView(v) { Object.assign(AIM, { cx: v.cx, cy: v.cy, hy: v.hy, f: v.f, eye: v.eye, far: v.far, camYaw: v.yaw, camX: v.x, camY: v.y, sx: v.cx, sy: v.cy }); }
+function shotView(v) { Object.assign(AIM, { cx: v.cx, cy: v.cy, hy: v.hy, f: v.f, eye: v.eye, camZ: v.camZ, far: v.far, camYaw: v.yaw, camX: v.x, camY: v.y, sx: v.cx, sy: v.cy }); }
 // Skogen sett fra (o.x, o.y) i øyehøyde o.eye, i retning o.yaw/o.pitch med brennvidde o.f, tegnet inn i bufferen. Midten av
-// bildet er (bw/2, o.cy). Med o.clip ([x0, y0, x1, y1]) tegnes bare det utsnittet. Bakken innenfor o.hole ([x, y, r],
-// der okularet dekker) tegnes ikke, og o.nmax begrenser hvor mange delrader en bakkerad snittes av (færre i det dempede
-// synsfeltet rundt kikkerten). Med o.third står jegeren i bildet, tonet bort med o.fade; med o.walk går han rundt, og de
+// bildet er (bw/2, o.cy). Med o.clip ([x0, y0, x1, y1]) tegnes bare det utsnittet. Ting helt bak o.hole ([x, y, r],
+// der okularet dekker) tegnes ikke, og med o.zb2 havner bakkedybden i AIM.zb2, så AIM.zb beholder den fra bildet i
+// kikkerten. Med o.third står jegeren i bildet, tonet bort med o.fade; med o.walk går han rundt, og de
 // andre jegerne og blodet på bakken vises også. Det som tegnes, havner i L, nærmest sist
 function world(o, bw, bh, need, L) {
   const camX = o.x, camY = o.y, f = o.f, eye = o.eye, [x0, y0, x1, y1] = o.clip || [0, 0, bw, bh];
   const vx = Math.cos(o.yaw), vy = Math.sin(o.yaw), rx = -vy, ry = vx;
   const cx = (bw >> 1) + 0.5, cy = o.cy || (bh >> 1) + 0.5, hy = cy + Math.tan(o.pitch) * f;
-  const far = FAR * (1 - 0.45 * mist(G.hour)), fog = z => smooth(40, far, z);
+  // disen begynner et stykke ute og tetner mot synsranda; morgentåka trekker begge nærmere
+  const mi = mist(G.hour), far = FAR * (1 - 0.45 * mi), fog0 = FOG0 * (1 - mi), fog = z => smooth(fog0, far, z);
 
-  // bakke: hver rad under horisonten ligger på én avstand; dis legges på mot horisonten.
-  // Langt unna dekker én pikselrad mange bakkepiksler i dybden, så raden blir snittet av flere delrader
-  if (!AIM.im || AIM.im.width !== bw || AIM.im.height !== bh) { AIM.im = b.createImageData(bw, bh); AIM.px = new Uint32Array(AIM.im.data.buffer); AIM.acc = new Uint32Array(bw * 3); }
-  const px = AIM.px, acc = AIM.acc, M = CS - 1, fr = FOG & 255, fg = (FOG >>> 8) & 255, fb = (FOG >>> 16) & 255;
-  px.fill(0);
-  for (let y = Math.max(y0, Math.floor(hy)); y < y1; y++) {
-    const dy = y + 0.5 - hy; if (dy <= 0) continue;
-    const z = eye * f / dy, fo = Math.round(fog(z) * 256), row = y * bw;
-    if (fo >= 256) { px.fill(FOG, row + x0, row + x1); continue; }
-    const n = Math.min(o.nmax || 16, Math.ceil(z / dy));
-    // kolonnene som skal tegnes: hele raden, eller to biter på hver side av okularet
-    let spans = [x0, x1];
-    if (o.hole) { const hd = y + 0.5 - o.hole[1], hr = o.hole[2] - 1; if (Math.abs(hd) < hr) { const hh = Math.sqrt(hr * hr - hd * hd), sa = Math.max(x0, Math.ceil(o.hole[0] - hh)), sb = Math.min(x1, Math.floor(o.hole[0] + hh)); if (sb > sa) spans = [x0, sa, sb, x1]; } }
-    acc.fill(0);
-    for (let j = 0; j < n; j++) {
-      const zj = eye * f / Math.max(0.05, dy - 0.5 + (j + 0.5) / n), st = zj / f, sx = rx * st, sy = ry * st;
-      const wx0 = camX + vx * zj + rx * (0.5 - cx) * st, wy0 = camY + vy * zj + ry * (0.5 - cx) * st;
-      let lkx = NaN, lky = NaN, d = null;
-      for (let q = 0; q < spans.length; q += 2) {
-        let wx = wx0 + sx * spans[q], wy = wy0 + sy * spans[q];
-        for (let i = spans[q] * 3, e = spans[q + 1] * 3; i < e; i += 3, wx += sx, wy += sy) {
-          const ix = Math.floor(wx), iy = Math.floor(wy), kx = ix >> CSB, ky = iy >> CSB;
-          if (kx !== lkx || ky !== lky) { lkx = kx; lky = ky; const key = kx + ',' + ky, ch = chunks.get(key); d = ch && ch.gpix; if (!d) need.set(key, [kx, ky, zj]); }
-          const c = d ? d[(iy & M) << CSB | ix & M] : GROUND0;
-          acc[i] += c & 255; acc[i + 1] += (c >>> 8) & 255; acc[i + 2] += (c >>> 16) & 255;
+  // bitene vi ser ut over (trær og høyder; bakken tegnes ved behov)
+  const ex = (cx + 8) / f * far, xs = [camX, camX + vx * far + rx * ex, camX + vx * far - rx * ex], ys = [camY, camY + vy * far + ry * ex, camY + vy * far - ry * ex];
+  const kx0 = Math.floor((Math.min(...xs) - 40) / CS), kx1 = Math.floor((Math.max(...xs) + 40) / CS), ky0 = Math.floor((Math.min(...ys) - 40) / CS), ky1 = Math.floor((Math.max(...ys) + 40) / CS);
+  for (let ky = ky0; ky <= ky1; ky++) for (let kx = kx0; kx <= kx1; kx++) getChunk(kx, ky);
+  // øyet står eye over bakken; bak jegeren løftes kameraet så det ikke havner under bakken i en motbakke
+  const camZ = eye + Math.max(heightAt(camX, camY), o.third ? heightAt(P.x, P.y) : 0);
+
+  // terreng: hver kolonne i bildet går utover fra kameraet, steg for steg, og tegner det stykket av bakken som stikker
+  // opp over det som alt er tegnet i kolonnen. Stegene er korte nært og lengre utover (aldri over 16 piksler, så en
+  // bakke som vender mot deg, ikke blir stripete). Nært leses bakken piksel for piksel, lenger ute fra utgaven i kvart
+  // oppløsning, og lengst ute grovt (farCol). zb husker dybden til bakken i hver piksel, så ting bak en ås skjules
+  if (!AIM.im || AIM.im.width !== bw || AIM.im.height !== bh) { AIM.im = b.createImageData(bw, bh); AIM.px = new Uint32Array(AIM.im.data.buffer); AIM.zb = new Float32Array(bw * bh); AIM.zb2 = new Float32Array(bw * bh); }
+  const px = AIM.px, zb = o.zb2 ? AIM.zb2 : AIM.zb, M = CS - 1, fr = FOG & 255, fg = (FOG >>> 8) & 255, fb = (FOG >>> 16) & 255;
+  px.fill(0); zb.fill(1e9);
+  const fogC = (c, fo) => { if (!fo) return c; const r = c & 255, g = (c >>> 8) & 255, bl = (c >>> 16) & 255; return (0xff000000 | (bl + ((fb - bl) * fo >> 8)) << 16 | (g + ((fg - g) * fo >> 8)) << 8 | (r + ((fr - r) * fo >> 8))) >>> 0; };
+  const ZS = [], ZF = [], kz = 0.5 / (eye * f);
+  for (let z = 2; z < far; z += clamp(z * z * kz, 1, 16)) { ZS.push(z); ZF.push(Math.round(fog(z) * 256)); }
+  for (let x = x0; x < x1; x++) {
+    const t = (x + 0.5 - cx) / f, dxw = vx + rx * t, dyw = vy + ry * t;
+    let yb = y1, lkx = NaN, lky = NaN, hg = null, gp = null, gm = null, bx = 0, by = 0, pwx = camX, pwy = camY, psy = y1;
+    // fargen på bakken i (ix, iy) i biten vi står i: piksel for piksel nært, kvart oppløsning lenger ute, grovt lengst ute
+    const colAt = (ix, iy, z) => gp && z < 190 ? gp[(iy & M) << CSB | ix & M] : gm && z < GND_FAR ? gm[((iy & M) >> 2) << 6 | (ix & M) >> 2] : farCol(ix, iy);
+    for (let s = 0; s < ZS.length && yb > y0; s++) {
+      const z = ZS[s], wx = camX + dxw * z, wy = camY + dyw * z, ix = Math.floor(wx), iy = Math.floor(wy), kx = ix >> CSB, ky = iy >> CSB;
+      if (kx !== lkx || ky !== lky) {
+        lkx = kx; lky = ky; bx = kx << CSB; by = ky << CSB;
+        const key = kx + ',' + ky, ch = chunks.get(key);
+        hg = ch ? ch.hg : null; gp = ch ? ch.gpix : null; gm = ch ? ch.gmid : null;
+        if (!gp && z < GND_FAR) need.set(key, [kx, ky, z]);
+      }
+      let h;
+      if (hg) {
+        const u = (wx - bx) / HG, v = (wy - by) / HG, i = u | 0, j = v | 0, a = (j + 1) * HN + i + 1, fu = u - i, h0 = hg[a] + (hg[a + 1] - hg[a]) * fu, h1 = hg[a + HN] + (hg[a + HN + 1] - hg[a + HN]) * fu;
+        h = h0 + (h1 - h0) * (v - j);
+      } else h = heightRaw(wx, wy);
+      const sy = hy + (camZ - h) * f / z, yt = sy < y0 ? y0 : Math.ceil(sy);
+      if (yt < yb) {
+        const fo = ZF[s], q0 = yt * bw + x;
+        // en bakke som vender mot deg, fyller mange rader mellom to steg: da leses fargen for hver rad langs bakken
+        // mellom forrige punkt og dette, ellers ville stykket blitt en ensfarget stripe
+        if (yb - yt > 2 && s && z - ZS[s - 1] >= 2 && fo < 256) {
+          const kq = 1 / Math.max(1, psy - sy);
+          for (let y = yt, q = q0; y < yb; y++, q += bw) { const tq = Math.min(1, (y - sy) * kq), qx = Math.floor(wx + (pwx - wx) * tq), qy = Math.floor(wy + (pwy - wy) * tq); px[q] = fogC(colAt(qx >> CSB === kx && qy >> CSB === ky ? qx : ix, qx >> CSB === kx && qy >> CSB === ky ? qy : iy, z), fo); zb[q] = z; }
+        } else {
+          const c = fo >= 256 ? FOG : fogC(colAt(ix, iy, z), fo);
+          for (let y = yt, q = q0; y < yb; y++, q += bw) { px[q] = c; zb[q] = z; }
         }
+        yb = yt;
       }
+      pwx = wx; pwy = wy; psy = sy;
     }
-    for (let q = 0; q < spans.length; q += 2)
-      for (let i = spans[q] * 3, p = row + spans[q], e = row + spans[q + 1]; p < e; i += 3, p++) {
-        const r = acc[i] / n | 0, g = acc[i + 1] / n | 0, bl = acc[i + 2] / n | 0;
-        px[p] = 0xff000000 | (bl + ((fb - bl) * fo >> 8)) << 16 | (g + ((fg - g) * fo >> 8)) << 8 | (r + ((fr - r) * fo >> 8));
-      }
   }
   b.putImageData(AIM.im, 0, 0, x0, y0, x1 - x0, y1 - y0);
 
@@ -250,30 +291,45 @@ function world(o, bw, bh, need, L) {
   const add = (wx, wy, s, flip, it) => {
     const dx = wx - camX, dy = wy - camY, z = dx * vx + dy * vy;
     if (z < NEAR || z > far || z < SOFT_NEAR && it.o && SOFT[it.o.k]) return;
-    const k = f / z, X = Math.round(cx + (dx * rx + dy * ry) * k - (flip ? s.w - s.ax : s.ax) * k), Y = Math.round(hy + (eye - (it.hz || 0) - s.ay) * k);
+    const gz = it.o ? it.o.h : heightAt(wx, wy);
+    const k = f / z, X = Math.round(cx + (dx * rx + dy * ry) * k - (flip ? s.w - s.ax : s.ax) * k), Y = Math.round(hy + (camZ - gz - (it.hz || 0) - s.ay) * k);
     const Wd = Math.max(1, Math.round(s.w * k)), Hd = Math.max(1, Math.round(s.h * k));
+    // lyng, gress og småstein langt unna er mindre enn to piksler og tegnes ikke
+    if (Hd < 2 && it.o) return;
     if (X > x1 || X + Wd < x0 || Y > y1 || Y + Hd < y0) return;
     // helt bak okularet
     if (o.hole) { const hx = o.hole[0], hy2 = o.hole[1], r2 = o.hole[2] * o.hole[2], fx = Math.max(Math.abs(X - hx), Math.abs(X + Wd - hx)), fy = Math.max(Math.abs(Y - hy2), Math.abs(Y + Hd - hy2)); if (fx * fx + fy * fy < r2) return; }
-    Object.assign(it, { z, k, X, Y, W: Wd, H: Hd, s, flip, fo: fog(z) });
+    // bak en ås: midt under tingen leses dybden til bakken oppover fra foten. Er bakken nærmere enn tingen helt opp,
+    // er den skjult; ellers tegnes bare det som stikker opp over åsen (clipY)
+    const xc = clamp(X + (Wd >> 1), x0, x1 - 1), zt = z * 0.96 - 4, yf = Math.min(y1, Y + Hd) - 1;
+    let yv = yf; while (yv >= Y && yv >= y0 && zb[yv * bw + xc] < zt) yv--;
+    if (yv < Y || yv < y0) return;
+    Object.assign(it, { z, k, X, Y, W: Wd, H: Hd, s, flip, fo: fog(z), clipY: yv < yf ? yv + 1 : null });
     if (it.sw && Math.abs(it.sw * k) < 0.5) it.sw = 0;
     if (it.fo < 0.99) { L.push(it); return it; }
   };
-  const ex = (cx + 8) / f * far, xs = [camX, camX + vx * far + rx * ex, camX + vx * far - rx * ex], ys = [camY, camY + vy * far + ry * ex, camY + vy * far - ry * ex];
   // bare trærne rører seg, og bare når det blåser mer enn flau vind
-  const wl = (G.wind.x * rx + G.wind.y * ry) * 0.6, wa = Math.max(0, G.wind.s - 0.25) * 2.9;
-  for (let ky = Math.floor((Math.min(...ys) - 40) / CS); ky <= Math.floor((Math.max(...ys) + 40) / CS); ky++)
-    for (let kx = Math.floor((Math.min(...xs) - 40) / CS); kx <= Math.floor((Math.max(...xs) + 40) / CS); kx++)
+  const wl = (G.wind.x * rx + G.wind.y * ry) * 0.6, wa = Math.max(0, G.wind.s - 0.25) * 1.8;
+  for (let ky = ky0; ky <= ky1; ky++)
+    for (let kx = kx0; kx <= kx1; kx++)
       for (const ob of getChunk(kx, ky).objs) {
-        const s = SPR[ob.k][ob.v];
-        add(ob.x, ob.y, s, false, { o: ob, solid: !SOFT[ob.k], sw: s.sway ? (Math.sin(G.t * 1.3 + ob.ph) * 0.8 + wl) * wa : 0 });
+        const s0 = SPR[ob.k][ob.k === 'fence' || ob.k === 'pal' ? 0 : ob.v], s = s0.s3 || s0; // skigarden vender alltid langsida mot siktet, og husene ses rett forfra
+        add(ob.x, ob.y, s, false, { o: ob, solid: !SOFT[ob.k], sw: s.sway ? (Math.sin(G.t * 1.0 + ob.ph) * 0.8 + wl) * wa * gust(ob.x, ob.y) : 0 });
       }
   // dyra vises i profil og snus etter hvilken vei de går sett herfra; fugl i lufta tegnes i sin høyde.
   // Andre jegere vises bare på kartet, aldri i siktet.
   for (const a of G.animals) add(a.x, a.y, animalSprite(a), Math.cos(a.head) * rx + Math.sin(a.head) * ry < 0, { a, solid: a.state !== 'dead', hz: a.z || 0 });
+  // folk i landsbyen, snudd etter hvilken vei de går sett herfra
+  for (const v of VILL) if (!v.in) {
+    const fx = v.face === 'side' ? (v.flip ? -1 : 1) : 0, fy = v.face === 'side' ? 0 : v.face === 'up' ? -1 : 1, fw = fx * vx + fy * vy, d = fw > 0.7 ? 'up' : fw < -0.7 ? 'down' : 'side';
+    add(v.x, v.y, villSpr(v, d), (d === 'side' || v.act === 'chop' || v.act === 'smith') && fx * rx + fy * ry < 0, {});
+  }
   for (const so of G.scentObjs) add(so.x, so.y, FX.bottle, false, {});
   for (const fi of G.fires) add(fi.x, fi.y, fireSpr(fi), false, {});
   for (const h of G.huts) add(h.x, h.y, FX.hut, false, {});
+  // hesten, sett fra den vinkelen kameraet ser den fra
+  const horseAt = (x, y, hd, kit, fr) => horseSpr(hd, Math.atan2(y - camY, x - camX), kit, fr);
+  if (lv('horse') && !HORSE.on) add(HORSE.x, HORSE.y, horseAt(HORSE.x, HORSE.y, HORSE.h, horseKit(false), horseStep()), false, {});
   // sett bakfra: jegeren som går (eller hogger, sett fra siden mot treet), eller som tar børsa opp, og hunden ved siden av ham
   let hs = HUN.ots[tpFrame()], hf = false;
   if (o.walk) {
@@ -281,30 +337,33 @@ function world(o, bw, bh, need, L) {
     hs = tr ? HUN.chop[chopFrame(P.work)] : HUN.up[0][P.moving ? 1 + ((P.walkT * 7.5) | 0) % 4 : 0];
     hf = !!tr && (tr.x - P.x) * rx + (tr.y - P.y) * ry < 0;
   }
-  const hu = o.third && add(P.x, P.y, hs, hf, { hunter: 1, al: 1 - o.fade });
-  if (o.third) add(D.x, D.y, dogSprite(D), D.face * rx < 0, { al: 1 - o.fade });
+  if (HORSE.on) { hs = horseAt(P.x, P.y, HORSE.h, horseKit(true), horseStep()); hf = false; }
+  const hu = o.third && add(P.x, P.y, hs, hf, { hunter: 1, al: 1 - o.fade, hz: horseBob() });
+  if (o.third) { const [s, fl] = dogView(D, vx, vy, rx, ry); add(D.x, D.y, s, fl, { al: 1 - o.fade }); }
   if (o.walk) {
     // de andre jegerne, snudd etter hvilken vei de går sett herfra, og hundene deres
     for (const r of NET.peers.values()) {
       if (!r.started || r.in) continue;
       const fx = r.face === 'side' ? (r.flip ? -1 : 1) : 0, fy = r.face === 'side' ? 0 : r.face === 'up' ? -1 : 1, fw = fx * vx + fy * vy;
       const d = fw > 0.7 ? 'up' : fw < -0.7 ? 'down' : 'side';
-      add(r.x, r.y, HUN[d][r.aim ? 1 : 0][r.moving ? 1 + ((r.walkT * 7.5) | 0) % 4 : 0], d === 'side' && fx * rx + fy * ry < 0, {});
-      if (r.dog) add(r.dog.x, r.dog.y, dogSprite(r.dog), r.dog.face * rx < 0, {});
+      if (r.av && r.av.on) add(r.x, r.y, horseAt(r.x, r.y, r.av.h, r.av.kit | 1, r.moving ? 1 + ((G.t * 5) | 0) % 2 : 0), false, {});
+      else add(r.x, r.y, HUN[d][r.aim ? 1 : 0][r.moving ? 1 + ((r.walkT * 7.5) | 0) % 4 : 0], d === 'side' && fx * rx + fy * ry < 0, {});
+      if (r.av && !r.av.on) add(r.av.x, r.av.y, horseAt(r.av.x, r.av.y, r.av.h, r.av.kit), false, {});
+      if (r.dog) { const [s, fl] = dogView(r.dog, vx, vy, rx, ry); add(r.dog.x, r.dog.y, s, fl, {}); }
     }
     // blodsporet som flate flekker på bakken
     for (const d of G.blood) {
       const dx = d.x - camX, dy = d.y - camY, z = dx * vx + dy * vy;
       if (z < NEAR || z > far) continue;
-      const k = f / z; L.push({ p: { col: d.t < 30 ? '#9a2a22' : '#6a221c', al: clamp(1 - d.t / 240, 0.2, 1) }, flat: 1, z, k, X: cx + (dx * rx + dy * ry) * k, Y: hy + eye * k, fo: fog(z) });
+      const k = f / z; L.push({ p: { col: d.t < 30 ? '#9a2a22' : '#6a221c', al: clamp(1 - d.t / 240, 0.2, 1) }, flat: 1, z, k, X: cx + (dx * rx + dy * ry) * k, Y: hy + (camZ - heightAt(d.x, d.y)) * k, fo: fog(z) });
     }
   }
   // bare det skuddet virvler opp; fallende løv, ildfluer og lukt driver ikke forbi i siktet
   for (const p of G.parts) {
-    if (p.fly || p.faint || p.glow || p.leaf !== undefined) continue;
+    if (p.fly || p.faint || p.mote || p.glow || p.leaf !== undefined) continue;
     const dx = p.x - camX, dy = p.y - camY, z = dx * vx + dy * vy;
     if (z < NEAR || z > far) continue;
-    const k = f / z; L.push({ p, z, k, X: cx + (dx * rx + dy * ry) * k, Y: hy + (eye - p.z) * k, fo: fog(z) });
+    const k = f / z; L.push({ p, z, k, X: cx + (dx * rx + dy * ry) * k, Y: hy + (camZ - heightAt(p.x, p.y) - p.z) * k, fo: fog(z) });
   }
   L.sort((p, q) => q.z - p.z);
   // trær, stein og busker mellom kameraet og jegeren som dekker ham, blir halvgjennomsiktige, som trærne på kartet
@@ -318,19 +377,41 @@ function world(o, bw, bh, need, L) {
       continue;
     }
     const al = it.al == null ? 1 : it.al; if (al < 0.02) continue;
+    if (it.clipY != null) { b.setTransform(1, 0, 0, 1, 0, 0); b.save(); b.beginPath(); b.rect(x0, y0, x1 - x0, it.clipY - y0); b.clip(); }
     if (it.flip) b.setTransform(-1, 0, 0, 1, it.X + it.W, it.Y); else b.setTransform(1, 0, 0, 1, it.X, it.Y);
-    b.globalAlpha = al; drawBill(it, false);
-    if (it.fo > 0.01) { b.globalAlpha = it.fo * al; drawBill(it, true); }
+    // langt ute i disen er det bare silhuetten igjen
+    if (it.fo > 0.9) { b.globalAlpha = al; drawBill(it, true); }
+    else { b.globalAlpha = al; drawBill(it, false); if (it.fo > 0.01) { b.globalAlpha = it.fo * al; drawBill(it, true); } }
     b.globalAlpha = 1;
+    if (it.clipY != null) b.restore();
   }
   b.setTransform(1, 0, 0, 1, 0, 0);
-  // himmel bak alt
+  // bak alt: blånende åser i tre lag over synsranda, de nærmeste først, og så himmelen. Høyden følger retningen du ser
+  // i (støy rundt en sirkel, så den går rundt uten skjøt), åsene er høyest mot fjellet i nord, og tåka visker dem ut
   b.globalCompositeOperation = 'destination-over';
+  // ser du ned fra en høyde, når ikke terrenget opp til synsranda: der ligger disen
+  if (hy < y1) { b.fillStyle = FOG_HEX; b.fillRect(x0, Math.max(y0, Math.floor(hy)), x1 - x0, y1 - Math.max(y0, Math.floor(hy))); }
+  b.globalAlpha = clamp(1.15 - mi * 1.5, 0, 1);
+  for (const [col, base, amp, R, sd] of RIDGES) {
+    b.fillStyle = col;
+    for (let x = x0; x < x1; x++) {
+      const an = o.yaw + Math.atan((x + 0.5 - cx) / f), e = base + amp * fbm(Math.cos(an) * R + 50, Math.sin(an) * R + 50, sd, 3) * (1 + 0.7 * Math.max(0, -Math.sin(an)));
+      const top = Math.round(hy - e * f); if (top < hy) b.fillRect(x, top, 1, Math.ceil(hy) - top + 1);
+    }
+  }
+  b.globalAlpha = 1;
   const g = b.createLinearGradient(0, hy - f * 0.5, 0, hy); g.addColorStop(0, SKY_HEX); g.addColorStop(1, FOG_HEX);
   b.fillStyle = g; b.fillRect(x0, y0, x1 - x0, y1 - y0);
   b.globalCompositeOperation = 'source-over';
-  return { cx, cy, hy, f, eye, far, yaw: o.yaw, x: camX, y: camY };
+  return { cx, cy, hy, f, eye, camZ, far, yaw: o.yaw, x: camX, y: camY };
 }
+// Hunden sett herfra (blikkretning vx, vy, høyre rx, ry), i en av åtte retninger etter hvilken vei den går. Gir [sprite, speilvendt]
+function dogView(d, vx, vy, rx, ry) {
+  const hx = Math.cos(d.hd), hy = Math.sin(d.hd);
+  return dogDir(d, hx * vx + hy * vy, hx * rx + hy * ry);
+}
+// Hvor mye en stripe av et tre svaier: ingenting i den nederste halvdelen (stammen står fast), mest i toppen
+const swayQ = (y, h) => Math.max(0, 1 - 2 * y / h);
 // Sprite (eller dis-silhuetten) skalert inn i ruta it.W × it.H; trær som svaier tegnes i striper som i 2D
 function drawBill(it, fog) {
   const s = it.s, e = it.k >= 2.2 ? upSprite(s, upLevel(it.k)) : null;
@@ -338,7 +419,7 @@ function drawBill(it, fog) {
   const [bx, by, bw, bh] = e ? e.bb : [0, 0, s.w, s.h], kx = it.W / s.w, ky = it.H / s.h, X0 = Math.round(bx * kx), Wd = Math.round((bx + bw) * kx) - X0;
   if (!it.sw) { const Y0 = Math.round(by * ky); b.drawImage(img, 0, 0, bw * u, bh * u, X0, Y0, Wd, Math.round((by + bh) * ky) - Y0); return; }
   for (let y0 = by - by % 6; y0 < by + bh; y0 += 6) {
-    const ya0 = Math.max(y0, by), yb0 = Math.min(y0 + 6, by + bh), q = 1 - y0 / s.h, off = Math.round(it.sw * q * q * it.k), ya = Math.round(ya0 * ky), yb = Math.round(yb0 * ky);
+    const ya0 = Math.max(y0, by), yb0 = Math.min(y0 + 6, by + bh), q = swayQ(y0, s.h), off = Math.round(it.sw * q * q * it.k), ya = Math.round(ya0 * ky), yb = Math.round(yb0 * ky);
     if (yb > ya) b.drawImage(img, 0, (ya0 - by) * u, bw * u, (yb0 - ya0) * u, X0 + off, ya, Wd, yb - ya);
   }
 }
@@ -382,12 +463,43 @@ function upSprite(s, n) {
 // ---------- sikter, kikkert og børse ----------
 // Tegnes i de samme bufferpikslene som skogen, så alt i bildet har samme pikselstørrelse. Kikkerten eller børsa glir
 // opp fra underkanten når du legger an (AIM.open), og ned igjen når du slipper.
-// Åpne sikter og hagle: mørkere hjørner, og børsa med siktene midt i bildet
-function drawSights(bw, bh, iy) {
+// Åpne sikter, hagle og bue: mørkere hjørner, og børsa med siktene (eller buen med siktepinnene) midt i bildet
+function drawSights(bw, bh, ix, iy) {
   const hg = hagle();
   b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1;
-  b.drawImage(hg ? vigMask(bw, bh, 0.78, 0.35) : vigMask(bw, bh, 0.7, 0.5), 0, 0);
-  gunSights(bw >> 1, iy, bh, hg);
+  b.drawImage(hg || bue() ? vigMask(bw, bh, 0.78, 0.35) : vigMask(bw, bh, 0.7, 0.5), 0, 0);
+  if (bue()) bowSights(ix, iy, bh); else gunSights(ix, iy, bh, hg);
+}
+// Siktepinnene på buen: avstand i meter og farge. Den øverste står midt i bildet (buen er skutt inn på BST.zero m), de andre
+// under, der pila går på den avstanden. Compoundbuen har en pinne til
+const PINS = [[20, '#8ee070'], [30, '#f0d040'], [40, '#ec5a40'], [50, '#e8ecf0']];
+const pinsOf = () => PINS.slice(0, lv('bue') >= 3 ? 4 : 3);
+const pinY = m => AIM.f * arrowDrop(m / M_PER_PX);
+// Buen sett fra skytteren: armen med grepet i venstre hånd til venstre for midten og lemmene ut av bildet over og under,
+// pila på pilhylla med spissen mot midten, og siktehuset med pinnene for hver avstand
+function bowSights(ix, iy, bh) {
+  const U = bh / 100, rx = Math.round(ix - 15 * U), top = iy - 26 * U, bot = iy + 34 * U, wood = bue() && lv('bue') >= 3 ? ['#2a2e2a', '#43483f', '#191c19'] : ['#6e4a2c', '#8c6038', '#3e2818'];
+  // lemmene bøyer seg bakover mot skytteren, armen er tykkest ved grepet
+  trap(-2, top, rx - 7 * U, rx - 5 * U, rx - 2 * U, rx + 2 * U, wood[0]); trap(-2, top, rx - 7 * U, rx - 6 * U, rx - 2 * U, rx - 1 * U, wood[1]);
+  trap(bot, bh + 2, rx - 2 * U, rx + 2 * U, rx - 8 * U, rx - 5 * U, wood[0]); trap(bot, bh + 2, rx - 2 * U, rx - 1 * U, rx - 8 * U, rx - 7 * U, wood[1]);
+  trap(top, bot, rx - 2 * U, rx + 2 * U, rx - 3 * U, rx + 3 * U, wood[0]); trap(top, bot, rx - 2 * U, rx - 1 * U, rx - 3 * U, rx - 2 * U, wood[1]); trap(top, bot, rx + 1 * U, rx + 2 * U, rx + 2 * U, rx + 3 * U, wood[2]);
+  // siktehuset: en arm ut fra buen og en ring rundt pinnene
+  const P0 = pinsOf(), ys = P0.map(([m]) => iy + Math.round(pinY(m))), ry0 = Math.min(...ys) - 4 * U, ry1 = Math.max(...ys) + 4 * U, hw = Math.round(5 * U);
+  b.fillStyle = '#1a1816'; b.fillRect(Math.round(rx + 2 * U), Math.round((ry0 + ry1) / 2) - 1, Math.round(ix - hw - rx - 2 * U), 3);
+  b.fillRect(ix - hw - 1, Math.round(ry0), 2, Math.round(ry1 - ry0)); b.fillRect(ix + hw, Math.round(ry0), 2, Math.round(ry1 - ry0));
+  b.fillRect(ix - hw - 1, Math.round(ry0), hw * 2 + 3, 2); b.fillRect(ix - hw - 1, Math.round(ry1) - 2, hw * 2 + 3, 2);
+  // pinnene: en tynn stang inn fra venstre og en lysende prikk der pila går
+  P0.forEach(([m, col], k) => { const y = ys[k]; b.fillStyle = '#2c2a26'; b.fillRect(ix - hw + 1, y, hw - 1, 1); b.fillStyle = col; b.fillRect(ix - 1, y - 1, 3, 3); b.fillStyle = '#ffffff'; b.fillRect(ix, y - 1, 1, 1); });
+  // pila: fra strengen nede ved kinnet og opp til pilhylla, med jaktspissen like forbi buen
+  const ay = iy + 7 * U;
+  if (inGun('bue') && !P.reload) {
+    trap(ay, bh + 2, rx + 2 * U, rx + 3 * U, ix + 2 * U, ix + 5 * U, '#24221e'); trap(ay, bh + 2, rx + 2 * U, rx + 2.5 * U, ix + 2 * U, ix + 3 * U, '#4a463e');
+    trap(ay - 2 * U, ay + 1, rx - 1 * U, rx + 1 * U, rx - 1 * U, rx + 3 * U, '#9aa0a4'); b.fillStyle = '#d8dde0'; b.fillRect(Math.round(rx), Math.round(ay - 2 * U), 1, Math.round(2 * U));
+    trap(bh - 9 * U, bh + 2, ix + 1 * U, ix + 3 * U, ix + 6 * U, ix + 11 * U, '#c43a2c'); trap(bh - 9 * U, bh + 2, ix + 3 * U, ix + 4 * U, ix + 2 * U, ix + 3 * U, '#e8e2d0');
+  }
+  // venstre hånd rundt grepet, med ermet ned mot hjørnet
+  trap(iy + 14 * U, bh + 2, rx - 4 * U, rx + 3 * U, rx - 22 * U, rx - 6 * U, '#3f502e'); trap(iy + 14 * U, bh + 2, rx - 3 * U, rx + 2 * U, rx - 20 * U, rx - 8 * U, '#586c3e');
+  glove(rx, iy + 12 * U, 4 * U, 5 * U);
 }
 // Trådkorset i kikkerten: tykke stolper inn mot midten og tynne tråder (det beste siktet har merker og rød midtprikk,
 // men ingen stolpe ovenfra). Står fast der kula går
@@ -579,8 +691,15 @@ function breathBar(bw, bh) {
 }
 // Avstandsmåleren i kikkerten (nivå 2–3) lyser øverst i synsfeltet
 function aimHud() {
+  if (bue()) {
+    if (AIM.open < 0.8) return;
+    // samme rad som pinnen i bowSights, også mens buen kommer opp
+    const bh = Math.ceil(H / ZB), ix = Math.ceil(W / ZB) >> 1, iy = (bh >> 1) + Math.round((1 - smooth(0, 1, AIM.open)) * bh * 0.55), U = bh / 100;
+    for (const [m, col] of pinsOf()) pxText(m + ' m', (ix + 7 * U) * ZB, (iy + Math.round(pinY(m)) + 0.5) * ZB, Math.round(13 * DPR), col, 'left');
+    return;
+  }
   const l = lv('scope');
-  if (hagle() || l < 2 || AIM.open < 0.8) return;
+  if (G.gun !== 'rifle' || l < 2 || AIM.open < 0.8) return;
   const a = AIM.pick && AIM.pick.it.a;
   let line = AIM.range == null ? '– m' : Math.round(AIM.range * M_PER_PX) + ' m';
   if (l === 3 && a) line = SPEC[a.sp].name + ', ' + SPEC[a.sp].sexn[a.sex] + ' · ca. ' + fmtKg(a.kg >= 20 ? Math.round(a.kg / 5) * 5 : a.kg >= 3 ? Math.round(a.kg) : a.kg) + ' · ' + line;
@@ -589,23 +708,32 @@ function aimHud() {
 // Første faste ting under et punkt i bufferen, nærmest først: { it, lx, ly } med pikselen i spriten
 function aimPick(px, py) {
   const L = AIM.list;
-  for (let i = L.length - 1; i >= 0; i--) {
-    const it = L[i]; if (!it.solid) continue;
-    const s = it.s, ly = Math.floor((py - it.Y) * s.h / it.H);
-    if (ly < 0 || ly >= s.h) continue;
-    let u = px - it.X;
-    if (it.sw) { const q = 1 - (ly - ly % 6) / s.h; u -= Math.round(it.sw * q * q * it.k); }
-    let lx = Math.floor(u * s.w / it.W);
-    if (lx < 0 || lx >= s.w) continue;
-    if (it.flip) lx = s.w - 1 - lx;
-    if (s.pix.get(lx, ly)) return { it, lx, ly };
-  }
+  for (let i = L.length - 1; i >= 0; i--) { const h = pickAt(L[i], px, py); if (h) return h; }
   return null;
+}
+// Treffer punktet (px, py) i bufferen noe fast i det tegnede it? Gir { it, lx, ly } eller null
+function pickAt(it, px, py) {
+  if (!it.solid || it.clipY != null && py >= it.clipY) return null;
+  const s = it.s, ly = Math.floor((py - it.Y) * s.h / it.H);
+  if (ly < 0 || ly >= s.h) return null;
+  let u = px - it.X;
+  if (it.sw) { const q = swayQ(ly - ly % 6, s.h); u -= Math.round(it.sw * q * q * it.k); }
+  let lx = Math.floor(u * s.w / it.W);
+  if (lx < 0 || lx >= s.w) return null;
+  if (it.flip) lx = s.w - 1 - lx;
+  return s.pix.get(lx, ly) ? { it, lx, ly } : null;
 }
 // Punktet i verden der strålen gjennom (px, py) når dybden z: [x, y, høyde over bakken]
 function aimPoint(px, py, z) {
   const st = z / AIM.f, vx = Math.cos(AIM.camYaw), vy = Math.sin(AIM.camYaw), lat = (px - AIM.cx) * st;
-  return [P.x + vx * z - vy * lat, P.y + vy * z + vx * lat, AIM.eye - (py - AIM.hy) * st];
+  const x = P.x + vx * z - vy * lat, y = P.y + vy * z + vx * lat;
+  return [x, y, AIM.camZ - (py - AIM.hy) * st - heightAt(x, y)];
+}
+// Dybden til bakken i bufferpunktet (px, py) i bildet kula følger; uendelig mot himmelen og utenfor bildet
+function groundZ(px, py) {
+  const w = AIM.im.width, x = Math.floor(px), y = Math.floor(py);
+  if (x < 0 || y < 0 || x >= w || y >= AIM.im.height) return Infinity;
+  const z = AIM.zb[y * w + x]; return z < 1e8 ? z : Infinity;
 }
 // Skudd i 3D: spredningen er en vinkel rundt trådkorset, og kula treffer det første faste den møter
 function aimShot() {
@@ -621,10 +749,34 @@ function aimShot() {
     const k = pk.it.o.k, [x, y, h] = aimPoint(px, py, pk.it.z);
     r.block = k; burst(x, y, h, CHIP[k] || '#c8a474', 6, 20);
     msg('Kula traff ' + (HITN[k] || 'et tre') + '.', 'warn');
-  } else if (py > AIM.hy) {
-    const z = AIM.eye * AIM.f / (py - AIM.hy);
+  } else {
+    const z = groundZ(px, py);
     if (z < FAR * 1.5) { const [x, y] = aimPoint(px, py, z); burst(x, y, 0, isWater(x, y) ? '#a4ccc6' : '#8a7a5c', 5, 14); }
   }
+  return r;
+}
+// Pil i 3D: pila går ut langs siktelinja med litt spredning og faller på veien (arrowDrop). Den treffer det første faste den
+// møter i buen den går i, eller bakken der den lander. Et lyst spor viser banen et øyeblikk
+function aimArrow() {
+  const Lv = lv('bue'), sd = BST.spread[Lv] / 100, px = AIM.sx + gauss() * sd * AIM.f, py0 = AIM.sy - gauss() * sd * 0.8 * AIM.f;
+  const at = z => py0 + AIM.f * arrowDrop(z, Lv), over = z => aimPoint(px, at(z), z)[2];
+  // dybden der pila når bakken
+  let zg = Infinity;
+  for (let z = NEAR; z < FAR * 1.5; z += 2) if (over(z) <= 0) { zg = z; break; }
+  let pk = null;
+  for (let i = AIM.list.length - 1; i >= 0 && !pk; i--) { const it = AIM.list[i]; if (it.solid && it.z < zg) pk = pickAt(it, px, at(it.z)); }
+  const end = pk ? pk.it.z : Math.min(zg, FAR * 1.5), r = { ang: AIM.camYaw + Math.atan((px - AIM.cx) / AIM.f), a: null, zone: null, block: null };
+  AIM.kick = 0.4;
+  for (let z = NEAR + 6; z < end; z += Math.max(3, z / 30)) { const [x, y, h] = aimPoint(px, at(z), z); G.parts.push({ x, y, z: h, vx: 0, vy: 0, vz: 0, life: 0.18 + z / 900, col: '#ece6d2' }); }
+  if (pk && pk.it.a) {
+    const a = pk.it.a, [x, y, h] = aimPoint(px, at(pk.it.z), pk.it.z);
+    Object.assign(r, { a, zone: hitZone(a, pk.it.s, pk.lx, pk.ly), d: hyp(a.x - P.x, a.y - P.y), hx: x, hy: y - h });
+    burst(x, y, h, '#a8302a', 3, 6);
+  } else if (pk) {
+    const k = pk.it.o.k, [x, y, h] = aimPoint(px, at(pk.it.z), pk.it.z);
+    r.block = k; burst(x, y, h, CHIP[k] || '#c8a474', 4, 10);
+    msg('Pila traff ' + (HITN[k] || 'et tre') + '.', 'warn');
+  } else if (zg < FAR * 1.5) { const [x, y] = aimPoint(px, at(zg), zg); burst(x, y, 0, isWater(x, y) ? '#a4ccc6' : '#8a7a5c', 3, 8); }
   return r;
 }
 function burst(x, y, z, col, n, sp) { for (let i = 0; i < n; i++) G.parts.push({ x, y, z, vx: rnd(-sp, sp), vy: rnd(-sp, sp) * 0.4, vz: rnd(4, 14), life: rnd(0.3, 0.6), col, grav: 1 }); }
@@ -640,8 +792,8 @@ function aimShotgun() {
       pelletHit(by, a, hyp(a.x - P.x, a.y - P.y), x, y - h);
       burst(x, y, h, SPEC[a.sp].bird ? '#e4dccc' : '#a8302a', 2, 10);
     } else if (pk) { const [x, y, h] = aimPoint(px, py, pk.it.z); if (chips++ < 6) burst(x, y, h, CHIP[pk.it.o.k] || '#c8a474', 2, 14); }
-    else if (py > AIM.hy && puffs++ < 8) {
-      const z = AIM.eye * AIM.f / (py - AIM.hy);
+    else if (puffs++ < 8) {
+      const z = groundZ(px, py);
       if (z < FAR) { const [x, y] = aimPoint(px, py, z); burst(x, y, 0, isWater(x, y) ? '#a4ccc6' : '#8a7a5c', 2, 10); }
     }
   }

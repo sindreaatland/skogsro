@@ -1,0 +1,13 @@
+[     249ms] [LOG] Messaging without detection successfully executed. @ https://consent.tv2.no/unified/wrapperMessagingWithoutDetection.js:0
+[     251ms] [LOG] interaction complete @ https://consent.tv2.no/unified/wrapperMessagingWithoutDetection.js:0
+[     388ms] [WARNING] [GPT] PubAdsService.disableInitialLoad is deprecated, use googletag.setConfig({disableInitialLoad: ...}) instead.
+https://goo.gle/gpt-message#170 @ https://securepubads.g.doubleclick.net/pagead/managed/js/gpt/m202611050101/pubads_impl.js?cb=122882155:22
+[     390ms] [WARNING] [GPT] Slot.setTargeting is deprecated, use Slot.setConfig({targeting: ...}) instead.
+https://goo.gle/gpt-message#171 @ https://securepubads.g.doubleclick.net/pagead/managed/js/gpt/m202611050101/pubads_impl.js?cb=122882155:22
+[     419ms] [LOG] tv2.no https://www.tv2.no/historier/fotballen-er-pa-bristepunktet article sport @ https://log.tv2.no/6176e36d815b4c0f96025a66.gen6.streams.module.js:1
+[     426ms] [LOG] Initializing...complete @ https://log.tv2.no/6176e36d815b4c0f96025a66.gen6.streams.module.js:1
+[     426ms] [LOG] Running lp4 -> k5a @ https://log.tv2.no/6176e36d815b4c0f96025a66.gen6.streams.module.js:1
+[     426ms] [LOG] Found 0 lp4 slots @ https://log.tv2.no/6176e36d815b4c0f96025a66.gen6.streams.module.js:1
+[    1757ms] [ERROR] Failed to load resource: net::ERR_NAME_NOT_RESOLVED @ https://match.sharethrough.com/sync/v1?source_id=UiRtTsXAfjmfSDAKnR1FjWsu&source_user_id=MWAAWIF3-11-HL58&gdpr=1&gdpr_consent=CQtd7EAQtd7EAAGABCENC4FgAPLAAALAABpwGrwFgAKgAeABAADIAGgATAA3gB-AGiAP0AiwBIgCzAGKAPNAmQCZQFJgLZAW8AvMBlgDVwMsgCgA_AOkApMBbwDLACwkAwACoAHgAQQAyADQAJgAbwA_AD9AJEAYoBeYDVwwAwACoAHgAQQAyADQAJgAbwBogD9AJEAWYAxQDVxAAIAswBih0A8ACoAIIAZABoAEwAN4AfgBogD9AIsASIAxQB5gEyALzAauPABAA_AW8SgBgBMAMUAvMmABAW8SABgBvAH6AWYpALAAqACCAGQAaABMAD8ANEAfoBFgCRAGKAXmVAAgLeKAAQA3gAAA.IGrwGQAKgAeABAADIAGgAPwAmABvAD8ANEAfoBFgCRAFmAMUAZ8A6QB5oEyATKApMBbIC3gF5gMsAauA.dgAAAFgAAAAA:0
+[    5230ms] [WARNING] The resource https://www.tv2.no/historier/_next/static/chunks/2uqgcdvo995w4.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://www.tv2.no/historier/fotballen-er-pa-bristepunktet:0
+[   11280ms] [WARNING] The resource https://www.tv2.no/historier/_next/static/chunks/2uqgcdvo995w4.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://www.tv2.no/historier/fotballen-er-pa-bristepunktet:0

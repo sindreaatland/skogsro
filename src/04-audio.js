@@ -56,6 +56,11 @@ const sfx = {
     auTone('sine', 150, 42, 0.26, 0.8 * v, {});
     if (supp < 3) auNoise(1.6, 0.1 * v, 'lowpass', 900, 200, 0.5, { delay: 0.25, att: 0.2, echo: true });
   },
+  // buen: strengen smeller, et dypt dunk i armen, og pila som suser av gårde
+  bow(k = 1) {
+    auTone('triangle', 210, 95, 0.12, 0.16 * k, { att: 0.003 }); auNoise(0.05, 0.22 * k, 'bandpass', 1200, 500, 1.4);
+    auTone('sine', 120, 70, 0.1, 0.18 * k, { att: 0.004 }); auNoise(0.3, 0.05 * k, 'highpass', 3200, 1400, 0.7, { delay: 0.02, att: 0.02 });
+  },
   bolt() { auNoise(0.03, 0.14, 'highpass', 3200, 0, 1); auNoise(0.035, 0.16, 'bandpass', 2400, 0, 2, { delay: 0.16 }); },
   reload() { auNoise(0.03, 0.12, 'bandpass', 1800, 0, 2); auNoise(0.03, 0.14, 'highpass', 3000, 0, 1, { delay: 0.22 }); auNoise(0.04, 0.16, 'bandpass', 2600, 0, 2, { delay: 0.38 }); },
   step(sneak, wet) { if (wet) auNoise(0.12, 0.05, 'bandpass', 1500 + Math.random() * 600, 700, 0.8); else auNoise(0.05, sneak ? 0.014 : 0.035, 'bandpass', 700 + Math.random() * 500, 0, 1.1); },
@@ -108,6 +113,10 @@ const sfx = {
   heart(k = 1) {
     for (const [dl, v] of [[0, 1], [0.2, 0.65]]) { auTone('sine', 62, 44, 0.09, 0.2 * k * v, { delay: dl, att: 0.008 }); auNoise(0.05, 0.04 * k * v, 'lowpass', 180, 0, 0.7, { delay: dl }); }
   },
+  // hesten: et knegg når du setter deg opp, et prust når du går av, og hovslag (dempet plask i vann)
+  neigh() { for (let i = 0; i < 5; i++) auTone('triangle', 1150 - i * 140, 900 - i * 130, 0.1, 0.03, { delay: i * 0.09, att: 0.01 }); },
+  snort() { auNoise(0.28, 0.06, 'bandpass', 520, 240, 1.4, { att: 0.03 }); },
+  hoof(wet) { auTone('sine', 95, 55, 0.06, wet ? 0.05 : 0.11, { att: 0.004 }); auNoise(0.05, wet ? 0.07 : 0.05, wet ? 'bandpass' : 'lowpass', wet ? 1400 : 420, wet ? 700 : 160, 0.8); },
 };
 // Myk filtpiano: noen få deltoner gjennom et lavpass som lukker seg, og en lang hale i romklangen
 function auPiano(f, delay, vol) {

@@ -1,0 +1,88 @@
+- generic [active] [ref=f1e1]:
+  - generic "Skogen sett ovenfra" [ref=f1e2]
+  - generic:
+    - generic: 0 kr
+    - generic: Dag 1 · 06:30
+  - generic:
+    - img "Vindretning"
+    - generic:
+      - generic: Vind
+      - generic: Lett bris
+      - generic: fra øst
+  - generic [ref=f1e3]:
+    - button "Pause (Esc)" [ref=f1e4] [cursor=pointer]
+    - button "Inventar (E)" [ref=f1e5] [cursor=pointer]
+    - button "Kart (M)" [ref=f1e6] [cursor=pointer]
+    - button "Jaktbok" [ref=f1e7] [cursor=pointer]
+    - button "Lyd" [ref=f1e8] [cursor=pointer]
+  - generic:
+    - generic:
+      - generic:
+        - generic: Rifle
+        - generic: Tomt · R · 20 i sekken
+      - generic: R
+    - generic:
+      - generic:
+        - generic: Rådyrpipe
+        - generic: Lokk
+    - generic:
+      - generic:
+        - generic: × 2
+        - generic: Luktstoff
+    - generic:
+      - generic:
+        - generic: Ved × 0 · kjøtt 0 kg
+        - generic: Sekken 0 / 20 kg
+    - generic:
+      - generic:
+        - generic: × 3
+        - generic: Send ut hunden
+  - generic:
+    - generic: WASDgå
+    - generic: Høyreklikksikt
+    - generic: Venstreklikkskyt
+    - generic: Fhandling
+    - generic: Qhold for hjulet
+    - generic: Einventar
+    - generic: Mkart
+    - generic: Escpause
+  - generic [ref=f1e10]:
+    - heading "Ud på jakt" [level=1] [ref=f1e11]
+    - paragraph [ref=f1e12]: Gå stille gjennom en skog som aldri tar slutt. Les vinden, lokk på dyrene og vent på det rette skuddet.
+    - generic [ref=f1e14]:
+      - text: Navnet ditt
+      - textbox "Navnet ditt" [ref=f1e15]: Jeger 20
+    - button "Gå inn i skogen" [ref=f1e17] [cursor=pointer]
+    - generic [ref=f1e18]:
+      - generic [ref=f1e19]:
+        - generic [ref=f1e20]: WASD
+        - text: Gå ·
+        - generic [ref=f1e21]: Shift
+        - text: snik
+      - generic [ref=f1e22]:
+        - generic [ref=f1e23]: Høyreklikk
+        - text: Sikt (hold)
+      - generic [ref=f1e24]:
+        - generic [ref=f1e25]: Venstreklikk
+        - text: Skyt
+      - generic [ref=f1e26]:
+        - generic [ref=f1e27]: Space
+        - text: Spring · hold pusten i siktet
+      - generic [ref=f1e28]:
+        - generic [ref=f1e29]: R
+        - text: Lad om
+      - generic [ref=f1e30]:
+        - generic [ref=f1e31]: F
+        - text: Ta vare på dyr · bua · hogg · stek · sov · ri hesten
+      - generic [ref=f1e32]:
+        - generic [ref=f1e33]: Q
+        - text: "Hold for hjulet: lokk, hund, bål og mer"
+      - generic [ref=f1e34]:
+        - generic [ref=f1e35]: E
+        - text: Inventar
+      - generic [ref=f1e36]:
+        - generic [ref=f1e37]: M
+        - text: Oversiktskart
+      - generic [ref=f1e38]:
+        - generic [ref=f1e39]: Esc
+        - text: Pause

@@ -1,0 +1,8 @@
+[     593ms] ReferenceError: CHOP is not defined
+    at genChunk (http://127.0.0.1:8791/src/03-world.js:533:5)
+    at getChunk (http://127.0.0.1:8791/src/03-world.js:610:19)
+    at build (http://127.0.0.1:8791/proto/3d.html:71:16)
+    at chunksAround (http://127.0.0.1:8791/proto/3d.html:117:39)
+    at http://127.0.0.1:8791/proto/3d.html:182:3
+    at http://127.0.0.1:8791/proto/3d.html:185:3
+[     596ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://127.0.0.1:8791/favicon.ico:1

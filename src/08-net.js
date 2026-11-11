@@ -18,14 +18,14 @@ function netConnect() {
   ws.onclose = () => {
     const was = NET.on;
     NET.on = false; NET.ws = null; NET.host = null; NET.peers.clear(); netUi();
-    if (was && G.started) msg('Mistet kontakten med serveren. Du jakter alene.', 'warn');
-    // prøv igjen bare hvis vi har vært tilkoblet før (ikke når siden serveres uten spillserver)
-    if (NET.seen) setTimeout(netConnect, 3000);
+    if (was && G.started) msg(NET.kicked ? 'Du ble kastet ut av spillet. Du jakter alene.' : 'Mistet kontakten med serveren. Du jakter alene.', 'warn');
+    // prøv igjen bare hvis vi har vært tilkoblet før (ikke når siden serveres uten spillserver), og ikke etter å ha blitt kastet ut
+    if (NET.seen && !NET.kicked) setTimeout(netConnect, 3000);
   };
 }
 
 // ---------- dyr over nettet ----------
-const PACK = ['id', 'sp', 'sex', 'state', 'kg', 'face', 'prev', 'lastZone', 'by', 'x', 'y', 'z', 'vx', 'vy', 't', 'hp', 'aware', 'tx', 'ty', 'bleed', 'head', 'shotDist', 'deadT'];
+const PACK = ['id', 'sp', 'sex', 'state', 'kg', 'face', 'prev', 'lastZone', 'by', 'bow', 'x', 'y', 'z', 'vx', 'vy', 't', 'hp', 'aware', 'tx', 'ty', 'bleed', 'head', 'shotDist', 'deadT', 'left'];
 function packA(a) {
   const o = {};
   for (const k of PACK) { const v = a[k]; if (v !== undefined) o[k] = typeof v === 'number' && k !== 'id' ? Math.round(v * 100) / 100 : v; }
@@ -68,21 +68,30 @@ function mirrorAnimal(a, dt) {
 function peerState(m) {
   let r = NET.peers.get(m.from);
   if (!r) { r = { id: m.from }; NET.peers.set(m.from, r); }
-  const x = +m.x || 0, y = +m.y || 0, u = Array.isArray(m.u) ? m.u : [];
+  const x = clamp(+m.x || 0, -WORLD, WORLD), y = clamp(+m.y || 0, -WORLD, WORLD), u =Array.isArray(m.u) ? m.u : [];
   r.name = String(m.n || 'Jeger').slice(0, 16);
   if (!r.started) { r.started = true; r.x = x; r.y = y; r.walkT = 0; r.stepT = 0; if (G.started) msg(r.name + ' kom inn i skogen.', 'good'); netUi(); }
   r.tx = x; r.ty = y;
   r.face = HUN[m.f] ? m.f : 'down'; r.flip = !!m.fl; r.moving = !!m.mv; r.sneak = !!m.sn; r.run = !!m.rn; r.aim = !!m.am; r.wet = !!m.w; r.in = !!m.in;
-  r.camo = clamp(u[0] | 0, 0, 2); r.deo = clamp(u[1] | 0, 0, 2); r.boots = clamp(u[2] | 0, 0, 2);
+  // u: [hvor godt dyrene ser dem, luktfjerneren, hvor mye skrittene bråker] (se CLO)
+  r.camo = clamp(+u[0] || 1, 0.3, 1.5); r.deo = clamp(u[1] | 0, 0, 2); r.noise = clamp(+u[2] || 1, 0.3, 2);
   // hunden deres: [x, y, tilstand, retning]
   if (Array.isArray(m.dg)) {
-    const g = r.dog || (r.dog = { x: +m.dg[0] || 0, y: +m.dg[1] || 0, anim: 0, spd: 0 });
+    const g = r.dog || (r.dog = { x: +m.dg[0] || 0, y: +m.dg[1] || 0, hd: 0, anim: 0, spd: 0 });
     g.tx = +m.dg[0] || 0; g.ty = +m.dg[1] || 0; g.st = DOG_ST[m.dg[2]] || 'heel'; g.face = m.dg[3] < 0 ? -1 : 1;
+    // står den for vilt, vises den i profil mot den siden viltet er
+    if (g.st === 'mark') g.hd = g.face > 0 ? 0 : Math.PI;
   }
+  // hesten deres, hvis de har en: [x, y, retning, rir, fart 0–1, sal og ekstra sekk (se horseKit)]; r.horse er farta
+  // mens de rir (hovslagene skremmer vilt)
+  if (Array.isArray(m.av)) {
+    r.av = { x: clamp(+m.av[0] || 0, -WORLD, WORLD), y: clamp(+m.av[1] || 0, -WORLD, WORLD), h: +m.av[2] || 0, on: !!m.av[3], kit: m.av[5] & 6 };
+    r.horse = r.av.on ? clamp(+m.av[4] || 0, 0.05, 1) : 0;
+  } else { r.av = null; r.horse = 0; }
 }
 // T: teleporter bort til en annen jeger; trykker du igjen, kommer du til den neste
 function goToHunter() {
-  if (P.aim) return;
+  if (P.aim || onHorse()) return;
   const L = [...NET.peers.values()].filter(r => r.started);
   if (!L.length) { sfx.deny(); msg('Det er ingen andre jegere i skogen.'); return; }
   const r = L[(L.findIndex(q => q.id === NET.goTo) + 1) % L.length];
@@ -101,7 +110,7 @@ function goToHunter() {
 function netMsg(m) {
   switch (m.t) {
     case 'hello':
-      NET.on = NET.seen = true; NET.id = m.id; NET.host = m.host; NET.urls = m.urls || [];
+      NET.on = NET.seen = true; NET.id = m.id; NET.host = m.host; NET.urls = m.urls || []; NET.admin = !!m.admin;
       NET.peers.clear(); for (const id of m.peers || []) NET.peers.set(id, { id });
       netAway();
       netUi(); break;
@@ -112,11 +121,14 @@ function netMsg(m) {
       NET.peers.delete(m.id); netUi(); break;
     }
     case 'host': NET.host = m.id; break;
+    case 'kicked': NET.kicked = true; break;
+    case 'reload': devReload(); break;
     case 'p': peerState(m); break;
     case 'snap': if (!isAuth() && m.from === NET.host) applySnap(m); break;
     case 'shot': {
       const k = clamp(1 - hyp(m.x - P.x, m.y - P.y) / 2200, 0.1, 1);
-      sfx.shot(clamp(m.supp | 0, 0, 3), k); muzzle(m.x, m.y, +m.ang || 0);
+      // buen høres bare på nært hold, og har ikke munningsglimt
+      if (m.bow) { if (k > 0.85) sfx.bow((k - 0.85) / 0.15); } else { sfx.shot(clamp(m.supp | 0, 0, 3), k); muzzle(m.x, m.y, +m.ang || 0); }
       if (m.bl) { G.blood.push({ x: m.bl[0], y: m.bl[1], t: 0 }); for (let i = 0; i < 4; i++) G.parts.push({ x: m.hx, y: m.hy + 2, z: 0, vx: rnd(-8, 8), vy: rnd(-3, 3), vz: rnd(4, 10), life: rnd(0.2, 0.4), col: '#a8302a', grav: 1 }); }
       if (isAuth()) applyShot(m, m.from);
       break;
@@ -135,11 +147,13 @@ function netMsg(m) {
     case 'collect': {
       if (!isAuth()) break;
       const a = G.animals.find(x => x.id === m.id && x.state === 'dead');
-      if (a && canTake(a, m.from)) { G.animals.splice(G.animals.indexOf(a), 1); netSend({ t: 'got', to: m.from, a: packA(a) }); }
+      // gjesten sier hvor mye plass den har i sekken; verten skjærer ut det og sier hvor mye som ble med
+      if (a && canTake(a, m.from)) { const r = cutMeat(a, Math.max(0, +m.cap || 0)); if (r.take > 0) netSend({ t: 'got', to: m.from, a: packA(a), kg: r.take, first: r.first }); }
       break;
     }
-    case 'got': if (m.a && SPEC[m.a.sp]) credit(m.a); break;
+    case 'got': P.collectT = 0; if (m.a && SPEC[m.a.sp] && SPEC[m.a.sp].kg[m.a.sex]) credit(m.a, kg1(Math.max(0, +m.kg || 0)), !!m.first); break;
     case 'msg': msg(String(m.text), m.kind); if (typeof sfx[m.snd] === 'function') sfx[m.snd](); break;
+    case 'fine': { const k = fine(clamp(+m.kr || 0, 0, 1e5) | 0, String(m.text)); if (m.rot) rotNotice(String(m.text), k); break; }
   }
 }
 
@@ -147,6 +161,12 @@ function netMsg(m) {
 function tell(pid, text, kind, snd) {
   if (!NET.on || pid == null || pid === NET.id) { msg(text, kind); if (snd) sfx[snd](); }
   else netSend({ t: 'msg', to: pid, text, kind, snd });
+}
+// Bot til den som skal ha den: deg selv, eller en annen jeger over nettet (verten avgjør når felt vilt råtner).
+// rot: boten er for vilt som har råtnet, og kommer opp som en beskjed du må lukke
+function fineTo(pid, kr, text, rot) {
+  if (!NET.on || pid == null || pid === NET.id) { const k = fine(kr, text); if (rot) rotNotice(text, k); }
+  else netSend({ t: 'fine', to: pid, kr, text, rot: !!rot });
 }
 
 // ---------- hver frame ----------
@@ -159,19 +179,22 @@ function netUpdate(dt) {
     r.x = lerp(r.x, r.tx, k); r.y = lerp(r.y, r.ty, k);
     if (hyp(r.x - r.tx, r.y - r.ty) > 80) { r.x = r.tx; r.y = r.ty; }
     if (r.moving) r.walkT += dt * (r.sneak ? 0.55 : r.run ? 1.7 : 1);
-    if (auth && r.moving && !r.in) { r.stepT -= dt; if (r.stepT <= 0) { r.stepT = r.sneak ? 0.55 : r.run ? 0.2 : 0.32; stepNoise(r); } }
+    if (auth && (r.moving || r.horse) && !r.in) { r.stepT -= dt; if (r.stepT <= 0) { r.stepT = r.horse ? 0.3 : r.sneak ? 0.55 : r.run ? 0.2 : 0.32; stepNoise(r); } }
     const g = r.dog;
     if (g) {
       const x0 = g.x, y0 = g.y; g.x = lerp(g.x, g.tx, k); g.y = lerp(g.y, g.ty, k);
       if (hyp(g.x - g.tx, g.y - g.ty) > 80) { g.x = g.tx; g.y = g.ty; }
       g.spd = lerp(g.spd, hyp(g.x - x0, g.y - y0) / Math.max(dt, 1e-3), Math.min(1, dt * 6)); g.anim += g.spd * dt * (g.spd > 60 ? 0.085 : 0.14);
+      // retningen den går, så den kan vises bakfra og forfra i 3D
+      if (g.spd > 3 && hyp(g.x - x0, g.y - y0) > 0.01) g.hd = Math.atan2(g.y - y0, g.x - x0);
     }
   }
   if (!NET.peers.size) return;
   NET.sendT -= dt;
   if (G.started && NET.sendT <= 0) {
     NET.sendT = 1 / 15;
-    netSend({ t: 'p', n: NET.name, x: Math.round(P.x * 10) / 10, y: Math.round(P.y * 10) / 10, f: P.face, fl: P.flip, mv: P.moving, sn: P.sneak, rn: P.run, am: P.aim, w: P.wet, in: G.panel === 'shop', u: [lv('camo'), lv('deo'), lv('boots')], dg: [Math.round(D.x), Math.round(D.y), DOG_ST.indexOf(D.st), D.face] });
+    netSend({ t: 'p', n: NET.name, x: Math.round(P.x * 10) / 10, y: Math.round(P.y * 10) / 10, f: P.face, fl: P.flip, mv: P.moving, sn: P.sneak || P.aim, rn: P.run, am: P.aim, w: P.wet, in: G.panel === 'shop', u: [Math.round(cloMul('camo') * 100) / 100, lv('deo'), Math.round(cloMul('noise') * 100) / 100], dg: [Math.round(D.x), Math.round(D.y), DOG_ST.indexOf(D.st), D.face],
+      av: lv('horse') ? [Math.round(HORSE.x), Math.round(HORSE.y), Math.round(HORSE.h * 100) / 100, HORSE.on ? 1 : 0, Math.round(Math.abs(HORSE.v) / HORSE_MAX * 100) / 100, horseKit(false)] : 0 });
   }
   if (auth) {
     NET.snapT -= dt;
@@ -185,10 +208,47 @@ function netUpdate(dt) {
 
 // ---------- tittelskjerm ----------
 function netUi() {
-  $('mpTxt').hidden = !NET.on;
-  if (!NET.on) return;
+  plMenu();
+  $('mpTxt').hidden = !NET.on && !NET.kicked;
+  if (!NET.on) { if (NET.kicked) setText('mpTxt', 'Du ble kastet ut av spillet. Last inn siden på nytt for å bli med igjen.'); return; }
   const n = NET.peers.size, url = NET.urls[0];
   setText('mpTxt', (n === 0 ? 'Ingen andre er koblet til ennå.' : n === 1 ? '1 annen jeger er koblet til.' : n + ' andre jegere er koblet til.') + (url ? ' Andre på samme nett kan åpne ' + url : ''));
+}
+// ---------- omlasting når koden endres: serveren har bygget spillet på nytt ----------
+// Var du i skogen, lagres jakta, og etter omlastingen står du på samme sted og ser samme vei, uten tittelskjermen.
+// Spillet åpner med pausemenyen, siden nettleseren vil ha et klikk før den gir fra seg musepekeren og lyden
+const RELOAD_KEY = 'skogsro.reload';
+function devReload() {
+  try { if (G.started) { save(); sessionStorage.setItem(RELOAD_KEY, JSON.stringify({ x: P.x, y: P.y, f: P.face, fl: P.flip, v3: G.view3d, yaw: AIM.yaw, pitch: AIM.pitch })); } } catch (e) { }
+  location.reload();
+}
+function devResume() {
+  let s = null;
+  try { s = JSON.parse(sessionStorage.getItem(RELOAD_KEY) || 'null'); sessionStorage.removeItem(RELOAD_KEY); } catch (e) { }
+  if (!s) return;
+  P.x = +s.x || 0; P.y = +s.y || 0; CAM.x = P.x; CAM.y = P.y - 30; if (HUN[s.f]) P.face = s.f; P.flip = !!s.fl;
+  startGame(false);
+  G.view3d = VIEW3D && !!s.v3; AIM.yaw = +s.yaw || 0; AIM.pitch = +s.pitch || 0;
+  G.msgs = []; msg('Koden er oppdatert.', 'good');
+  openPause();
+}
+// ---------- «Spillere» i pausemenyen: bare på maskinen som kjører serveren, med «Kast ut» ----------
+function plMenu() {
+  const ok = NET.on && NET.admin;
+  $('plBtn').hidden = !ok; $('plBtn').textContent = 'Spillere (' + NET.peers.size + ')';
+  if (G.panel === 'plSheet') { if (ok) plList(); else pauseBack(); }
+}
+function plList() {
+  const el = $('plList'); el.textContent = '';
+  if (!NET.peers.size) { const p = document.createElement('p'); p.className = 'side-note'; p.textContent = 'Ingen andre er koblet til.'; el.appendChild(p); return; }
+  for (const r of NET.peers.values()) {
+    const row = document.createElement('div'), who = document.createElement('div'), nm = document.createElement('div'), st = document.createElement('div'), bt = document.createElement('button');
+    row.className = 'pl-row'; who.className = 'pl-who'; nm.className = 'pl-name'; st.className = 'side-note';
+    nm.textContent = r.started ? r.name : 'Jeger ' + r.id; st.textContent = r.started ? 'I skogen' : 'På tittelskjermen';
+    bt.type = 'button'; bt.className = 'xbtn'; bt.textContent = 'Kast ut';
+    bt.onclick = () => { netSend({ t: 'kick', id: r.id }); bt.disabled = true; bt.textContent = 'Kaster ut …'; sfx.ui(); };
+    who.append(nm, st); row.append(who, bt); el.appendChild(row);
+  }
 }
 function netInit() {
   let name = '';

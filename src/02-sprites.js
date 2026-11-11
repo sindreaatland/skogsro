@@ -85,7 +85,11 @@ const BIRCH_TONES = [
   ['#8c5a1c', '#c08a24', '#e2b03a', '#f3d262', '#faeaa0'],
   ['#7a3a1c', '#b45a24', '#dc8430', '#f0aa48', '#f8d080'],
   ['#5a6624', '#84962e', '#b2bc42', '#d6d866', '#ecec9c'],
+  ['#2f5a2a', '#4a7a34', '#6a9a40', '#8cb850', '#b4d470'],
+  ['#54401e', '#7a5e28', '#9c7e34', '#b89a48', '#ccb46c'],
 ];
+// Hvilke toner bjørka har etter klimaet (se genChunk): [skogen rundt landsbyen, mot fjellet, i lavlandet]
+const BIRCH_ZONE = [[0, 1, 2, 3], [5, 5, 5, 0], [4, 4, 3, 3, 0]];
 function genBirch(seed, tones) {
   const r = rng(seed), H = 56 + ((r() * 28) | 0), w = 60, h = H + 8, p = new Pix(w, h), cx = w >> 1, by = h - 3;
   const tn = T(...tones), tk = T('#a29e90', '#d8d4c4', '#f2efe2'), mark = C('#2c2824');
@@ -222,52 +226,564 @@ function genLog(seed) {
   return reg('log', p, (L + 9) >> 1, 12, {});
 }
 
-// ---------- Jaktbua (hytte med torvtak) ----------
-function genCabin() {
-  const w = 86, h = 76, p = new Pix(w, h), bx = 7, bw = 64, wy0 = 38, wy1 = 67;
-  const lg = T('#38281e', '#4c3628', '#5f4632', '#7a5c40'), st = T('#3e4246', '#5a6062', '#7e8482', '#a2a69e');
-  // pipe
-  for (let y = 3; y <= 16; y++) for (let x = 55; x <= 61; x++) p.set(x, y, st[(hash2(x >> 1, (y + (x >> 1)) >> 1, 5) * 3 + (x < 57 ? 1 : 0)) | 0]);
-  p.rect(54, 2, 9, 1, st[0]); p.rect(54, 3, 9, 1, st[3]);
-  // tømmervegg
-  for (let y = wy0; y <= wy1; y++) for (let x = bx; x < bx + bw; x++) {
-    const rr = (y - wy0) % 4; let c = rr === 0 ? lg[3] : rr === 3 ? lg[0] : rr === 1 ? lg[2] : lg[1];
-    if (rr !== 3 && hash2(x >> 2, y >> 2, 9) < 0.08) c = lg[1];
-    p.set(x, y, c);
+// ---------- Landemerker: varde, bautastein og jakttårn ----------
+const STONE = () => T('#34383c', '#50565a', '#727876', '#979c94', '#b4b8ac');
+function genCairn() {
+  const p = new Pix(20, 25), tn = STONE();
+  [[10, 20, 7, 3], [9, 16, 5.6, 2.6], [11, 12.4, 4.6, 2.4], [10, 9, 3.4, 2], [10.4, 6, 2.5, 1.7], [10, 3.4, 1.5, 1.3]].forEach(([cx, cy, rx, ry], i) =>
+    p.ell(cx, cy, rx, ry, (x, y, dx, dy) => dy > 0.5 ? tn[0] : tone(tn, 0.6 - dx * 0.3 - dy * 0.4 + (hash2(x >> 1, y, 40 + i) - 0.5) * 0.2, x, y, 2.5)));
+  p.outlineAuto(0.5);
+  return reg('cairn', p, 10, 23, { r: 6 });
+}
+function genBauta() {
+  const p = new Pix(14, 33), tn = STONE(), ms = T('#4e6a30', '#6a8a3a', '#8aa648');
+  for (let y = 2; y <= 30; y++) {
+    const f = (y - 2) / 28, hw = lerp(1.6, 3.6, Math.pow(f, 0.7)), cx = 7 + Math.sin(f * 2) * 0.8;
+    for (let x = Math.round(cx - hw); x <= Math.round(cx + hw); x++) {
+      let c = tone(tn, 0.62 - (x - cx) / hw * 0.38 + (hash2(x, y >> 1, 51) - 0.5) * 0.22, x, y, 2.5);
+      if (f > 0.8 && hash2(x, y, 52) < (f - 0.75) * 2.4) c = ms[(hash2(x, y, 53) * 3) | 0];
+      p.set(x, y, c);
+    }
   }
-  for (let y = wy0; y <= wy1 - 2; y += 4) { p.rect(bx - 2, y, 3, 3, C('#8e6e4a')); p.set(bx - 1, y + 1, C('#5a4030')); p.rect(bx + bw - 1, y, 3, 3, C('#8e6e4a')); p.set(bx + bw, y + 1, C('#5a4030')); }
-  // torvtak
-  const ry0 = 12, ry1 = 40, gr = T('#38562e', '#4a6c36', '#60863e', '#7a9e48', '#96b256');
-  for (let y = ry0; y <= ry1; y++) {
-    const f = (y - ry0) / (ry1 - ry0), xl = Math.round(lerp(12, 1, f)), xr = Math.round(lerp(w - 13, w - 2, f));
-    for (let x = xl; x <= xr; x++) p.set(x, y, tone(gr, 0.78 - f * 0.5 + (hash2(x >> 1, y >> 1, 31) - 0.5) * 0.36, x, y, 2));
+  p.outlineAuto(0.5);
+  return reg('bauta', p, 7, 31, { r: 4 });
+}
+// Skigard rundt åkeren og hagene i landsbyen: variant 0 går øst–vest, variant 1 nord–sør (sett ovenfra på kartet)
+function genFence() {
+  const wd = T('#3a3632', '#57514a', '#766e62', '#989080', '#b4ac98');
+  let p = new Pix(16, 13);
+  for (let k = -2; k <= 3; k++) { p.line(k * 5 - 2, 11, k * 5 + 8, 4, wd[2], 1); p.line(k * 5 - 2, 10, k * 5 + 8, 3, wd[3], 1); }
+  for (const x of [3, 11]) { p.line(x, 12, x, 1, wd[1], 1); p.line(x + 1, 12, x + 1, 1, wd[4], 1); }
+  p.outlineAuto(0.5);
+  reg('fence', p, 8, 12, {});
+  p = new Pix(5, 28);
+  for (let y = 2; y <= 27; y++) for (let x = 1; x <= 3; x++) p.set(x, y, y % 4 === 0 ? wd[1] : wd[5 - x]);
+  for (const y of [1, 9, 17]) { p.rect(1, y, 3, 2, wd[4]); p.rect(1, y + 2, 3, 1, wd[0]); }
+  p.outlineAuto(0.5);
+  reg('fence', p, 2, 19, {});
+  // variant 2 og 3 går på skrå (12 px bort og 12 px ned): 2 ned mot høyre, 3 ned mot venstre
+  for (const mir of [0, 1]) {
+    p = new Pix(15, 27);
+    const X = x => mir ? 14 - x : x;
+    for (let k = -1; k <= 3; k++) { p.line(X(k * 4 - 2), 12 + k * 4 + 1, X(k * 4 + 5), 12 + k * 4 - 6, wd[2], 1); p.line(X(k * 4 - 1), 12 + k * 4 + 1, X(k * 4 + 6), 12 + k * 4 - 6, wd[3], 1); }
+    for (const [x, y] of [[1, 13], [7, 19], [13, 25]]) { p.line(X(x), y, X(x), y - 11, wd[1], 1); p.set(X(x), y - 11, wd[4]); }
+    p.outlineAuto(0.5);
+    reg('fence', p, 7, 19, {});
   }
-  for (let x = 12; x <= w - 13; x++) { if (hash2(x, 1, 33) < 0.6) p.set(x, ry0 - 1, gr[3]); if (hash2(x, 2, 33) < 0.25) p.set(x, ry0 - 2, gr[4]); }
-  const fl = T('#f2eee0', '#f0d050', '#d07a9c');
-  for (let i = 0; i < 9; i++) p.set(8 + ((hash2(i, 3, 35) * 68) | 0), 15 + ((hash2(i, 4, 35) * 22) | 0), fl[i % 3]);
-  for (let x = 0; x < w; x++) { p.set(x, ry1 + 1, C('#e6e0cc')); p.set(x, ry1 + 2, C('#2c1e16')); if (x >= bx && x < bx + bw) { p.set(x, ry1 + 3, C('#261a14')); p.set(x, ry1 + 4, dkc(p.get(x, ry1 + 4), 0.7)); } }
-  // skilt på takkanten
-  p.rect(17, 33, 19, 9, C('#2c1e16')); p.rect(18, 34, 17, 7, C('#e2d2a8'));
-  const gl = { B: ['110', '101', '110', '101', '110'], U: ['101', '101', '101', '101', '111'], A: ['010', '101', '111', '101', '101'] };
-  'BUA'.split('').forEach((ch, i) => gl[ch].forEach((row, j) => row.split('').forEach((b, k) => { if (b === '1') p.set(21 + i * 4 + k, 35 + j, C('#2c1e16')); })));
-  // dør
-  p.rect(20, 46, 13, 22, C('#261a14')); p.rect(21, 47, 11, 21, C('#5c3c28'));
-  for (let y = 47; y <= 67; y++) { p.set(24, y, C('#48301f')); p.set(28, y, C('#48301f')); p.set(21, y, C('#6e4a32')); }
-  p.set(30, 58, C('#e6b63c')); p.set(30, 59, C('#a07a20'));
-  // vindu
-  p.rect(41, 46, 19, 14, C('#d6c69c')); p.rect(42, 47, 17, 12, C('#f0bc50')); p.rect(42, 47, 17, 3, C('#f8dc88'));
-  p.rect(50, 47, 1, 12, C('#d6c69c')); p.rect(42, 52, 17, 1, C('#d6c69c'));
-  p.rect(41, 60, 19, 2, C('#48301f')); for (let i = 0; i < 6; i++) p.set(43 + i * 3, 59, i & 1 ? C('#e8302a') : C('#f2eee0'));
-  // lykt
-  p.rect(15, 49, 3, 5, C('#261a14')); p.set(16, 50, C('#ffe08a')); p.set(16, 51, C('#ffc850')); p.set(16, 52, C('#ffe08a'));
-  // trapp
-  p.rect(19, 68, 15, 1, C('#8e6e4a')); p.rect(18, 69, 17, 1, C('#5f4632'));
-  // vedstabel
-  for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) { const x = 72 + i * 3 + (j & 1), y = 57 + j * 3; if (x > 82) continue; p.rect(x, y, 3, 3, C('#7a5c40')); p.rect(x, y, 2, 2, C('#c8a474')); p.set(x, y, C('#dcc090')); }
-  // gevir over vinduet
-  p.line(36, 49, 34, 45, C('#d2c39c'), 1); p.line(37, 49, 39, 45, C('#d2c39c'), 1); p.set(33, 46, C('#d2c39c')); p.set(40, 46, C('#d2c39c')); p.set(36, 50, C('#8a7a5c')); p.set(37, 50, C('#8a7a5c'));
+}
+// Palisaden rundt landsbyen: tette, spisse stokker bundet sammen med to tverrstokker. Variantene som skigarden:
+// 0 øst–vest, 1 nord–sør, 2 på skrå ned mot høyre og 3 ned mot venstre
+const PALW = () => T('#2a2018', '#44342a', '#5a4836', '#74604a', '#8e785c');
+function genPalisade() {
+  const wd = PALW(), cut = C('#b89e76'), band = C('#241a14');
+  // en stokk 4 px bred med foten i (x, yb) og spissen h over
+  const stake = (p, x, yb, h, X = q => q) => {
+    for (let y = yb - h + 1; y <= yb; y++) for (let i = 0; i < 4; i++) p.set(X(x + i), y, y - (yb - h) === 9 || y - (yb - h) === 19 ? band : wd[[4, 3, 2, 1][i] - (hash2(x, y >> 2, 71) < 0.2 ? 1 : 0)]);
+    p.set(X(x), yb - h + 1, 0); p.set(X(x + 3), yb - h + 1, 0); p.set(X(x + 1), yb - h + 1, cut); p.set(X(x + 2), yb - h + 1, wd[3]); p.set(X(x), yb - h + 2, cut);
+  };
+  let p = new Pix(16, 30);
+  for (let i = 0; i < 4; i++) stake(p, i * 4, 28, 25 + (i & 1));
+  p.outlineAuto(0.5); reg('pal', p, 8, 28, { tallC: 1 });
+  p = new Pix(6, 46);
+  for (let i = 0; i < 4; i++) stake(p, 1, 32 + i * 4, 25 + (i & 1));
+  p.outlineAuto(0.5); reg('pal', p, 3, 37, {});
+  for (const mir of [0, 1]) {
+    p = new Pix(15, 42);
+    for (let i = 0; i < 4; i++) stake(p, 1 + i * 3, 30 + i * 3, 25 + (i & 1), q => mir ? 14 - q : q);
+    p.outlineAuto(0.5); reg('pal', p, 7, 35, {});
+  }
+}
+// Portene i palisaden (GATES): kraftige stolper med jernbånd og fakler, bjelke med spontak over, og portblad som står
+// åpne innover. Der veien går nord–sør ses porten forfra (ett bilde); der den går øst–vest ses den fra siden, som en
+// stolpe i nord med portbladet og en i sør med bjelken mellom dem (det søndre bladet ville dekket åpningen)
+function genGates() {
+  const wd = PALW(), ir = C('#24211e'), fl = [C('#ffe08a'), C('#f08a2c')];
+  const post = (p, x, y0, y1, X = q => q) => {
+    for (let y = y0; y <= y1; y++) for (let i = 0; i < 7; i++) p.set(X(x + i), y, (y - y0) % 14 === 9 ? ir : wd[i < 2 ? 4 : i < 5 ? 3 : i < 6 ? 2 : 1]);
+    // fakkel
+    p.rect(X(x + 3), y0 + 14, 1, 4, ir); p.set(X(x + 3), y0 + 13, fl[1]); p.set(X(x + 3), y0 + 12, fl[0]); p.set(X(x + 3), y0 + 11, fl[1]);
+  };
+  // portblad sett forfra (w bredt) med jernbånd
+  const leaf = (p, x, y0, y1, w, X = q => q) => { for (let y = y0; y <= y1; y++) for (let i = 0; i < w; i++) p.set(X(x + i), y, y === y0 + 4 || y === y1 - 4 ? ir : i % 4 === 3 ? wd[1] : wd[2 + (hash2(i >> 2, 3, 73) * 2 | 0)]); };
+  for (const g of GATES) {
+    if (!g.vert) {
+      const W = g.w + 14, p = new Pix(W, 50), yb = 47;
+      leaf(p, 8, 22, yb, 4); leaf(p, W - 12, 22, yb, 4);
+      post(p, 1, 12, yb); post(p, W - 8, 12, yb);
+      for (let y = 10; y <= 16; y++) for (let x = 0; x < W; x++) p.set(x, y, y === 10 ? wd[4] : y === 16 ? wd[0] : x % 9 === 4 ? wd[1] : wd[3 - (y > 13 ? 1 : 0)]);
+      for (let y = 3; y <= 9; y++) for (let x = 9 - y - 2; x < W - (9 - y - 2); x++) p.set(x, y, y === 9 ? wd[0] : (x + y * 2) % 4 === 0 ? wd[0] : wd[y < 5 ? 2 : 1]);
+      p.outlineAuto(0.45);
+      reg('gate', p, W >> 1, yb, { tallC: 1, glow: [[-(g.w >> 1) - 3, -34, 0.22], [(g.w >> 1) + 3, -34, 0.22]] });
+    } else {
+      // g.in: 1 når landsbyen ligger mot øst (portbladene står da mot høyre), ellers −1
+      const X = q => g.in > 0 ? q : 23 - q, ax = X(4), L = g.w + 4;
+      let p = new Pix(24, 50);
+      leaf(p, 8, 22, 47, 14, X); post(p, 1, 12, 47, X);
+      p.outlineAuto(0.45); reg('gate', p, ax, 47, { glow: [[0, -34, 0.22]] });
+      p = new Pix(24, 50 + L);
+      post(p, 1, 12 + L, 47 + L, X);
+      for (let y = 8; y <= 15 + L; y++) for (let i = 0; i < 9; i++) p.set(X(i), y, i === 0 || i === 8 ? wd[0] : y % 7 === 3 ? wd[1] : wd[i < 4 ? 4 : 3]);
+      p.outlineAuto(0.45); reg('gate', p, ax, 47 + L, { glow: [[0, -34, 0.22]] });
+    }
+  }
+}
+function genTower() {
+  const p = new Pix(36, 63), wd = T('#38281e', '#4c3628', '#5f4632', '#7a5c40', '#8e6e4a'), rf = T('#3e4246', '#5a6062', '#7e8482');
+  // bein med kryssavstivere, og stigen opp i midten
+  p.line(8, 52, 26, 38, wd[0], 1); p.line(27, 52, 9, 38, wd[0], 1); p.line(10, 36, 24, 26, wd[0], 1); p.line(25, 36, 11, 26, wd[0], 1);
+  p.line(7, 60, 12, 24, wd[1], 2); p.line(28, 60, 23, 24, wd[2], 2);
+  p.line(16, 60, 16, 24, wd[3], 1); p.line(20, 60, 20, 24, wd[3], 1); for (let y = 57; y > 24; y -= 4) p.rect(17, y, 3, 1, wd[4]);
+  // golv, plankevegger med skyteluke, og tak
+  p.rect(7, 22, 22, 2, wd[3]); p.rect(7, 24, 22, 1, wd[0]);
+  for (let y = 10; y <= 21; y++) for (let x = 9; x <= 26; x++) p.set(x, y, (x - 9) % 4 === 3 ? wd[0] : wd[1 + ((hash2(x >> 2, y >> 1, 61) * 2) | 0)]);
+  p.rect(11, 13, 14, 4, C('#141210')); p.rect(11, 17, 14, 1, wd[4]);
+  for (let y = 5; y <= 9; y++) { const k = 9 - y; p.rect(6 + k, y, 24 - 2 * k, 1, y === 9 ? wd[0] : rf[Math.min(2, k >> 1)]); }
   p.outlineAuto(0.45);
-  return reg('cabin', p, 39, 68, { rect: [-33, -15, 34, 1], tallC: 1 });
+  return reg('tower', p, 18, 61, { r: 7, tallC: 1 });
+}
+// Folkene som står ved husene (se genHunter): fargene til landhandleren, børsemakeren, viltmottakeren, grunneieren,
+// verten på utpostene og smeden. NPC_V gir hvem som hører til hvilket slags sted; koiene er ubetjente
+const NPC_PAL = [
+  { hat: '#6a4a32', hatD: '#4a3222', hatL: '#84603c', band: '#4a3222', jac: '#b8a888', jacD: '#8a7c62', jacL: '#d0c4a4', pant: '#3c3a44', pantD: '#2a2832', packD: '#8a7c62', beard: '#8a8a84' },
+  { hat: '#2c2c30', hatD: '#1c1c20', hatL: '#44444a', band: '#1c1c20', jac: '#4a4e58', jacD: '#34363e', jacL: '#62666e', packD: '#6a4a32', beard: '#3a2a20' },
+  { hat: '#e0dcd0', hatD: '#b4b0a4', hatL: '#f4f0e6', band: '#b4b0a4', jac: '#e0dcd0', jacD: '#b4b0a4', jacL: '#f4f0e6', packD: '#b4b0a4', beard: '#e4b48c' },
+  { hat: '#4a4a40', hatD: '#32322c', hatL: '#62625a', band: '#2c2c2c', jac: '#8c3a2c', jacD: '#642820', jacL: '#aa5040', pant: '#3a3e30', pantD: '#2a2e22', packD: '#642820', beard: '#c8c0b0' },
+  { hat: '#7a2c24', hatD: '#561e18', hatL: '#983c32', band: '#561e18', jac: '#3f5a6c', jacD: '#2c4252', jacL: '#567488', packD: '#2c4252', beard: '#6b4a30' },
+  // smeden: svart lue og brunt skinnforkle
+  { hat: '#2a2826', hatD: '#1a1816', hatL: '#3e3c38', band: '#1a1816', jac: '#7a5234', jacD: '#563822', jacL: '#96683f', pant: '#34322e', pantD: '#242220', packD: '#563822', beard: '#2c2420' },
+];
+const NPC_V = { store: 0, gun: 1, game: 2, farm: 3, post: 4, smith: 5, stable: 3, pub: 4 };
+
+// Folk som går rundt i landsbyen (VSPR[i] har bildene, se VILL i 05-game.js): bakeren, smedgutten, bonden, kona ved
+// brønnen, presten, to som møtes på torget, vedhoggeren, en som rusler gata og en ved nordgrinda, og de to som står i bodene
+const SKIN = '#e4b48c';
+const VIL_PAL = [
+  { civ: 1, cap: 1, hat: '#f0ece2', hatD: '#d0ccc0', hatL: '#ffffff', band: '#f0ece2', jac: '#e6e0d2', jacD: '#bcb6a6', jacL: '#f6f2e8', pant: '#8a8274', pantD: '#6c6658', apron: '#f8f4ea', beard: '#8a5a34' },
+  { civ: 1, cap: 1, hat: '#5a4634', hatD: '#40301f', hatL: '#72593f', band: '#5a4634', jac: '#6e6a64', jacD: '#4e4a46', jacL: '#8a867e', pant: '#3a3632', pantD: '#2a2724', apron: '#5c3c24', beard: SKIN, hair: '#5a3a22' },
+  { civ: 1, hat: '#d8b860', hatD: '#a88a3c', hatL: '#ecd488', band: '#7a5a2c', jac: '#4a6a8c', jacD: '#344e6a', jacL: '#628aac', pant: '#5c4a36', pantD: '#443626', beard: '#b0a898' },
+  { civ: 1, cap: 1, hat: '#b03a2e', hatD: '#842a20', hatL: '#cc5244', band: '#b03a2e', jac: '#3e5a84', jacD: '#2c4264', jacL: '#56749e', dress: '#3e5a84', apron: '#e8e2d2', beard: SKIN, hair: '#7a4a28' },
+  { civ: 1, hat: '#1e1c1c', hatD: '#121010', hatL: '#34302e', band: '#1e1c1c', jac: '#242224', jacD: '#161416', jacL: '#3a383a', pant: '#1e1c1e', pantD: '#141214', dress: '#242224', beard: '#c8c4bc' },
+  { civ: 1, cap: 1, hat: '#ece6d6', hatD: '#c4beae', hatL: '#fbf8f0', band: '#ece6d6', jac: '#4e7a4a', jacD: '#385a36', jacL: '#689660', dress: '#4e7a4a', beard: SKIN, hair: '#c8a050' },
+  { civ: 1, cap: 1, hat: '#6a6a66', hatD: '#4a4a48', hatL: '#868682', band: '#4a4a48', jac: '#7a5a3c', jacD: '#5a402a', jacL: '#96724c', pant: '#44423e', pantD: '#302e2c', beard: '#4a3424' },
+  { civ: 1, cap: 1, hat: '#a03428', hatD: '#74241c', hatL: '#bc4a3c', band: '#a03428', jac: '#8c8880', jacD: '#66625c', jacL: '#a8a49a', pant: '#4c3f32', pantD: '#382e26', beard: '#7a4a28' },
+  { civ: 1, hat: '#4a5a44', hatD: '#34422f', hatL: '#62745a', band: '#2c2c2c', jac: '#8a6e44', jacD: '#66502f', jacL: '#a6885a', pant: '#3c3a44', pantD: '#2a2832', beard: '#2c2420' },
+  { civ: 1, cap: 1, hat: '#34404c', hatD: '#242e38', hatL: '#4a5866', band: '#34404c', jac: '#5a3a34', jacD: '#402824', jacL: '#744e46', pant: '#34322e', pantD: '#242220', beard: '#8a8a84' },
+  { civ: 1, cap: 1, hat: '#d8a83c', hatD: '#a87e28', hatL: '#ecc460', band: '#d8a83c', jac: '#8c3a34', jacD: '#642824', jacL: '#aa5048', dress: '#8c3a34', apron: '#e8e2d2', beard: SKIN, hair: '#3a2a20' },
+  { civ: 1, cap: 1, hat: '#3a4e6a', hatD: '#28384e', hatL: '#506886', band: '#3a4e6a', jac: '#c8c0a8', jacD: '#9c947e', jacL: '#e0d8c0', pant: '#3a3e4a', pantD: '#282c36', apron: '#6a7c84', beard: '#a04a22' },
+];
+const VSPR = [];
+
+// ---------- Hus ----------
+// Hvert slags hus har sitt eget utseende (HOUSE_STYLE): vegg (wall: laft, stående panel, gråstein eller bindingsverk, i
+// fargen wc), tak (torv, tegl, skifer eller halm), grunnflate (L × D, mønet går langs L) og hvor døra står: midt på
+// langveggen, eller i gavlen (end). På kartet tegnes husene på skrå ovenfra, dreid slik de står (genHouseTop og
+// genChurchTop, se houseV); i 3D ses de rett forfra (genHouse og genChurch, der sign, gable, dx, win og side brukes).
+// CABIN_V gir stilen for hvert slags hus (se PLACES og HOUSES)
+const WALLC = {
+  log: ['#38281e', '#4c3628', '#5f4632', '#7a5c40'], tar: ['#221915', '#32251e', '#43342a', '#58463a'],
+  ochre: ['#8a6a2c', '#ac8838', '#c6a248', '#dcbc62'], red: ['#5a1e16', '#7a2a1e', '#963828', '#b04c38'],
+  yellow: ['#a8843a', '#caa64a', '#e0c060', '#f0d880'], white: ['#9c988c', '#c4c0b4', '#dcd8cc', '#f0ece2'],
+  blue: ['#3a4e5c', '#4e6676', '#648090', '#80a0ae'], stone: ['#3e4246', '#5a6062', '#7e8482', '#a2a69e'],
+  plaster: ['#b09c78', '#cdb890', '#e0cea6', '#eedfba'],
+};
+const ROOFC = {
+  turf: ['#38562e', '#4a6c36', '#60863e', '#7a9e48', '#96b256'], tile: ['#6a281c', '#8a3824', '#a8482e', '#c05e3a', '#d67a4a'],
+  slate: ['#2a3036', '#3a424a', '#4e5860', '#667076', '#828a8e'], thatch: ['#6e5424', '#927230', '#b08e40', '#c8aa56', '#dcc474'],
+};
+const HOUSE_STYLE = [
+  { id: 'store', sign: 'BUA', wall: 'panel', wc: 'ochre', roof: 'tile', awn: 1, side: 'crates', flowers: 1, L: 52 },
+  { id: 'gun', sign: 'VÅPEN', wall: 'log', wc: 'tar', roof: 'slate', antler: 1, side: 'wood' },
+  { id: 'game', sign: 'VILT', wall: 'panel', wc: 'red', roof: 'slate', side: 'rack' },
+  { id: 'farm', sign: 'GARD', wall: 'log', wc: 'log', roof: 'thatch', side: 'wood', flowers: 1, L: 54, D: 34 },
+  { id: 'koie', sign: 'KOIE', wall: 'log', wc: 'log', roof: 'turf', side: 'wood', antler: 1, flowers: 1, L: 44, D: 30 },
+  { id: 'smith', sign: 'SMIE', wall: 'stone', wc: 'stone', roof: 'slate', forge: 1, side: 'barrel', D: 34 },
+  { id: 'post', sign: 'BUA', wall: 'log', wc: 'log', roof: 'turf', side: 'wood', antler: 1, flowers: 1 },
+  { id: 'stable', sign: 'STALL', wall: 'panel', wc: 'red', roof: 'turf', side: 'barrel', L: 54 },
+  { id: 'pub', sign: 'PUB', wall: 'frame', wc: 'plaster', roof: 'tile', side: 'barrel', flowers: 1, L: 44, D: 30 },
+  { id: 'bakery', sign: 'BAKER', wall: 'frame', wc: 'plaster', roof: 'thatch', gable: 1, bread: 1 },
+  { id: 'home0', wall: 'panel', wc: 'red', roof: 'slate', gable: 1, end: 1, L: 44, D: 30, dx: 33, win: [[13, 47, 13, 12], [52, 47, 13, 12]], flowers: 1 },
+  { id: 'home1', wall: 'panel', wc: 'yellow', roof: 'tile', dx: 46, win: [[13, 46, 19, 14]], flowers: 1, door: '#3e5a44' },
+  { id: 'home2', wall: 'panel', wc: 'white', roof: 'tile', gable: 1, end: 1, L: 44, D: 30, dx: 33, win: [[13, 47, 13, 12], [52, 47, 13, 12]], door: '#3a5670' },
+  { id: 'home3', wall: 'panel', wc: 'blue', roof: 'turf', side: 'wood', flowers: 1, L: 44 },
+  { id: 'home4', wall: 'frame', wc: 'plaster', roof: 'thatch', gable: 1, end: 1, L: 42, D: 30, dx: 33, win: [[13, 47, 13, 12], [52, 47, 13, 12]] },
+  { id: 'home5', wall: 'stone', wc: 'stone', roof: 'thatch', side: 'wood', L: 46, door: '#6a452c' },
+];
+const CABIN_V = { church: HOUSE_STYLE.length };
+HOUSE_STYLE.forEach((s, i) => CABIN_V[s.id] = i);
+const GLYPH = { A: '010101111101101', B: '110101110101110', D: '110101101101110', E: '111100110100111', G: '011100101101011', I: '111010010010111', K: '101101110101101', L: '100100100100111', M: '101111111101101',
+  N: '110101101101101', O: '111101101101111', P: '110101110100100', R: '110101110101101', S: '011100010001110', T: '111010010010010', U: '101101101101111', V: '101101101101010', 'Å': '010010101111101' };
+const mod = (a, n) => ((a % n) + n) % n;
+// Fargen på veggen i (u, v) piksler fra hjørnet oppe til venstre: laft, stående panel, gråstein eller bindingsverk
+function wallPix(kind, wc, u, v) {
+  if (kind === 'log') { const rr = mod(v, 4); return rr !== 3 && hash2(u >> 2, v >> 2, 9) < 0.08 ? wc[1] : wc[[3, 2, 1, 0][rr]]; }
+  if (kind === 'panel') return mod(u, 4) === 3 ? wc[0] : wc[1 + ((hash2(u >> 2, 3, 12) * 2.6) | 0)];
+  if (kind === 'stone') { const row = Math.floor(v / 4), uu = u + (row & 1) * 3; return mod(v, 4) === 3 || mod(uu, 6) === 5 ? wc[0] : wc[1 + ((hash2(Math.floor(uu / 6), row, 14) * 3) | 0)]; }
+  // bindingsverk: lys puss mellom mørke stolper og bjelker
+  if (mod(u, 21) < 2 || v === 0 || v === 1 || v === -13 || v === -12) return C('#4c3628');
+  return wc[1 + ((hash2(u >> 1, v >> 1, 16) * 2.4) | 0)];
+}
+// Taket i (x, y), f fra mønet (0) til raftet (1): torv, halm, tegl eller skifer
+function roofPix(kind, rc, x, y, f) {
+  if (kind === 'thatch') return mod(y, 7) === 6 && hash2(x >> 1, y, 38) < 0.8 ? rc[1] : tone(rc, 0.8 - f * 0.4 + (hash2(x, y >> 2, 37) - 0.5) * 0.45, x, y, 2);
+  if (kind === 'turf') return tone(rc, 0.78 - f * 0.5 + (hash2(x >> 1, y >> 1, 31) - 0.5) * 0.36, x, y, 2);
+  const row = Math.floor(y / 3), k = kind === 'tile' ? 4 : 6;
+  if (mod(y, 3) === 2 || mod(x + row * (k >> 1), k) === 0) return rc[f > 0.6 ? 0 : 1];
+  return tone(rc, 0.85 - f * 0.45 + (hash2(Math.floor((x + row * (k >> 1)) / k), row, 33) - 0.5) * 0.3, x, y, 3);
+}
+// Vindu med lys i, sprosser og vinduskarm; hot er gløden fra essa i smia
+function drawWindow(p, x, y, w, h, hot) {
+  p.rect(x, y, w, h, C('#d6c69c')); p.rect(x + 1, y + 1, w - 2, h - 2, C(hot ? '#e8742c' : '#f0bc50')); p.rect(x + 1, y + 1, w - 2, 3, C(hot ? '#f8b050' : '#f8dc88'));
+  p.rect(x + (w >> 1), y + 1, 1, h - 2, C('#d6c69c')); p.rect(x + 1, y + (h >> 1), w - 2, 1, C('#d6c69c'));
+  p.rect(x, y + h, w, 2, C('#48301f'));
+}
+function genHouse(st) {
+  const w = 86, h = 76, p = new Pix(w, h), bx = 7, bw = 64, wy0 = 38, wy1 = 67, mx = 39, dx = st.dx || 20;
+  const wc = T(...WALLC[st.wc]), rc = T(...ROOFC[st.roof]), stn = T(...WALLC.stone), trim = C(st.wc === 'white' ? '#7e8e98' : '#f0ece2');
+  const wins = st.win || [[41, 46, 19, 14]], glow = [[dx - 4 - mx, 51 - 68, 0.2]];
+  // pipe; smia har en bred pipe med glør i toppen
+  const cx0 = st.gable ? 54 : st.forge ? 50 : 55, cx1 = st.gable ? 59 : 61, cy0 = st.gable ? 12 : 3;
+  for (let y = cy0; y <= cy0 + 14; y++) for (let x = cx0; x <= cx1; x++) p.set(x, y, stn[(hash2(x >> 1, (y + (x >> 1)) >> 1, 5) * 3 + (x < cx0 + 2 ? 1 : 0)) | 0]);
+  p.rect(cx0 - 1, cy0 - 1, cx1 - cx0 + 3, 1, stn[0]); p.rect(cx0 - 1, cy0, cx1 - cx0 + 3, 1, stn[3]);
+  if (st.forge) p.rect(cx0 + 1, cy0 - 1, cx1 - cx0 - 1, 1, C('#e8742c'));
+  // vegg, med grunnmur under panel og bindingsverk
+  for (let y = wy0; y <= wy1; y++) for (let x = bx; x < bx + bw; x++) p.set(x, y, wallPix(st.wall, wc, x - bx, y - wy0));
+  if (st.wall === 'panel' || st.wall === 'frame') for (let x = bx; x < bx + bw; x++) { p.set(x, wy1 - 1, stn[2 - (hash2(x >> 2, 1, 18) * 2 | 0)]); p.set(x, wy1, stn[0]); }
+  if (st.gable) {
+    // gavlen mot oss: veggen går opp i en spiss, og taket ses som vindskier langs kanten
+    const ay = 7, sl = 37 / (wy0 + 5 - ay);
+    for (let y = ay; y <= wy0 + 5; y++) {
+      const hw = (y - ay) * sl;
+      for (let x = Math.floor(mx - hw); x <= Math.ceil(mx + hw); x++) {
+        const d = hw - Math.abs(x - mx + 0.5);
+        if (d < 4.5) p.set(x, y, d < 1 ? rc[0] : d > 3.4 ? rc[1] : rc[x < mx ? 4 : 3]);
+        else if (y < wy0) p.set(x, y, wallPix(st.wall, wc, x - bx, y - wy0));
+      }
+    }
+    // loftsvindu
+    p.rect(mx - 5, 21, 10, 9, C('#d6c69c')); p.rect(mx - 4, 22, 8, 7, C('#f0bc50')); p.rect(mx - 4, 22, 8, 2, C('#f8dc88')); p.rect(mx - 1, 22, 1, 7, C('#d6c69c'));
+  } else {
+    // langveggen mot oss, med hjørner og takflata over
+    if (st.wall === 'log') for (let y = wy0; y <= wy1 - 2; y += 4) { p.rect(bx - 2, y, 3, 3, wc[3]); p.set(bx - 1, y + 1, wc[0]); p.rect(bx + bw - 1, y, 3, 3, wc[3]); p.set(bx + bw, y + 1, wc[0]); }
+    const ry0 = 12, ry1 = 40;
+    for (let y = ry0; y <= ry1; y++) {
+      const f = (y - ry0) / (ry1 - ry0), xl = Math.round(lerp(12, 1, f)), xr = Math.round(lerp(w - 13, w - 2, f));
+      for (let x = xl; x <= xr; x++) p.set(x, y, roofPix(st.roof, rc, x, y, f));
+    }
+    if (st.roof === 'turf') {
+      for (let x = 12; x <= w - 13; x++) { if (hash2(x, 1, 33) < 0.6) p.set(x, ry0 - 1, rc[3]); if (hash2(x, 2, 33) < 0.25) p.set(x, ry0 - 2, rc[4]); }
+      const fl = T('#f2eee0', '#f0d050', '#d07a9c');
+      for (let i = 0; i < 9; i++) p.set(8 + ((hash2(i, 3, 35) * 68) | 0), 15 + ((hash2(i, 4, 35) * 22) | 0), fl[i % 3]);
+    } else p.rect(12, ry0 - 1, w - 24, 1, rc[4]);
+    for (let x = 0; x < w; x++) { p.set(x, ry1 + 1, C('#e6e0cc')); p.set(x, ry1 + 2, C('#2c1e16')); if (x >= bx && x < bx + bw) { p.set(x, ry1 + 3, C('#261a14')); p.set(x, ry1 + 4, dkc(p.get(x, ry1 + 4), 0.7)); } }
+  }
+  // hvite hjørnekasser på panelhus
+  if (st.wall === 'panel') { p.rect(bx, wy0 + (st.gable ? 0 : 5), 2, wy1 - wy0 - (st.gable ? 1 : 6), trim); p.rect(bx + bw - 2, wy0 + (st.gable ? 0 : 5), 2, wy1 - wy0 - (st.gable ? 1 : 6), trim); }
+  // skilt: på takkanten, eller over døra når gavlen vender fram
+  if (st.sign) {
+    const sw = st.sign.length * 4 + 5, sx = st.gable ? Math.max(bx + 2, dx + 6 - (sw >> 1)) : 18, sy = st.gable ? 37 : 34;
+    p.rect(sx - 1, sy - 1, sw + 2, 9, C('#2c1e16')); p.rect(sx, sy, sw, 7, C('#e2d2a8'));
+    [...st.sign].forEach((ch, i) => [...GLYPH[ch]].forEach((b, k) => { if (b === '1') p.set(sx + 3 + i * 4 + k % 3, sy + 1 + (k / 3 | 0), C('#2c1e16')); }));
+  }
+  // dør med lykt og trapp
+  const dc = C(st.door || '#5c3c28');
+  p.rect(dx, 46, 13, 22, C('#261a14')); p.rect(dx + 1, 47, 11, 21, dc);
+  for (let y = 47; y <= 67; y++) { p.set(dx + 4, y, dkc(dc, 0.78)); p.set(dx + 8, y, dkc(dc, 0.78)); p.set(dx + 1, y, dkc(dc, 1.2)); }
+  p.set(dx + 10, 58, C('#e6b63c')); p.set(dx + 10, 59, C('#a07a20'));
+  p.rect(dx - 5, 49, 3, 5, C('#261a14')); p.set(dx - 4, 50, C('#ffe08a')); p.set(dx - 4, 51, C('#ffc850')); p.set(dx - 4, 52, C('#ffe08a'));
+  p.rect(dx - 1, 68, 15, 1, stn[3]); p.rect(dx - 2, 69, 17, 1, stn[1]);
+  // vinduer, med blomsterkasse, brød i karmen hos bakeren og markise på bua
+  for (const [x, y, ww, hh] of wins) {
+    drawWindow(p, x, y, ww, hh, st.forge);
+    if (st.flowers) for (let i = 0; i * 3 < ww - 3; i++) p.set(x + 2 + i * 3, y + hh - 1, i & 1 ? C('#e8302a') : C('#f2eee0'));
+    if (st.bread) for (let i = 0; i < 3; i++) { p.rect(x + 2 + i * 6, y + hh - 3, 4, 2, C('#b87a3c')); p.rect(x + 2 + i * 6, y + hh - 3, 3, 1, C('#dca85c')); }
+    if (st.awn) for (let j = 0; j < 4; j++) for (let i = -1 - (j >> 1); i <= ww + (j >> 1); i++) if (j < 3 || !(i & 1)) p.set(x + i, y - 3 + j, mod(i, 6) < 3 ? C('#b03a2e') : C('#f0ece2'));
+    glow.push([x + (ww >> 1) - mx, y + (hh >> 1) - 68, st.forge ? 0.42 : 0.32]);
+  }
+  // gevir mellom døra og vinduet
+  if (st.antler) { p.line(36, 49, 34, 45, C('#d2c39c'), 1); p.line(37, 49, 39, 45, C('#d2c39c'), 1); p.set(33, 46, C('#d2c39c')); p.set(40, 46, C('#d2c39c')); p.set(36, 50, C('#8a7a5c')); p.set(37, 50, C('#8a7a5c')); }
+  // ved veggen til høyre: vedstabel, kasser og tønne, stativ med fugl til henging, eller vanntønna til smeden
+  if (st.side === 'wood') for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) { const x = 72 + i * 3 + (j & 1), y = 57 + j * 3; if (x > 82) continue; p.rect(x, y, 3, 3, C('#7a5c40')); p.rect(x, y, 2, 2, C('#c8a474')); p.set(x, y, C('#dcc090')); }
+  if (st.side === 'crates') { p.rect(72, 60, 8, 8, C('#8e6e4a')); p.rect(72, 60, 8, 1, C('#b08c5e')); p.line(72, 61, 79, 67, C('#5f4632'), 1); p.rect(75, 54, 7, 6, C('#7a5c40')); p.rect(75, 54, 7, 1, C('#a07e52')); p.rect(76, 52, 2, 2, C('#c8402c')); p.rect(79, 52, 2, 2, C('#7aa048')); }
+  if (st.side === 'barrel') { p.rect(73, 58, 8, 10, C('#6a4c34')); p.rect(73, 58, 1, 10, C('#8a684a')); p.rect(73, 60, 8, 1, C('#3e4246')); p.rect(73, 65, 8, 1, C('#3e4246')); p.rect(74, 57, 6, 1, C('#376c76')); }
+  if (st.side === 'rack') {
+    p.rect(72, 50, 1, 18, C('#5f4632')); p.rect(82, 50, 1, 18, C('#5f4632')); p.rect(71, 50, 13, 1, C('#7a5c40'));
+    [[74, '#3a3d42', '#d8402c'], [77, '#8a6038', '#3e2a18'], [80, '#94806a', '#e8e2d4']].forEach(([x, c, c2]) => { p.set(x, 51, C('#2c1e16')); p.rect(x - 1, 52, 2, 5, C(c)); p.set(x, 57, C(c2)); p.set(x - 1, 58, C(c)); });
+  }
+  p.outlineAuto(0.45);
+  return mkSpr(p, mx, 68, {});
+}
+// Hvit trekirke med tårn og spir midt på gavlen, klokke i tårnet og buede vinduer
+function genChurch() {
+  const w = 100, h = 134, p = new Pix(w, h), mx = 50, by = 125;
+  const wc = T(...WALLC.white), rc = T(...ROOFC.slate), stn = T(...WALLC.stone), fr = C('#7e8e98');
+  const wall = (x, y) => y >= by - 2 ? stn[y === by ? 0 : 2 - (hash2(x >> 2, 2, 18) * 2 | 0)] : wallPix('panel', wc, x, y);
+  // skipet: gavl med skifertak
+  const ay = 48, wy0 = 86, sl = 42 / (wy0 + 4 - ay);
+  for (let y = ay; y <= by; y++) {
+    const hw = y <= wy0 + 4 ? (y - ay) * sl : 0;
+    for (let x = 10; x < 90; x++) {
+      const d = hw - Math.abs(x - mx + 0.5);
+      if (y <= wy0 + 4 && d >= 0 && d < 5) p.set(x, y, d < 1 ? rc[0] : d > 3.8 ? rc[1] : rc[x < mx ? 4 : 3]);
+      else if (x >= 12 && x < 88 && (y >= wy0 ? true : d >= 5)) p.set(x, y, wall(x, y));
+    }
+  }
+  p.rect(12, wy0, 2, by - wy0 - 2, fr); p.rect(86, wy0, 2, by - wy0 - 2, fr);
+  // buede vinduer med farget glass
+  const glow = [];
+  for (const x of [19, 73]) {
+    p.rect(x, 98, 8, 16, fr); p.rect(x + 1, 96, 6, 2, fr); p.rect(x + 2, 95, 4, 1, fr);
+    for (let y = 97; y <= 112; y++) for (let i = 1; i <= 6; i++) if (y > 98 || i > 1 && i < 6) p.set(x + i, y, C(['#f0bc50', '#f8dc88', '#5a8ab0', '#c8503c'][(hash2(x + i, y >> 1, 41) * 4.6) | 0] || '#f0bc50'));
+    p.rect(x + 4, 97, 1, 16, fr); p.rect(x + 1, 104, 6, 1, fr); p.rect(x, 114, 8, 1, C('#48301f'));
+    glow.push([x + 4 - mx, 105 - by - 1, 0.3]);
+  }
+  // tårnet foran skipet, med lydluker og klokke
+  const tx0 = 38, tx1 = 61, ty0 = 34;
+  for (let y = ty0; y <= by; y++) for (let x = tx0; x <= tx1; x++) p.set(x, y, wall(x, y));
+  p.rect(tx0, ty0, 1, by - ty0 - 2, fr); p.rect(tx1, ty0, 1, by - ty0 - 2, fr); p.rect(tx0, 58, tx1 - tx0 + 1, 2, fr); p.rect(tx0, 82, tx1 - tx0 + 1, 1, fr);
+  for (const x of [43, 53]) { p.rect(x, 41, 4, 12, C('#2c2824')); p.rect(x + 1, 40, 2, 1, C('#2c2824')); for (let y = 43; y < 53; y += 3) p.rect(x, y, 4, 1, C('#6a6458')); }
+  p.ell(49.5, 70.5, 5.5, 5.5, C('#2c2824')); p.ell(49.5, 70.5, 4.5, 4.5, C('#f4f0e6')); p.line(49, 71, 49, 67, C('#2c2824'), 1); p.line(49, 71, 52, 72, C('#2c2824'), 1);
+  // spir med kors
+  for (let y = 9; y < ty0; y++) {
+    const f = (y - 9) / (ty0 - 9), hw = lerp(1, 15, f);
+    for (let x = Math.round(mx - hw); x < Math.round(mx + hw); x++) p.set(x, y, mod(y, 3) === 0 ? rc[1] : rc[x < mx - hw * 0.25 ? 4 : x < mx + hw * 0.3 ? 3 : 2]);
+  }
+  p.rect(mx - 16, ty0 - 1, 32, 2, rc[0]);
+  p.rect(mx - 1, 1, 2, 9, C('#e6b63c')); p.rect(mx - 3, 3, 6, 2, C('#e6b63c')); p.set(mx, 1, C('#a07a20')); p.rect(mx - 3, 4, 6, 1, C('#a07a20'));
+  // buet dobbeltdør og trapp
+  p.rect(43, 104, 14, by - 103, C('#261a14')); p.rect(45, 102, 10, 2, C('#261a14')); p.rect(47, 101, 6, 1, C('#261a14'));
+  for (let y = 103; y <= by; y++) for (let x = 44; x <= 55; x++) if (y > 104 || x > 45 && x < 54) p.set(x, y, x === 49 || x === 50 ? C('#3a2618') : (x & 3) === 0 ? C('#48301f') : C('#6a452c'));
+  p.set(48, 114, C('#e6b63c')); p.set(51, 114, C('#e6b63c'));
+  p.rect(41, by + 1, 18, 1, stn[3]); p.rect(40, by + 2, 20, 1, stn[1]);
+  p.outlineAuto(0.45);
+  return mkSpr(p, mx, by + 1, {});
+}
+
+// ---------- Hus på skrå ovenfra ----------
+// Et hus bygges av flater i sitt eget rutenett (u langs mønet, v på tvers, z opp), dreies rot om midten og tegnes
+// sett på skrå ovenfra: bakken som på kartet, og høyden rett opp i bildet. Hvert punkt på flatene settes inn i bildet,
+// og det høyeste punktet i hver piksel vinner. Lyset kommer fra nordvest, og huset kaster en fast skygge mot sørøst
+const SHADOW = (0x58000000 | (C('#0b1a1c') & 0xffffff)) >>> 0;
+class Model {
+  // R: største avstand fra midten til et hjørne, H: største høyde
+  constructor(R, H, rot) {
+    this.c = Math.cos(rot); this.s = Math.sin(rot);
+    this.w = 2 * R + 8 + (H >> 1); this.h = 2 * R + H + 8 + (H >> 2); this.ax = R + 4; this.ay = R + H + 4;
+    this.p = new Pix(this.w, this.h); this.zb = new Float32Array(this.w * this.h).fill(-1); this.sh = new Uint8Array(this.w * this.h); this.glow = [];
+  }
+  scr(u, v, z) { return [Math.round(this.ax + u * this.c - v * this.s), Math.round(this.ay + u * this.s + v * this.c - z)]; }
+  put(u, v, z, col) {
+    const x = this.ax + u * this.c - v * this.s, y = this.ay + u * this.s + v * this.c, X = Math.round(x), Y = Math.round(y - z), w = this.w;
+    if (X >= 0 && X < w && Y >= 0 && Y < this.h && z >= this.zb[Y * w + X]) { this.zb[Y * w + X] = z; this.p.d[Y * w + X] = col; }
+    const SX = Math.round(x + z * 0.45), SY = Math.round(y + z * 0.22);
+    if (SX >= 0 && SX < w && SY >= 0 && SY < this.h) this.sh[SY * w + SX] = 1;
+  }
+  // lys på en flate som vender (lu, lv) i husets rutenett: [lysstyrke, hvor mye den vender mot oss]
+  lit(lu, lv) { const nx = lu * this.c - lv * this.s, ny = lu * this.s + lv * this.c; return [1 - 0.13 * (nx + ny), ny]; }
+  // vegg fra (u0, v0) til (u1, v1), med urviseren sett ovenfra; zt er høyden (tall eller funksjon av avstanden q langs
+  // veggen) og tex(q, z) fargen. Vegger som vender bort fra oss tegnes ikke; gir true hvis veggen synes
+  wall(u0, v0, u1, v1, zt, tex, z0 = 0) {
+    const du = u1 - u0, dv = v1 - v0, len = hyp(du, dv), [k, ny] = this.lit(dv / len, -du / len);
+    if (ny < 0.05) return false;
+    for (let q = 0; q <= len; q += 0.5) { const zm = typeof zt === 'function' ? zt(q) : zt; for (let z = z0; z <= zm; z += 0.5) this.put(u0 + du * q / len, v0 + dv * q / len, z, shadeC(tex(q, z), k)); }
+    return true;
+  }
+  // kasse med fire vegger og flatt lokk
+  box(u0, u1, v0, v1, z0, z1, tex, top) {
+    this.wall(u0, v0, u1, v0, z1, tex, z0); this.wall(u1, v0, u1, v1, z1, tex, z0); this.wall(u1, v1, u0, v1, z1, tex, z0); this.wall(u0, v1, u0, v0, z1, tex, z0);
+    for (let u = u0; u <= u1; u += 0.5) for (let v = v0; v <= v1; v += 0.5) this.put(u, v, z1, top);
+  }
+  // saltak med mønet langs u fra u0 til u1: hd er halve bredden på huset, ov utstikket, z0 raftet og hr høyden opp til mønet
+  roof(u0, u1, hd, ov, z0, hr, kind, rc) {
+    for (const sd of [-1, 1]) {
+      const k = this.lit(0, sd * 0.75)[0] + 0.06, W = hd + ov;
+      for (let u = u0; u <= u1; u += 0.5) for (let t = 0; t <= W; t += 0.4) {
+        const f = t / W, col = f < 0.07 ? rc[4] : f > 0.93 ? rc[0] : u < u0 + 1 || u > u1 - 1 ? rc[1] : roofPix(kind, rc, Math.floor(u) + 200, Math.floor(t * 1.25), f);
+        this.put(u, sd * t, z0 + hr * (1 - t / hd), shadeC(col, k));
+      }
+    }
+  }
+  // spir: pyramide med kvadratisk fot (halv side hb) fra z0 og hh opp
+  spire(uc, vc, hb, z0, hh, rc) {
+    for (const [lu, lv] of [[0, 1], [1, 0], [0, -1], [-1, 0]]) {
+      const [k, ny] = this.lit(lu, lv); if (ny < -0.3) continue;
+      for (let z = 0; z <= hh; z += 0.4) { const hw = hb * (1 - z / hh); for (let t = -hw; t <= hw; t += 0.4) this.put(uc + lu * hw - lv * t, vc + lv * hw + lu * t, z0 + z, shadeC(Math.floor(z * 1.2) % 4 === 0 ? rc[1] : rc[3], k)); }
+    }
+  }
+  // lys i et vindu eller en lykt, til gløden om natta
+  lamp(u, v, z, a) { const [X, Y] = this.scr(u, v, z); this.glow.push([X - this.ax, Y - this.ay, a]); }
+  // omriss og skygge på bakken, og så inn blant husene (SPR.cabin)
+  finish(opt) {
+    const p = this.p.outlineAuto(0.45);
+    for (let i = 0; i < p.d.length; i++) if (!p.d[i] && this.sh[i]) p.d[i] = SHADOW;
+    return reg('cabin', p, this.ax, this.ay, Object.assign({ tallC: 1, nosh: 1, glow: this.glow }, opt));
+  }
+}
+const HOUSE_HW = 17, HOUSE_HR = 11;
+// Hvor døra står på et hus dreid rot: [x, y] et steg utenfor døra og [x, y] retningen ut, regnet fra midten av huset
+function houseDoor(kind, rot) {
+  const st = HOUSE_STYLE[CABIN_V[kind]], c = Math.cos(rot), s = Math.sin(rot);
+  const [u, v, nu, nv] = kind === 'church' ? [41, 0, 1, 0] : st.end ? [(st.L || 48) / 2 + 5, 0, 1, 0] : [12.5 - (st.L || 48) / 2, (st.D || 32) / 2 + 5, 0, 1];
+  return { door: [u * c - v * s, u * s + v * c], out: [nu * c - nv * s, nu * s + nv * c] };
+}
+function genHouseTop(st, rot) {
+  const L = st.L || 48, D = st.D || 32, hl = L / 2, hd = D / 2, Hw = HOUSE_HW, Hr = HOUSE_HR, ov = 2.5;
+  const m = new Model(Math.ceil(hyp(hl + ov, hd + ov)) + 1, Hw + Hr + 8, rot);
+  const wc = T(...WALLC[st.wc]), rc = T(...ROOFC[st.roof]), stn = T(...WALLC.stone), trim = C(st.wc === 'white' ? '#7e8e98' : '#f0ece2'), dc = C(st.door || '#5c3c28'), fr = C('#d6c69c');
+  const base = st.wall === 'panel' || st.wall === 'frame';
+  // dør, vinduer og lykt på hver vegg: [slag, fra, til] langs veggen (u på langveggene S og N, v i gavlene E og W)
+  const F = st.end ? { E: [['door', -4.5, 4.5], ['lamp', -8, -6.5]], S: [['win', 7 - hl, 17 - hl], ['win', hl - 19, hl - 9]], N: [['win', 7 - hl, 17 - hl], ['win', hl - 19, hl - 9]], W: [['win', -5, 5]] }
+    : { S: [['door', 8 - hl, 17 - hl], ['lamp', 4.5 - hl, 6 - hl], ['win', hl - 23, hl - 10]], E: [['win', -5, 5]], W: [['win', -5, 5]], N: [['win', -6, 6]] };
+  const tex = (name, len, a0, dir, gab) => (q, z) => {
+    const a = a0 + dir * q;
+    for (const f of F[name]) if (a >= f[1] && a <= f[2]) {
+      if (f[0] === 'door' && z <= 14) return a < f[1] + 1 || a > f[2] - 1 || z > 13 ? C('#261a14') : a > f[2] - 3 && z > 6 && z < 8 ? C('#e6b63c') : Math.floor(a - f[1]) % 3 === 0 ? dkc(dc, 0.78) : dc;
+      if (f[0] === 'lamp' && z >= 9 && z <= 12) return z > 11.4 ? C('#261a14') : C('#ffd060');
+      if (f[0] === 'win' && z >= 6 && z <= 13.5) return a < f[1] + 1 || a > f[2] - 1 || z < 7 || z > 12.5 || Math.abs(a - (f[1] + f[2]) / 2) < 0.5 ? fr : C(st.forge ? (z > 10.5 ? '#f8b050' : '#e8742c') : z > 10.5 ? '#f8dc88' : '#f0bc50');
+    }
+    if (base && z < 2) return stn[z < 1 ? 0 : 2];
+    if (st.wall === 'panel' && (q < 1.5 || q > len - 1.5)) return trim;
+    const col = wallPix(st.wall, wc, Math.floor(q), Hw - 1 - Math.floor(z));
+    return !gab && z > Hw - 2.5 ? dkc(col, 0.72) : col;
+  };
+  const gz = q => Hw + Hr * (1 - Math.abs(hd - q) / hd);
+  const vis = {
+    S: m.wall(hl, hd, -hl, hd, Hw, tex('S', L, hl, -1)), W: m.wall(-hl, hd, -hl, -hd, gz, tex('W', D, hd, -1, 1)),
+    N: m.wall(-hl, -hd, hl, -hd, Hw, tex('N', L, -hl, 1)), E: m.wall(hl, -hd, hl, hd, gz, tex('E', D, -hd, 1, 1)),
+  };
+  m.roof(-hl - ov, hl + ov, hd, ov, Hw, Hr, st.roof, rc);
+  // pipe i mønet; smia har en bred pipe med glør i toppen
+  const cu = hl * 0.45, cw = st.forge ? 4 : 2.5;
+  m.box(cu - cw, cu + cw, -2.5, 2.5, Hw + Hr - 4, Hw + Hr + 5, (q, z) => stn[1 + ((hash2(Math.floor(q / 2), Math.floor(z / 2), 5) * 2.4) | 0)], st.forge ? C('#e8742c') : stn[0]);
+  // lys i vinduene og lykta på veggene som vender mot oss
+  const at = (name, a) => name === 'S' ? [a, hd] : name === 'N' ? [a, -hd] : name === 'E' ? [hl, a] : [-hl, a];
+  for (const name in F) if (vis[name]) for (const f of F[name]) if (f[0] !== 'door') m.lamp(...at(name, (f[1] + f[2]) / 2), 10, f[0] === 'lamp' ? 0.1 : st.forge ? 0.26 : 0.16);
+  // skiltet henger over døra, vendt rett mot oss så det kan leses
+  if (st.sign) {
+    const df = F[st.end ? 'E' : 'S'][0], [X, Y] = m.scr(...at(st.end ? 'E' : 'S', (df[1] + df[2]) / 2), Hw + 1), sw = st.sign.length * 4 + 5, sx = clamp(X - (sw >> 1), 1, m.w - sw - 2), p = m.p;
+    p.rect(sx - 1, Y - 8, sw + 2, 9, C('#2c1e16')); p.rect(sx, Y - 7, sw, 7, C('#e2d2a8'));
+    [...st.sign].forEach((ch, i) => [...GLYPH[ch]].forEach((b, k) => { if (b === '1') p.set(sx + 3 + i * 4 + k % 3, Y - 6 + (k / 3 | 0), C('#2c1e16')); }));
+  }
+  return m.finish({ obb: [hl, hd, Math.cos(rot), Math.sin(rot)], s3: HOUSE_3D[st.id] || (HOUSE_3D[st.id] = genHouse(st)) });
+}
+// Kirka: skip med skifertak, og tårn med spir og kors i enden der døra er
+function genChurchTop(rot) {
+  const m = new Model(45, 74, rot), wc = T(...WALLC.white), rc = T(...ROOFC.slate), stn = T(...WALLC.stone), fr = C('#7e8e98'), hd = 14, Hw = 20, Hr = 13, u0 = -37, u1 = 22;
+  const glass = (a, z) => C(['#f0bc50', '#f8dc88', '#5a8ab0', '#c8503c', '#f0bc50'][(hash2(Math.floor(a), Math.floor(z / 2), 41) * 5) | 0]);
+  const nave = (a0, dir, gab) => (q, z) => {
+    const a = a0 + dir * q;
+    if (!gab) for (const wu of [-28, -14, 0, 14]) if (Math.abs(a - wu) <= 3 && z >= 6 && z <= 16) return Math.abs(a - wu) > 2 || z < 7 || z > 15 ? fr : glass(a, z);
+    if (gab && hyp(a, z - 22) < 3.5) return hyp(a, z - 22) > 2.5 ? fr : glass(a, z);
+    if (z < 2.5) return stn[z < 1 ? 0 : 2];
+    const col = wallPix('panel', wc, Math.floor(q), 40 - Math.floor(z));
+    return !gab && z > Hw - 2.5 ? dkc(col, 0.72) : col;
+  };
+  const vS = m.wall(u1, hd, u0, hd, Hw, nave(u1, -1)), vN = m.wall(u0, -hd, u1, -hd, Hw, nave(u0, 1));
+  m.wall(u0, hd, u0, -hd, q => Hw + Hr * (1 - Math.abs(hd - q) / hd), nave(hd, -1, 1));
+  m.wall(u1, -hd, u1, hd, q => Hw + Hr * (1 - Math.abs(hd - q) / hd), nave(-hd, 1, 1));
+  m.roof(u0 - 2.5, u1 + 1, hd, 2.5, Hw, Hr, 'slate', rc);
+  for (const wu of [-28, -14, 0, 14]) { if (vS) m.lamp(wu, hd, 11, 0.1); if (vN) m.lamp(wu, -hd, 11, 0.1); }
+  // tårnet: dør, klokke og lydluker
+  const tw = (q, z) => {
+    const a = Math.abs(q - 7);
+    if (z <= 15 && a <= 4.5) return a > 3.5 || z > 14 ? C('#261a14') : a < 0.6 ? C('#3a2618') : C('#6a452c');
+    if (hyp(a, z - 26) < 3.6) return hyp(a, z - 26) > 2.6 ? C('#2c2824') : a < 0.6 && z > 26 || z > 25.4 && z < 26.4 && q > 7 ? C('#2c2824') : C('#f4f0e6');
+    if (z >= 33 && z <= 41 && a <= 3.5) return Math.floor(z) % 3 === 0 ? C('#6a6458') : C('#2c2824');
+    if (z < 2.5) return stn[z < 1 ? 0 : 2];
+    if (q < 1 || q > 13 || z > 42.5 || Math.abs(z - 20) < 1) return fr;
+    return wallPix('panel', wc, Math.floor(q) + 1, 50 - Math.floor(z));
+  };
+  m.box(22, 36, -7, 7, 0, 44, tw, rc[1]);
+  m.spire(29, 0, 8.5, 44, 18, T('#3a5a50', '#4a7264', '#5e8c7a', '#78a692'));
+  const [X, Y] = m.scr(29, 0, 62);
+  m.p.rect(X - 1, Y - 8, 2, 9, C('#e6b63c')); m.p.rect(X - 3, Y - 6, 6, 2, C('#e6b63c')); m.p.rect(X - 3, Y - 5, 6, 1, C('#a07a20'));
+  return m.finish({ obb: [37.5, 15, Math.cos(rot), Math.sin(rot)], s3: HOUSE_3D.church || (HOUSE_3D.church = genChurch()) });
+}
+// Bildet (i SPR.cabin) av et slags hus dreid rot radianer; tegnes første gang det trengs. HOUSE_3D er husene rett forfra
+const HOUSE_V = {}, HOUSE_3D = {};
+function houseV(kind, rot = 0) {
+  const key = kind + ':' + rot;
+  if (HOUSE_V[key] == null) { HOUSE_V[key] = (SPR.cabin || []).length; if (kind === 'church') genChurchTop(rot); else genHouseTop(HOUSE_STYLE[CABIN_V[kind]], rot); }
+  return HOUSE_V[key];
+}
+
+// ---------- Ting i landsbyen: brønn, markedsboder, lykter og småting ----------
+function genWell() {
+  const p = new Pix(28, 38), st = STONE(), wd = T('#38281e', '#5f4632', '#7a5c40', '#8e6e4a'), rc = T(...ROOFC.tile);
+  for (let y = 26; y <= 35; y++) for (let x = 4; x <= 23; x++) {
+    if (y === 35 && (x === 4 || x === 23)) continue;
+    const row = (y - 26) / 3 | 0, uu = x + (row & 1) * 3;
+    p.set(x, y, (y - 26) % 3 === 2 || uu % 5 === 0 ? st[0] : st[x > 19 ? 1 : 2 + ((hash2(uu / 5 | 0, row, 44) * 2) | 0)]);
+  }
+  p.ell(13.5, 26, 10, 3.6, st[4]); p.ell(13.5, 26, 7.6, 2.3, C('#1e3b48')); p.set(11, 26, C('#a4ccc6'));
+  for (const x of [5, 21]) { p.rect(x, 9, 2, 17, wd[1]); p.rect(x, 9, 1, 17, wd[3]); }
+  p.rect(6, 14, 16, 1, wd[0]); p.rect(13, 15, 1, 6, C('#c8b890')); p.rect(11, 21, 5, 4, wd[2]); p.rect(11, 22, 5, 1, st[1]); p.rect(11, 21, 5, 1, wd[3]);
+  for (let y = 2; y <= 9; y++) { const hw = 2 + (y - 2) * 1.7; for (let x = Math.round(13.5 - hw); x < Math.round(13.5 + hw); x++) p.set(x, y, y === 9 ? rc[0] : mod(x + y, 4) === 0 ? rc[1] : rc[x < 12 ? 4 : 3]); }
+  p.outlineAuto(0.45);
+  return reg('well', p, 14, 35, { r: 9, tallC: 1 });
+}
+// Bod med stripet seil over et bord med varer: 0 brød, 1 fisk, 2 grønnsaker
+function genStall(k) {
+  const p = new Pix(38, 36), wd = T('#38281e', '#5f4632', '#7a5c40', '#a07e52');
+  const aw = [['#b03a2e', '#f0ece2'], ['#3a5a84', '#f0ece2'], ['#4e7a4a', '#f0e0a0']][k].map(C);
+  for (const x of [3, 33]) { p.rect(x, 10, 2, 22, wd[1]); p.rect(x, 10, 1, 22, wd[3]); }
+  // bord med varer
+  p.rect(3, 20, 32, 3, wd[3]); p.rect(3, 22, 32, 1, wd[1]); for (let x = 4; x < 34; x++) for (let y = 23; y <= 30; y++) p.set(x, y, x % 5 === 0 ? wd[0] : wd[y < 25 ? 1 : 2]);
+  for (let i = 0; i < 7; i++) {
+    const x = 5 + i * 4;
+    if (k === 0) { p.rect(x, 18, 3, 2, C('#b87a3c')); p.rect(x, 18, 2, 1, C('#dca85c')); if (i & 1) p.rect(x, 16, 3, 2, C('#a86a30')); }
+    else if (k === 1) { p.rect(x, 19, 3, 1, C(i & 1 ? '#8aa0ac' : '#b4c4cc')); p.set(x + 3, 19, C('#5a6e7a')); if (i % 3 === 0) p.rect(x, 18, 3, 1, C('#c8d4d8')); }
+    else { const c = ['#c8402c', '#7aa048', '#e08a2c', '#d8c050'][i % 4]; p.rect(x, 18, 3, 2, C(c)); p.set(x, 18, dkc(C(c), 1.3)); p.set(x + 1, 17, C('#4e7a34')); }
+  }
+  // seil
+  for (let y = 3; y <= 11; y++) { const g = y < 6 ? 6 - y : 0; for (let x = g; x < 38 - g; x++) if (y < 11 || !(x >> 1 & 1)) p.set(x, y, dkc(aw[mod(x, 8) < 4 ? 0 : 1], y > 8 ? 0.82 : 1)); }
+  p.outlineAuto(0.45);
+  return reg('stall', p, 19, 32, { rect: [-17, -8, 17, 1], tallC: 1 });
+}
+function genLamp() {
+  const p = new Pix(9, 35), ir = T('#1c1a18', '#34302c', '#4e4842');
+  p.rect(4, 9, 1, 23, ir[1]); p.rect(3, 31, 3, 2, ir[1]); p.rect(2, 32, 5, 1, ir[0]); p.rect(3, 16, 3, 1, ir[2]);
+  p.rect(2, 3, 5, 6, ir[0]); p.rect(3, 4, 3, 4, C('#ffc850')); p.set(4, 5, C('#fff0b0')); p.set(4, 6, C('#ffe08a')); p.rect(1, 2, 7, 1, ir[1]); p.rect(3, 1, 3, 1, ir[1]);
+  p.outlineAuto(0.45);
+  return reg('lamp', p, 4, 33, { r: 1.5, glow: [[0, -27, 0.3]] });
+}
+// Småting: 0 tønne, 1 kasse, 2 sekker, 3 høysåte, 4 ambolt på stabbe, 5 vedstabel, 6 kjerre, 7 benk, 8 hesje, 9 hoggestabbe
+function genVProps() {
+  const wd = T('#38281e', '#5f4632', '#7a5c40', '#a07e52', '#c8a474'), ir = T('#1c1a18', '#34302c', '#4e4842', '#7a7a76'), hay = T('#8a6e2c', '#b89840', '#d8bc58', '#ecd880');
+  let p = new Pix(10, 14); // tønne
+  for (let y = 2; y <= 11; y++) for (let x = 1; x <= 8; x++) p.set(x, y, x === 1 ? wd[3] : x === 8 ? wd[0] : x % 2 ? wd[2] : wd[1]);
+  p.rect(1, 4, 8, 1, ir[1]); p.rect(1, 9, 8, 1, ir[1]); p.rect(2, 1, 6, 1, wd[4]);
+  p.outlineAuto(0.45); reg('vprop', p, 5, 12, { r: 4 });
+  p = new Pix(12, 12); // kasse
+  p.rect(1, 2, 10, 9, wd[2]); p.rect(1, 2, 10, 1, wd[4]); p.rect(1, 2, 1, 9, wd[3]); p.rect(10, 2, 1, 9, wd[0]); p.line(2, 3, 9, 10, wd[1], 1); p.rect(1, 10, 10, 1, wd[0]);
+  p.outlineAuto(0.45); reg('vprop', p, 6, 11, { r: 4 });
+  p = new Pix(16, 12); // sekker
+  for (const [cx, cy, c] of [[4.5, 7, '#c8b890'], [10.5, 7.5, '#b4a47c'], [7.5, 4.5, '#d8ccaa']]) { p.ell(cx, cy, 3.6, 3, (x, y, dx, dy) => dy > 0.4 ? dkc(C(c), 0.75) : C(c)); p.set(cx, cy - 3, C('#7a5c40')); }
+  p.outlineAuto(0.45); reg('vprop', p, 8, 10, { r: 5 });
+  p = new Pix(18, 16); // høysåte
+  p.ell(9, 9, 7.5, 6.5, (x, y, dx, dy) => y > 13 ? 0 : tone(hay, 0.6 - dx * 0.3 - dy * 0.4 + (hash2(x, y >> 1, 46) - 0.5) * 0.3, x, y, 2)); p.set(9, 1, wd[1]); p.set(9, 2, wd[1]);
+  p.outlineAuto(0.45); reg('vprop', p, 9, 14, { r: 6 });
+  p = new Pix(16, 14); // ambolt på stabbe
+  p.rect(4, 7, 8, 6, wd[1]); p.rect(4, 7, 2, 6, wd[2]); p.rect(4, 6, 8, 1, wd[4]);
+  p.rect(2, 1, 12, 2, ir[2]); p.rect(2, 1, 12, 1, ir[3]); p.rect(0, 2, 2, 1, ir[2]); p.rect(5, 3, 6, 2, ir[1]); p.rect(4, 5, 8, 1, ir[2]);
+  p.outlineAuto(0.45); reg('vprop', p, 8, 13, { r: 4 });
+  p = new Pix(24, 15); // vedstabel
+  for (let j = 0; j < 4; j++) for (let i = 0; i < 7; i++) { const x = 1 + i * 3 + (j & 1), y = 2 + j * 3; if (x > 20) continue; p.rect(x, y, 3, 3, wd[2]); p.rect(x, y, 2, 2, wd[4]); p.set(x, y, C('#dcc090')); }
+  p.outlineAuto(0.45); reg('vprop', p, 12, 14, { rect: [-11, -4, 11, 1] });
+  p = new Pix(28, 18); // kjerre
+  p.rect(5, 5, 18, 6, wd[2]); p.rect(5, 5, 18, 1, wd[4]); for (let x = 8; x < 23; x += 4) p.rect(x, 6, 1, 5, wd[1]); p.rect(5, 10, 18, 1, wd[0]);
+  p.line(23, 9, 27, 14, wd[3], 1); p.ell(9, 13, 3.4, 3.4, wd[0]); p.ell(9, 13, 1.6, 1.6, wd[3]); p.ell(19, 13, 3.4, 3.4, wd[0]); p.ell(19, 13, 1.6, 1.6, wd[3]);
+  p.rect(8, 3, 4, 2, hay[2]); p.rect(13, 2, 5, 3, hay[1]); p.rect(14, 2, 3, 1, hay[3]);
+  p.outlineAuto(0.45); reg('vprop', p, 14, 17, { rect: [-11, -4, 11, 1] });
+  p = new Pix(22, 12); // benk
+  p.rect(1, 2, 20, 2, wd[3]); p.rect(1, 2, 20, 1, wd[4]); p.rect(1, 6, 20, 2, wd[2]); p.rect(1, 6, 20, 1, wd[3]); for (const x of [2, 18]) { p.rect(x, 4, 2, 2, wd[1]); p.rect(x, 8, 2, 3, wd[0]); }
+  p.outlineAuto(0.45); reg('vprop', p, 11, 11, { rect: [-10, -3, 10, 1] });
+  p = new Pix(42, 20); // hesje: høy til tørk på staur og streng
+  for (let x = 2; x < 42; x += 9) p.rect(x, 1, 1, 18, wd[1]);
+  for (let y = 4; y <= 15; y++) for (let x = 1; x < 41; x++) if (hash2(x, y, 48) < 0.93 - Math.abs(y - 9) * 0.03) p.set(x, y, tone(hay, 0.75 - (y - 4) / 14 + (hash2(x >> 1, y, 49) - 0.5) * 0.4, x, y, 2));
+  p.outlineAuto(0.45); reg('vprop', p, 21, 19, { rect: [-20, -2, 20, 1] });
+  p = new Pix(12, 13); // hoggestabbe med kubber
+  p.rect(2, 6, 8, 6, wd[1]); p.rect(2, 6, 2, 6, wd[2]); p.ell(5.5, 6, 4, 1.8, wd[4]); p.rect(4, 3, 3, 3, wd[3]); p.rect(4, 3, 2, 1, C('#dcc090'));
+  p.outlineAuto(0.45); reg('vprop', p, 6, 12, { r: 4 });
 }
 
 // ---------- Dyr ----------
@@ -472,6 +988,108 @@ function genAnimal(sp, sex, pose, f, spec) {
   p.outlineAuto(0.42);
   return mkSpr(p, AOX, AOY, { hc: { x: hx + Math.cos(hang) * A.sl * 0.3 - ox, y: hy - oy, r: Math.max(A.hl, A.hh) / 2 + 1.3 }, nk: [Sx - ox, Sy - oy, hx - ox, hy - oy], bob });
 }
+// Hunden sett bakfra (back) eller forfra, til 3D, litt ovenfra som kameraet bak jegeren: står, går (bilde f) eller
+// står for vilt (alert) med halen til værs. Vesten ses over ryggen bortover, og det som er lengst unna, tegnes først
+function genDogEnd(back, pose, f) {
+  const c = DOG.col, p = new Pix(13, 19), cx = 6, g = 16, seed = DOG.seed;
+  const tn = T(c.dk, c.body, c.lt), belly = C(c.belly), legU = C(c.body), legLo = C(c.legLo), legF = C(c.legFar);
+  const vest = T('#c45a1c', '#ee7c2a', '#ffb050'), up = pose === 'alert', wag = pose === 'walk' ? [0, 1, 0, -1][f] : 0;
+  // hvor mye hver fot er løftet: [venstre fram, høyre fram, venstre bak, høyre bak], diagonalt parvis som i profil
+  const lift = pose === 'walk' ? [[0, 0, 0, 0], [2, 0, 0, 2], [0, 0, 0, 0], [0, 2, 2, 0]][f] : [0, 0, 0, 0];
+  // halen rett til værs med lys tupp; forfra stikker den opp bak hodet
+  const tailUp = y0 => { for (let i = 0; i < 6; i++) p.set(cx, y0 - i, i > 3 ? belly : tn[1]); };
+  // hodet med to spisse ører som peker litt utover
+  const head = (y, inner) => {
+    shEll(p, cx, y, 2, 1.6, tn, 0, seed + 5);
+    for (const s of [-1, 1]) { p.set(cx + s, y - 2, inner || tn[1]); p.set(cx + s * 2, y - 2, s < 0 ? tn[2] : tn[0]); p.set(cx + s * 2, y - 3, tn[1]); }
+  };
+  // ryggen bortover, med vesten øverst
+  const backTop = () => {
+    shEll(p, cx, g - 9.2, 2.3, 1.4, tn, 0, seed);
+    for (let y = g - 10; y <= g - 9; y++) for (let x = cx - 2; x <= cx + 2; x++) if (p.get(x, y)) p.set(x, y, vest[y < g - 9 ? 2 : 1]);
+  };
+  // beina: de nærmeste lyse nederst, de bortenfor mørke og en piksel høyere
+  const legs = (ix, near) => [cx - (near ? 2 : 1), cx + (near ? 2 : 1)].forEach((x, j) => {
+    const foot = g - lift[ix[j]] - (near ? 0 : 1);
+    if (near) { p.line(x, g - 4, x, Math.min(g - 3, foot), legU, 1); p.line(x, g - 2, x, foot, legLo, 1); }
+    else p.line(x, g - 4, x, foot, legF, 1);
+  });
+  if (back) {
+    head(g - 11);
+    legs([0, 1], false);
+    backTop();
+    shEll(p, cx, g - 6.6, 3.2, 2.8, tn, 0, seed + 1);
+    legs([2, 3], true);
+    if (up) tailUp(g - 9); else { p.set(cx + wag, g - 10, tn[2]); p.set(cx + wag, g - 9, tn[1]); p.set(cx + wag, g - 8, tn[0]); }
+  } else {
+    if (up) tailUp(g - 12);
+    legs([3, 2], false);
+    backTop();
+    // brystet: vesten rundt skuldrene, hvitt bryst midt på
+    shEll(p, cx, g - 6.6, 3, 2.6, tn, 0, seed + 1);
+    for (let y = g - 8; y <= g - 6; y++) for (const x of [cx - 2, cx + 2]) if (p.get(x, y)) p.set(x, y, vest[y < g - 7 ? 2 : 1]);
+    p.ell(cx, g - 6.2, 1.1, 1.8, belly);
+    legs([1, 0], true);
+    head(g - 10, tn[0]);
+    p.set(cx - 1, g - 10, C('#141010')); p.set(cx + 1, g - 10, C('#141010'));
+    p.set(cx - 1, g - 9, tn[2]); p.set(cx + 1, g - 9, tn[2]); p.set(cx, g - 9, C(c.nose)); p.set(cx, g - 8, belly);
+  }
+  p.outlineAuto(0.42);
+  return mkSpr(p, cx + 0.5, g, {});
+}
+// Hunden på skrå mot høyre (speilvendes for venstre): away går den skrått fra deg, ellers skrått mot deg. Bygd av kuler
+// og streker med de samme målene og gangartene som i profil, dreid 45° og sett litt ovenfra; det som er lengst unna,
+// tegnes først. Hodet, vesten og halen havner da der de skal fra begge kanter
+function genDogQuarter(away, pose, f) {
+  const A = DOG, c = A.col, p = new Pix(26, 24), cx = 12, g = 20, seed = A.seed, L = A.L, Hh = A.Hh;
+  const tn = T(c.dk, c.body, c.lt), belly = C(c.belly), legU = C(c.body), legLo = C(c.legLo), legF = C(c.legFar), paw = C('#1c1614');
+  const vest = T('#c45a1c', '#ee7c2a', '#ffb050'), ps = away ? Math.PI / 4 : -Math.PI / 4, ca = Math.cos(ps), sa = Math.sin(ps);
+  // a fram langs ryggen, b ut mot høyre side, h opp: gir skjermpunkt og dybde (større er lenger unna)
+  const pr = (a, b, h) => [cx + a * ca + b * sa, g - h * 0.95 - (a * sa - b * ca) * 0.35, a * sa - b * ca];
+  let off = [0, 0, 0, 0], lift = [0, 0, 0, 0], bob = 0, nA = A.neckA, earB = 0.3, wag = 0;
+  if (pose === 'walk') { const s = [1, 0, -1, 0][f] * A.sw; off = [s, -s, -s, s]; if (f === 1) lift = [1, 0, 0, 1]; if (f === 3) lift = [0, 1, 1, 0]; nA -= 6; wag = [0, 1, 0, -1][f]; }
+  else if (pose === 'run') {
+    const k = A.sw * 1.7;
+    off = [[1, 0.6, -1, -0.7], [0.3, 0.9, -0.2, -0.8], [-0.9, -0.5, 0.9, 0.6], [-0.2, -0.7, 0.3, 0.9]][f].map(v => v * k);
+    lift = [[0, 0, 0, 0], [1, 0, 2, 1], [1, 2, 0, 0], [2, 1, 1, 0]][f]; bob = [-1, 0, 0, -1][f]; nA -= 16; earB = 1.4;
+  } else if (pose === 'alert') nA = Math.min(86, nA + 18);
+  const ops = [], put = (z, fn) => ops.push([z, fn]);
+  const ball = (a, b, h, r, tns, fill) => { const [x, y, z] = pr(a, b, h); put(z, () => fill ? p.ell(x, y, r * 0.82, r * 0.95, fill) : shEll(p, x, y, r * 0.82, r * 0.95, tns, 0, seed)); };
+  // kroppen: kuler langs ryggen fra baken til brystet, med vesten midt på
+  const hb = A.leg + Hh / 2 - bob, vestF = (x, y, dx, dy) => dy < -0.55 ? vest[2] : dy < 0.2 ? vest[1] : dy < 0.45 ? vest[0] : tone(tn, 0.55 - dy * 0.52, x, y, 3);
+  for (let a = -L / 2 + 1.2; a <= L / 2 - 1.2; a += 0.5) {
+    const t = (a + L / 2) / L, r = t < 0.35 ? lerp(A.rumpR + 0.1, Hh / 2, t / 0.35) : t > 0.65 ? lerp(Hh / 2, A.chestR + 0.2, (t - 0.65) / 0.35) : Hh / 2;
+    ball(a, 0, hb + (t < 0.5 ? 0.4 : -0.3) * Math.abs(t - 0.5) * 2, r, tn, Math.abs(a) <= 2 ? vestF : null);
+  }
+  { const [x, y, z] = pr(L / 2 - 0.4, 0, hb - 0.8); put(z - 0.5, () => p.ell(x, y, 1.1, 1.7, belly)); }
+  // hals, hode, snute med nese, øyne og spisse ører (lagt bakover når den løper)
+  const Sa = L / 2 - A.chestR * 0.7, Sh = hb + Hh * 0.2, na = nA * Math.PI / 180, Ha = Sa + Math.cos(na) * A.neckL, Hv = Sh + Math.sin(na) * A.neckL;
+  for (let i = 0; i <= 4; i++) { const t = i / 4; ball(lerp(Sa, Ha, t), 0, lerp(Sh, Hv, t), lerp(A.neckW, A.neckW * 0.74, t), tn); }
+  ball(Ha - 0.4, 0, Hv, A.hh / 2, tn); ball(Ha + 0.4, 0, Hv - 0.1, A.hh / 2, tn);
+  const hang = A.hd * Math.PI / 180, sd = A.hl / 2 + A.sl / 2 - 0.9, Na = Ha + Math.cos(hang) * sd, Nv = Hv - Math.sin(hang) * sd - A.sdy;
+  ball(Na, 0, Nv, A.sh / 2 + 0.3, tn);
+  { const [x, y, z] = pr(Na + A.sl / 2, 0, Nv - 0.2); put(z - 0.1, () => p.set(x, y, C(c.nose))); }
+  for (const b of [-0.9, 0.9]) { const [x, y, z] = pr(Ha + 0.9, b, Hv + 0.4); put(z - 1.2, () => p.set(x, y, C('#141010'))); }
+  for (const b of [-0.8, 0.8]) {
+    const [x0, y0, z] = pr(Ha - 0.5, b, Hv + A.hh / 2 - 0.3), [x1, y1] = pr(Ha - 0.5 - earB, b * 1.4, Hv + A.hh / 2 + 2.2);
+    put(z - 0.6, () => { p.line(x0, y0, x1, y1, tn[1], 1); p.set(x1, y1, C('#2a201c')); });
+  }
+  // halen bakover, logrende når den går; rett til værs med lys tupp når den står for vilt
+  const up = pose === 'alert', ta = -L / 2 + 1, th = hb + 0.5, tip = T('#c8c0b0', '#ece4d4', '#ffffff');
+  for (let i = 0; i <= 10; i++) {
+    const t = i / 10, a = up ? ta - 0.5 + 1.2 * t * t : ta - 5 * t, h = up ? th + 7 * t : th + (pose === 'run' ? t : 3 * t - 1.2 * t * t);
+    ball(a, wag * t * 1.5, h, (up ? 1.1 : 0.8) + 0.4 * Math.sin(t * Math.PI), up && t > 0.7 ? tip : tn);
+  }
+  // beina [nær fram, fjern fram, nær bak, fjern bak]; de nære lyse nederst og lagt over kroppen, de fjerne mørke
+  [[L / 2 - A.legIn, 1.3, 0], [L / 2 - A.legIn, -1.3, 0], [-L / 2 + A.legIn, 1.3, 1], [-L / 2 + A.legIn, -1.3, 1]].forEach(([la, lb, back], i) => {
+    const ht = A.leg + 2 - bob, o = off[i], hf = lift[i], far = lb < 0;
+    const P0 = pr(la, lb, ht), K0 = pr(la + o * 0.4 - (back ? A.hock : 0), lb, ht + (hf - ht) * 0.52), F0 = pr(la + o, lb, hf);
+    put(P0[2] - (far ? 0 : 3), () => { p.line(P0[0], P0[1], K0[0], K0[1], far ? legF : legU, A.lw); p.line(K0[0], K0[1], F0[0], F0[1], far ? legF : legLo, A.ll); p.set(F0[0], F0[1], paw); });
+  });
+  ops.sort((u, v) => v[0] - u[0]).forEach(o => o[1]());
+  p.outlineAuto(0.42);
+  return mkSpr(p, cx + 0.5, g, {});
+}
 
 // ---------- Fugler (i profil, mot høyre) ----------
 const BW = 44, BH = 40, BOX = 22, BOY = 32;
@@ -543,11 +1161,13 @@ function genBird(sp, sex, pose, f) {
 // der løpet peker inn mot midten av bildet i stedet for rett opp som på kartet
 const HW = 24, HH = 30, HOX = 12, HOY = 27;
 // ax (0–3, bare fra siden): hogger med øks. 0 svinger øksa opp bak hodet, 1 på vei ned foran, 2 hogget i stammen, 3 dras løs igjen
-function genHunter(dir, i, r = -1, ots = false, ax = -1) {
-  const p = new Pix(HW, HH);
-  const hat = C('#3f5c3a'), hatD = C('#2c4430'), hatL = C('#56784a'), band = C('#ee7c2a'), skin = C('#e4b48c'), skinD = C('#c48e68'), beard = C('#6b4a30'),
-    jac = C('#586c3e'), jacD = C('#3f502e'), jacL = C('#718648'), pant = C('#4c3f32'), pantD = C('#382e26'), boot = C('#231c18'),
-    pack = C('#80583a'), packD = C('#5c3e28'), packL = C('#a07448'), gun = C('#201a18'), wood = C('#8c5830'), steel = C('#4a4440'),
+// pal bytter ut farger (hatt, jakke, bukse, skjegg og reimene til sekken): slik blir jegeren forfra til folkene i landsbyen.
+// Med pal.civ går han uten sekk og børse, pal.cap gir lue eller skaut uten brem, og pal.dress og pal.apron kjole og forkle
+function genHunter(dir, i, r = -1, ots = false, ax = -1, pal = {}) {
+  const p = new Pix(HW, HH), K = (k, c) => C(pal[k] || c);
+  const hat = K('hat', '#3f5c3a'), hatD = K('hatD', '#2c4430'), hatL = K('hatL', '#56784a'), band = K('band', '#ee7c2a'), skin = C('#e4b48c'), skinD = C('#c48e68'), beard = K('beard', '#6b4a30'), hair = C(pal.hair || pal.beard || '#6b4a30'), civ = pal.civ, dress = pal.dress && C(pal.dress), apron = pal.apron && C(pal.apron),
+    jac = K('jac', '#586c3e'), jacD = K('jacD', '#3f502e'), jacL = K('jacL', '#718648'), pant = K('pant', '#4c3f32'), pantD = K('pantD', '#382e26'), boot = C('#231c18'),
+    pack = C('#80583a'), packD = K('packD', '#5c3e28'), packL = C('#a07448'), gun = C('#201a18'), wood = C('#8c5830'), steel = C('#4a4440'),
     axS = C('#8a8780'), axE = C('#eef0e8');
   // armer, skaft og økseblad i hvert av de fire hoggebildene
   const axe = k => {
@@ -556,7 +1176,7 @@ function genHunter(dir, i, r = -1, ots = false, ax = -1) {
     else { p.line(12, 13, 15, 9, jacD, 2); p.rect(16, 7, 2, 2, skin); p.line(18, 7, 20, 4, wood, 1); p.rect(19, 1, 3, 3, axS); p.rect(19, 1, 3, 1, steel); p.rect(22, 2, 1, 3, axE); }
   };
   // på kne sitter overkroppen tre piksler lavere; med øksa lener jegeren seg bakover i svingen og fram i hogget
-  const w = i > 0, ph = i - 1, kn = r >= 2 ? 3 : 0, b = (w && (ph & 1) ? -1 : 0) + kn, slung = r < 1, hx = ax === 0 ? -1 : ax === 2 ? 1 : 0;
+  const w = i > 0, ph = i - 1, kn = r >= 2 ? 3 : 0, b = (w && (ph & 1) ? -1 : 0) + kn, slung = r < 1 && !civ, hx = ax === 0 ? -1 : ax === 2 ? 1 : 0;
   if (dir === 'side') {
     if (kn) {
       // bakre kne i bakken med leggen flat bakover, fremre fot plantet foran
@@ -566,14 +1186,16 @@ function genHunter(dir, i, r = -1, ots = false, ax = -1) {
       const s = w ? [2, 0, -2, 0][ph] : ax >= 0 ? 2 : 0, lf = w && ph === 1 ? 1 : 0, lf2 = w && ph === 3 ? 1 : 0;
       p.line(11, 20, 11 - s, 26 - lf2, pantD, 2); p.rect(11 - s, 26 - lf2, 3, 1, boot);
       p.line(12, 20, 12 + s, 26 - lf, pant, 2); p.rect(12 + s, 26 - lf, 3, 1, boot);
+      if (dress) { p.rect(9, 20, 6, 5, dress); p.rect(9, 24, 6, 1, dkc(dress, 0.75)); }
     }
     p.rect(9, 12 + b, 6, 8, jac); p.rect(9, 19 + b, 6, 1, jacD); p.rect(9, 12 + b, 1, 8, jacD); p.rect(14, 12 + b, 1, 6, jacL);
-    p.rect(6, 13 + b, 3, 6, pack); p.rect(6, 13 + b, 3, 1, packL); p.rect(6, 18 + b, 3, 1, packD); p.set(6, 15 + b, packD);
+    if (!civ) { p.rect(6, 13 + b, 3, 6, pack); p.rect(6, 13 + b, 3, 1, packL); p.rect(6, 18 + b, 3, 1, packD); p.set(6, 15 + b, packD); }
+    if (apron) p.rect(13, 14 + b, 2, 7, apron);
     if (slung) { p.line(9, 6 + b, 6, 19 + b, gun, 1); p.set(6, 18 + b, wood); p.set(6, 19 + b, wood); p.set(7, 17 + b, wood); }
     // armene som løfter øksa bak hodet skjules av hodet
     if (ax === 0) axe(0);
-    p.rect(10 + hx, 7 + b, 4, 4, skin); p.rect(10 + hx, 7 + b, 1, 3, beard); p.set(13 + hx, 8 + b, C('#1a1412')); p.rect(11 + hx, 10 + b, 3, 1, beard); p.set(13 + hx, 9 + b, beard); p.rect(10 + hx, 11 + b, 4, 1, skinD);
-    p.rect(9 + hx, 6 + b, 7, 1, hatD); p.rect(10 + hx, 5 + b, 4, 1, band); p.rect(10 + hx, 3 + b, 4, 2, hat); p.rect(10 + hx, 3 + b, 3, 1, hatL);
+    p.rect(10 + hx, 7 + b, 4, 4, skin); p.rect(10 + hx, 7 + b, 1, 3, hair); p.set(13 + hx, 8 + b, C('#1a1412')); p.rect(11 + hx, 10 + b, 3, 1, beard); p.set(13 + hx, 9 + b, beard); p.rect(10 + hx, 11 + b, 4, 1, skinD);
+    p.rect(9 + hx + (pal.cap ? 1 : 0), 6 + b, pal.cap ? 5 : 7, 1, hatD); p.rect(10 + hx, 5 + b, 4, 1, band); p.rect(10 + hx, 3 + b, 4, 2, hat); p.rect(10 + hx, 3 + b, 3, 1, hatL);
     if (ax > 0) axe(ax);
     else if (r === 0) { p.rect(11, 12 + b, 2, 2, jacD); p.rect(9, 11 + b, 2, 2, skin); }
     else if (r === 1 || r === 2) {
@@ -591,11 +1213,13 @@ function genHunter(dir, i, r = -1, ots = false, ax = -1) {
     else {
       const l1 = w && ph === 0 ? 1 : 0, l2 = w && ph === 2 ? 1 : 0;
       p.rect(9, 20, 2, 6 - l1, pant); p.rect(9, 26 - l1, 2, 1, boot); p.rect(13, 20, 2, 6 - l2, pantD); p.rect(13, 26 - l2, 2, 1, boot);
+      if (dress) { p.rect(8, 20, 8, 5, dress); p.rect(8, 24, 8, 1, dkc(dress, 0.75)); }
     }
     p.rect(8, 12 + b, 8, 8, jac); p.rect(8, 19 + b, 8, 1, jacD); p.rect(8, 12 + b, 1, 7, jacL);
     const a1 = w ? [1, 0, -1, 0][ph] : 0;
     if (dir === 'down') {
-      p.rect(10, 12 + b, 4, 1, jacD); p.rect(9, 13 + b, 1, 4, packD); p.rect(14, 13 + b, 1, 4, packD);
+      p.rect(10, 12 + b, 4, 1, jacD); if (!civ) { p.rect(9, 13 + b, 1, 4, packD); p.rect(14, 13 + b, 1, 4, packD); }
+      if (apron) p.rect(10, 14 + b, 4, dress ? 9 : 6, apron);
       if (r === 0) { p.rect(6, 13 + b, 2, 5, jacD); p.rect(6, 18 + b, 2, 1, skin); p.rect(16, 11 + b, 2, 3, jacD); p.rect(15, 10 + b, 2, 1, skin); }
       else if (r === 1 || r === 2) { p.line(6, 20 + b, 17, 10 + b, gun, 1); p.line(6, 20 + b, 8, 18 + b, wood, 2); p.rect(6, 13 + b, 2, 4, jacD); p.rect(8, 17 + b, 2, 1, skin); p.rect(16, 13 + b, 2, 2, jacD); p.set(14, 13 + b, skin); p.set(15, 12 + b, skin); }
       // løpet rett mot deg: munningen som en mørk prikk foran brystet
@@ -608,16 +1232,132 @@ function genHunter(dir, i, r = -1, ots = false, ax = -1) {
       else if (r === 1 || r === 2) { p.line(15, 12 + b, 18, 7 + b, gun, 1); p.rect(6, 13 + b, 2, 4, jacD); p.rect(16, 13 + b, 2, 4, jacD); }
       else if (r === 3) { if (ots) p.line(15, 12 + b, 23, 9 + b, steel, 1); else p.line(16, 11 + b, 16, 2 + b, steel, 1); p.rect(4, 13 + b, 4, 2, jacD); p.rect(16, 12 + b, 4, 2, jacD); }
       else { p.rect(6, 13 + b, 2, 5 + a1, jacD); p.rect(16, 13 + b, 2, 5 - a1, jacD); }
-      p.rect(9, 12 + b, 6, 7, pack); p.rect(9, 12 + b, 6, 1, packL); p.rect(9, 18 + b, 6, 1, packD); p.rect(14, 13 + b, 1, 5, packD); p.set(11, 15 + b, packD); p.set(12, 15 + b, packD);
+      if (!civ) { p.rect(9, 12 + b, 6, 7, pack); p.rect(9, 12 + b, 6, 1, packL); p.rect(9, 18 + b, 6, 1, packD); p.rect(14, 13 + b, 1, 5, packD); p.set(11, 15 + b, packD); p.set(12, 15 + b, packD); }
       if (slung) { p.line(8, 9 + b, 15, 19 + b, gun, 1); p.set(15, 19 + b, wood); p.set(14, 18 + b, wood); }
-      p.rect(9, 7 + b, 6, 3, beard); p.rect(10, 10 + b, 4, 1, skinD);
+      p.rect(9, 7 + b, 6, 3, hair); p.rect(10, 10 + b, 4, 1, skinD);
     }
-    p.rect(7, 6 + b, 10, 1, hatD); p.rect(9, 5 + b, 6, 1, band); p.rect(9, 3 + b, 6, 2, hat); p.rect(9, 3 + b, 5, 1, hatL);
+    p.rect(pal.cap ? 9 : 7, 6 + b, pal.cap ? 6 : 10, 1, hatD); p.rect(9, 5 + b, 6, 1, band); p.rect(9, 3 + b, 6, 2, hat); p.rect(9, 3 + b, 5, 1, hatL);
   }
   p.outlineAuto(0.42);
   // fartsstripe etter øksebladet i buen over hodet (uten omriss)
   if (ax === 1) for (const [x, y] of [[1, 5], [2, 3], [4, 1], [6, 0], [9, 0], [12, 0], [15, 0], [17, 0]]) p.set(x, y, C('#d8dcd2'));
   return mkSpr(p, HOX, HOY, {});
+}
+
+// ---------- hesten ----------
+// En fjording bygget av små terninger (x fram, y mot høyre, z opp) og tegnet ved å stable lagene nedenfra og opp, sett
+// på skrå ovenfra med dybden presset sammen (HORSE_K). Slik får den HORSE_N retninger som passer både på kartet og i 3D.
+// Se horseSpr for hva den kan ha på seg, og stegene i gangen
+const HORSE_N = 16, HORSE_K = 0.5, HVX = 16, HVY = 5, HVZ = 30;
+const HORSEM = {
+  coat: T('#8a6a40', '#b08a56', '#cca870', '#e0c490'), dark: T('#1c1612', '#2a2018', '#3c3026'), muzzle: T('#4e4234', '#6a5a48', '#84725c'),
+  leather: T('#3e2616', '#5c3a22', '#7c5232', '#9a6c44'), bag: T('#3a4228', '#566038', '#74804c'), steel: T('#5a5e5c', '#8a8e88', '#b4b8b0'),
+  jac: T('#3f502e', '#586c3e', '#718648'), pant: T('#382e26', '#4c3f32', '#5e4e3e'), skin: T('#c48e68', '#e4b48c', '#f0c8a0'),
+  hat: T('#2c4430', '#3f5c3a', '#56784a'), pack: T('#5c3e28', '#80583a', '#a07448'),
+  hair: C('#6b4a30'), band: C('#ee7c2a'), eye: C('#1a1412'), boot: C('#231c18'),
+};
+const HORSEK = Object.keys(HORSEM);
+// Materialet i terningen (x, y, z), eller null. kit: 1 jegeren i salen, 2 sal, 4 ekstra ryggsekk; fr: 0 står, 1 og 2 går
+function horseVox(x, y, z, kit, fr) {
+  const ay = Math.abs(y);
+  // beina: forbein og bakbein, diagonalt i takt når den går; lårene er litt kraftigere, og hovene mørke
+  if (z <= 6) {
+    if (ay >= 2 && ay <= 3) for (const [lx, sy, ph] of [[6, 1, 1], [6, -1, -1], [-8, 1, -1], [-8, -1, 1]]) {
+      if (y * sy < 0) continue;
+      const dx = x - lx - Math.round((fr ? (fr === 1 ? 2 : -2) * ph : 0) * (1 - z / 6));
+      if (dx >= (lx < 0 && z >= 4 ? -1 : 0) && dx <= 1) return z === 0 ? 'dark' : 'coat';
+    }
+    if (z < 3) return null;
+  }
+  // resten står på beina: u er høyden regnet fra en terning under bakken
+  const u = z + 1;
+  if (kit & 1) {
+    const k = riderVox(x, ay, u); if (k) return k;
+    // tøylene langs halsen
+    if (ay === 2 && u === 18 && x >= 6 && x <= 14) return 'dark';
+  }
+  if (kit & 2) {
+    // sete med forsvissel og bakvissel, sveteklaffer ned langs sidene og stigbøyler
+    if (u === 15 && ay <= 2 && x >= -3 && x <= 2) return 'leather';
+    if (u === 16 && ay <= 1 && (x === -3 || x === 2)) return 'leather';
+    if (x >= -2 && x <= 1 && (ay === 3 && u === 14 || ay === 4 && u >= 11 && u <= 13)) return 'leather';
+    if (ay === 4 && x === 0 && u >= 8 && u <= 10) return u === 8 ? 'steel' : 'dark';
+  }
+  // ekstra ryggsekk bak salen
+  if (kit & 4 && x >= -8 && x <= -5 && ay <= 2 && u >= 15 && u <= 18) return u === 18 || x === -8 && ay === 0 ? 'leather' : 'pack';
+  // kløvveskene på hver side, med reim over ryggen
+  if (x >= -8 && x <= -5 && ay === 4 && u >= 10 && u <= 13) return u === 13 ? 'leather' : 'bag';
+  if (x >= -7 && x <= -6 && (ay === 3 && u === 14 || ay <= 2 && u === 15)) return 'leather';
+  // hale, og ståman fra nakken til panneluggen
+  if (x === -10 && u >= 5 && u <= 13 && ay <= (u >= 9 ? 1 : 0) || x === -11 && y === 0 && u >= 4 && u <= 11) return 'dark';
+  if (y === 0 && (u === 22 && x >= 9 && x <= 12 || x === 9 && u >= 20 && u <= 21)) return 'dark';
+  // kroppen
+  if (x >= -9 && x <= 8 && u >= 8 && u <= 14 && ay <= (u === 8 || u === 14 ? 2 : 3) && !((x === -9 || x === 8) && (u === 8 || u === 14))) return 'coat';
+  // halsen skrår fram og opp, med mana langs nakken
+  if (u >= 13 && u <= 19) {
+    const cx = 7.2 + (u - 13) * 0.5;
+    if (y === 0 && u >= 15 && x === Math.round(cx - 3)) return 'dark';
+    if (ay <= (u <= 16 ? 2 : 1) && Math.abs(x - cx) <= 2.3) return 'coat';
+  }
+  // hode med øyne og ører, og mørk mule
+  if (u >= 18 && u <= 21 && x >= 10 && x <= 14 && ay <= 1) return x === 13 && ay === 1 && u === 20 ? 'eye' : 'coat';
+  if (u >= 17 && u <= 19 && x >= 15 && x <= 16 && ay <= 1) return 'muzzle';
+  if (u === 22 && x === 10 && ay === 1) return 'coat';
+  return null;
+}
+// Jegeren i salen med ansiktet fram: hatt, hode, sekk på ryggen, hendene på tøylene og beina ned i stigbøylene
+function riderVox(x, ay, z) {
+  if (z === 29 && x >= -1 && x <= 1 && ay <= 1) return 'hat';
+  if (z === 28 && x >= -1 && x <= 1 && ay <= 1) return 'band';
+  if (z === 27 && x >= -2 && x <= 2 && ay <= 2) return 'hat';
+  if (z >= 23 && z <= 26 && x >= -1 && x <= 1 && ay <= 1) return x === -1 ? 'hair' : x === 1 && z === 25 && ay === 1 ? 'eye' : z === 23 || x === 1 && z === 24 && ay === 1 ? 'hair' : 'skin';
+  if (z >= 17 && z <= 21 && x >= -3 && x <= -2 && ay <= 2) return 'pack';
+  if (z >= 16 && z <= 22 && x >= -1 && x <= 1 && ay <= 2) return 'jac';
+  if (x === 5 && ay === 1 && z === 18) return 'skin';
+  for (let t = 0; t <= 1; t += 0.1) { const zz = Math.round(21 - 3 * t); if (Math.round(4 * t) === x && Math.round(3 - 2 * t) === ay && (zz === z || zz === z + 1)) return 'jac'; }
+  if (ay === 3 && x >= 0 && x <= 2 && z >= 15 && z <= 16) return 'pant';
+  if (ay === 4 && x >= 1 && x <= 2 && z >= 9 && z <= 15) return z === 9 ? 'boot' : 'pant';
+  if (ay === 4 && x === 3 && z === 9) return 'boot';
+  return null;
+}
+function horseGrid(kit, fr) {
+  const NX = 2 * HVX + 1, NY = 2 * HVY + 1, g = new Uint8Array(NX * NY * HVZ);
+  for (let z = 0; z < HVZ; z++) for (let y = -HVY; y <= HVY; y++) for (let x = -HVX; x <= HVX; x++) { const k = horseVox(x, y, z, kit, fr); if (k) g[(z * NY + y + HVY) * NX + x + HVX] = HORSEK.indexOf(k) + 1; }
+  return g;
+}
+// Hesten sett fra vinkelen rel (retningen dens minus blikkretningen). Hver piksel i et lag viser den nærmeste terningen
+// i laget; høyere lag tegnes over. Lyset kommer ovenfra og fra venstre i bildet, som ellers i spillet
+function genHorse(rel, g) {
+  const s = Math.sin(rel), c = Math.cos(rel), NX = 2 * HVX + 1, NY = 2 * HVY + 1, R = 18, rk = Math.ceil(R * HORSE_K);
+  const w = 2 * R + 4, cx = w >> 1, cy = rk + HVZ + 2, h = cy + rk + 2, p = new Pix(w, h);
+  const at = (x, y, z) => x < -HVX || x > HVX || y < -HVY || y > HVY || z < 0 || z >= HVZ ? 0 : g[(z * NY + y + HVY) * NX + x + HVX];
+  for (let z = 0; z < HVZ; z++) for (let py = Math.max(0, cy - z - rk - 3); py < Math.min(h, cy - z + rk + 2); py++) {
+    const d0 = (cy - z - py - 1) / HORSE_K;
+    for (let px = 0; px < w; px++) {
+      const lat = px + 0.5 - cx;
+      for (const dd of [-0.7, 0, 0.7]) {
+        const d = d0 + dd, x = Math.round(lat * s + d * c), y = Math.round(lat * c - d * s), k = at(x, y, z);
+        if (!k) continue;
+        const M = HORSEM[HORSEK[k - 1]];
+        let v = 0.8;
+        if (at(x, y, z + 1)) {
+          const ex = (at(x + 1, y, z) ? 0 : 1) - (at(x - 1, y, z) ? 0 : 1), ey = (at(x, y + 1, z) ? 0 : 1) - (at(x, y - 1, z) ? 0 : 1), l = hyp(ex, ey);
+          v = l ? 0.46 - 0.2 * (ex * s + ey * c) / l : 0.38;
+        }
+        p.d[py * w + px] = typeof M === 'number' ? M : tone(M, v, px, py, 2.5);
+        break;
+      }
+    }
+  }
+  p.outlineAuto(0.42);
+  return mkSpr(p, cx, cy, {});
+}
+// Hesten med retning hd sett fra retningen v (på kartet ser du mot nord, −π/2). kit er det den har på seg og hvem som
+// sitter på (1 jegeren, 2 sal, 4 ekstra ryggsekk), fr steget i gangen. Bildene lages første gang de trengs
+const HORSESPR = [], HORSEGRID = [];
+function horseSpr(hd, v, kit, fr = 0) {
+  const k = kit * 3 + fr, i = ((Math.round((hd - v) / TAU * HORSE_N) % HORSE_N) + HORSE_N) % HORSE_N, L = HORSESPR[k] || (HORSESPR[k] = []);
+  return L[i] || (L[i] = genHorse(i / HORSE_N * TAU, HORSEGRID[k] || (HORSEGRID[k] = horseGrid(kit, fr))));
 }
 
 // ---------- Effekter og ikoner ----------
@@ -634,6 +1374,12 @@ function genFx() {
     const p = new Pix(256, 256);
     for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) { const q = (x + y * 0.5) * TAU / 128, I = Math.sin(q) * 0.55 + Math.sin(q * 2 + 1.3) * 0.3 + Math.sin(q * 4 + 0.7) * 0.18 - 0.3; if (I * 1.1 > dith(x, y)) p.d[y * 256 + x] = C('#fff2cc'); }
     FX.rays = p.canvas();
+  }
+  { // skyskygger, fliser sømløst: støy på et gitter som går rundt
+    const N = 512, p = new Pix(N, N), col = C('#16242c');
+    const pn = (x, y, n, s) => { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf), x1 = (xi + 1) % n, y1 = (yi + 1) % n, a = hash2(xi, yi, s), b = hash2(x1, yi, s), c = hash2(xi, y1, s), d = hash2(x1, y1, s); return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v; };
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const v = 0.6 * pn(x / 128, y / 128, 4, 71) + 0.28 * pn(x / 64, y / 64, 8, 72) + 0.12 * pn(x / 32, y / 32, 16, 73); if (smooth(0.5, 0.62, v) * 0.95 > dith(x, y)) p.d[y * N + x] = col; }
+    FX.cloud = p.canvas();
   }
   const glyph = (rows, col) => { const p = new Pix(5, rows.length + 2); rows.forEach((r, j) => r.split('').forEach((b, i) => { if (b === '1') p.set(1 + i, 1 + j, col); })); p.outlineAuto(0.25); return p.canvas(); };
   FX.q = glyph(['111', '001', '011', '010', '000', '010'], C('#f2efe2'));
@@ -652,6 +1398,10 @@ function genFx() {
   { const p = new Pix(11, 12), cl = { o: C('#ee7c2a'), h: C('#ffb050'), w: C('#fff4d6') };
     ['..hhhhh..', '.hhowooo.', 'ohoowoooo', 'oooowoooo', 'oooowoooo', 'ooooooooo', '.ooowooo.', '..ooooo..', '...ooo...', '....o....'].forEach((r, j) => r.split('').forEach((b, i) => { if (cl[b]) p.set(1 + i, 1 + j, cl[b]); }));
     p.outlineAuto(0.3); FX.mark = p.canvas(); }
+  // hestehode med mørk man: markør for hesten ved skjermkanten
+  { const p = new Pix(11, 10), cl = { m: C('#2a2018'), b: C('#cca870'), d: C('#b08a56'), e: C('#1a1412'), k: C('#6a5a48') };
+    ['....m.b....', '...mmbb....', '...mbbbb...', '..mmbbebb..', '..mbbbbbbb.', '..mbbbddbkk', '.mmbbd..kk.', '.mbbbd.....', '.bbbbd.....', '.bbbbd.....'].forEach((r, j) => r.split('').forEach((b, i) => { if (cl[b]) p.set(i, j, cl[b]); }));
+    p.outlineAuto(0.3); FX.horse = p.canvas(); }
   { const p = new Pix(7, 7); p.set(3, 0, C('#f2efe2')); p.rect(2, 1, 3, 1, C('#f2efe2')); p.rect(1, 2, 5, 1, C('#f2efe2')); p.outlineAuto(0.25); FX.arrow = p.canvas(); }
   // bål i steinring, tre bilder med flammer som blafrer
   FX.fire = [0, 1, 2].map(f => {
@@ -721,6 +1471,17 @@ function genIcons() {
   mk('camo', p => { const g = T('#34482c', '#506a38', '#728a48'); p.rect(5, 4, 8, 11, g[1]); p.rect(2, 5, 3, 8, g[1]); p.rect(13, 5, 3, 8, g[1]); p.rect(7, 3, 4, 2, g[0]); p.rect(8, 5, 2, 10, g[0]); for (const [x, y] of [[6, 7], [11, 9], [6, 12], [3, 8], [14, 7], [11, 13]]) { p.set(x, y, g[2]); p.set(x + 1, y + 1, g[0]); } });
   mk('deo', p => { p.rect(6, 6, 6, 9, C('#5c6e7a')); p.rect(6, 6, 1, 9, C('#8c9ea8')); p.rect(11, 6, 1, 9, C('#3c4a54')); p.rect(7, 4, 4, 2, st[1]); p.rect(8, 2, 3, 2, st[2]); p.set(12, 2, C('#cfe0e8')); p.set(14, 1, C('#cfe0e8')); p.set(14, 3, C('#cfe0e8')); p.rect(7, 9, 4, 3, C('#d8c040')); });
   mk('hagle', p => { for (let i = 0; i < 11; i++) { const x = 6 + i, y = Math.round(11 - i * 0.6); p.set(x, y, st[1]); p.set(x, y - 1, st[2]); } p.rect(4, 10, 3, 2, st[0]); p.line(7, 12, 10, 10, wd[2], 1); p.rect(1, 11, 4, 2, wd[1]); p.rect(1, 13, 2, 1, wd[0]); p.set(1, 11, wd[2]); p.set(5, 12, st[0]); });
+  // buen med strengen rett og lemmene i en bue, og en bunt piler med jaktspiss og rød og hvit fjær
+  mk('bow', p => {
+    for (let y = 1; y <= 15; y++) { const x = 4 + Math.round(7 * Math.sin(Math.PI * (y - 1) / 14)); p.set(x, y, wd[1]); p.set(x + 1, y, wd[0]); if (y > 5 && y < 11) p.set(x - 1, y, wd[2]); }
+    p.line(4, 1, 4, 15, C('#e8e2d0'), 1); p.rect(10, 7, 2, 3, C('#3a2a1c')); p.set(4, 1, wd[0]); p.set(4, 15, wd[0]);
+  });
+  mk('arrows', p => {
+    for (const o of [0, 3, 6]) {
+      p.line(2 + o, 14, 10 + o, 3, C('#2c2a26'), 1); p.set(11 + o, 2, st[3]); p.set(10 + o, 2, st[2]); p.set(11 + o, 3, st[2]);
+      p.set(2 + o, 13, C('#c43a2c')); p.set(3 + o, 14, C('#c43a2c')); p.set(1 + o, 14, C('#e8e2d0')); p.set(2 + o, 15, C('#e8e2d0'));
+    }
+  });
   mk('choke', p => { p.rect(3, 7, 12, 4, st[1]); p.rect(3, 7, 12, 1, st[2]); p.rect(3, 10, 12, 1, st[0]); for (let x = 4; x < 9; x += 2) { p.set(x, 8, st[0]); p.set(x, 9, st[0]); } p.rect(12, 6, 3, 6, st[0]); p.rect(13, 7, 1, 4, st[2]); });
   mk('shell', p => { p.rect(6, 3, 6, 10, C('#b8302a')); p.rect(6, 3, 1, 10, C('#d85040')); p.rect(11, 3, 1, 10, C('#8a2020')); p.rect(7, 3, 4, 1, C('#8a2020')); p.rect(5, 13, 8, 3, br[1]); p.rect(5, 13, 1, 3, br[2]); p.rect(12, 13, 1, 3, br[0]); });
   mk('axe', p => { for (let i = 0; i < 12; i++) { p.set(4 + i * 0.6, 16 - i, wd[1]); p.set(5 + i * 0.6, 16 - i, wd[2]); } p.rect(9, 3, 5, 4, st[1]); p.rect(9, 3, 5, 1, st[2]); p.rect(13, 1, 3, 8, st[2]); p.rect(15, 1, 1, 8, st[3]); p.set(9, 7, st[0]); });
@@ -737,14 +1498,140 @@ function genIcons() {
     for (let i = 0; i < 6; i++) { const x = 7 + i, y = Math.round(8 - i * 0.6); p.set(x, y, st[0]); p.set(x, y - 1, st[1]); }
     p.set(8, 9, st[0]); p.set(11, 7, st[0]); p.set(13, 3, C('#7ab0c8'));
   });
+  // til hjulet: brettet kart med skog, vann og en rød sti
+  mk('map', p => {
+    const pa = T('#bfae80', '#dccb9c', '#f0e4bc');
+    for (let i = 0; i < 3; i++) p.rect(2 + i * 5, 3 + (i & 1), 5, 11, pa[[1, 0, 2][i]]);
+    p.rect(3, 5, 3, 3, C('#5a8a4a')); p.rect(13, 6, 2, 3, C('#5a8a4a')); p.rect(8, 10, 3, 2, C('#6aa0b0'));
+    for (const [x, y] of [[4, 11], [5, 10], [7, 9], [9, 8], [11, 7], [12, 6]]) p.set(x, y, C('#c03a2a'));
+    p.set(13, 4, C('#c03a2a')); p.set(14, 5, C('#c03a2a')); p.set(14, 4, C('#c03a2a')); p.set(13, 5, C('#c03a2a'));
+  });
+  // ryggsekk i grønn lerret med lokk, to remmer med spenner og en lomme foran
+  mk('pack', p => {
+    const g = T('#3a4628', '#5c6c38', '#86964e');
+    p.rect(7, 1, 4, 1, wd[0]); p.set(7, 2, wd[0]); p.set(10, 2, wd[0]);
+    p.rect(4, 4, 10, 12, g[1]); p.rect(4, 4, 1, 12, g[2]); p.rect(13, 4, 1, 12, g[0]); p.rect(4, 15, 10, 1, g[0]);
+    p.rect(5, 3, 8, 1, g[0]); p.rect(4, 4, 10, 4, g[0]); p.rect(5, 4, 8, 1, g[2]);
+    p.rect(5, 10, 8, 4, g[0]); p.rect(5, 10, 8, 1, g[2]);
+    for (const x of [6, 11]) { p.rect(x, 6, 1, 5, wd[1]); p.set(x, 8, br[2]); }
+  });
+  // klærne på kroppen i inventaret: jakthatten jegeren går med (grønn med oransje bånd) og hansker
+  mk('hat', p => { const g = T('#24361f', '#3a5232', '#5a7448'); p.ell(9, 13, 8, 2.4, g[0]); p.ell(9, 12.4, 7.4, 1.8, g[1]); p.rect(5, 5, 8, 7, g[1]); p.rect(5, 5, 1, 7, g[2]); p.rect(12, 5, 1, 7, g[0]); p.rect(6, 4, 6, 1, g[2]); p.rect(5, 9, 8, 2, C('#e07a2a')); p.rect(5, 9, 8, 1, C('#f4a040')); });
+  const glove = (p, g, cuff) => { p.rect(5, 7, 7, 6, g[1]); p.rect(5, 7, 1, 6, g[2]); for (let i = 0; i < 4; i++) { p.rect(5 + i * 2, i === 0 || i === 3 ? 3 : 2, 1, 5, g[1]); p.set(5 + i * 2, i === 0 || i === 3 ? 3 : 2, g[2]); } p.rect(12, 8, 2, 1, g[1]); p.rect(13, 6, 2, 3, g[1]); p.rect(4, 13, 9, 3, cuff[0]); p.rect(4, 13, 9, 1, cuff[2]); };
+  mk('glove', p => { const g = T('#5a3a22', '#8a5a34', '#b07a48'); glove(p, g, g); });
   mk('boots', p => { p.rect(5, 2, 5, 10, wd[1]); p.rect(5, 2, 1, 10, wd[2]); p.rect(5, 10, 9, 4, wd[1]); p.rect(11, 10, 3, 1, wd[2]); p.rect(4, 14, 11, 2, C('#201814')); p.rect(5, 2, 5, 1, wd[0]); p.set(9, 5, br[2]); p.set(9, 7, br[2]); });
+  // flere klær til bua: hatter, jakker (samme fasong i ulike stoffer), hansker og sko
+  mk('beanie', p => { const g = T('#7a2a22', '#a83c2e', '#cc5a44'); p.ell(9, 11, 6, 6.5, g[1]); p.rect(0, 15, 18, 3, 0); p.rect(3, 11, 13, 4, g[0]); for (let x = 4; x < 16; x += 2) p.rect(x, 11, 1, 4, g[1]); p.set(6, 8, g[2]); p.set(7, 7, g[2]); p.set(8, 6, g[2]); p.ell(9, 3.5, 2.2, 2.2, C('#efe6d4')); });
+  mk('headnet', p => { const g = T('#34482c', '#506a38', '#728a48'); p.ell(9, 7, 6, 4.5, g[1]); p.rect(0, 9, 18, 9, 0); p.rect(3, 7, 13, 2, g[0]); p.set(6, 4, g[2]); p.set(7, 3, g[2]);
+    for (let y = 9; y <= 15; y++) for (let x = 3; x <= 15; x++) if ((x + y) % 2 === 0 || y === 15) p.set(x, y, (x + y) % 4 ? g[1] : g[0]); });
+  mk('furhat', p => { const g = T('#4a3020', '#6e4a30', '#946a46'), f = T('#8a6a48', '#b08c64', '#d0b088');
+    p.ell(9, 7, 5.5, 4.5, g[1]); p.rect(5, 11, 8, 2, 0); p.set(7, 4, g[2]); p.set(8, 3, g[2]);
+    p.rect(2, 8, 14, 3, f[1]); p.rect(2, 8, 14, 1, f[2]); p.rect(2, 10, 3, 6, f[1]); p.rect(13, 10, 3, 6, f[1]); p.rect(2, 15, 3, 1, f[0]); p.rect(13, 15, 3, 1, f[0]);
+    for (const [x, y] of [[4, 9], [7, 10], [10, 9], [13, 10], [3, 12], [14, 13], [3, 14], [15, 11]]) p.set(x, y, f[0]); });
+  const jk = (p, g) => { p.rect(5, 4, 8, 11, g[1]); p.rect(2, 5, 3, 8, g[1]); p.rect(13, 5, 3, 8, g[1]); p.rect(2, 5, 1, 8, g[2]); p.rect(15, 5, 1, 8, g[0]); p.rect(7, 3, 4, 2, g[0]); };
+  mk('jacket', p => { const g = T('#2e4a2a', '#4a6e3a', '#6a8e4e'); jk(p, g); p.rect(8, 5, 2, 10, g[0]); p.rect(5, 10, 2, 2, g[0]); p.rect(11, 10, 2, 2, g[0]); p.rect(5, 4, 1, 11, g[2]); });
+  mk('wool', p => { const g = T('#4a4038', '#6e6254', '#928474'), w = C('#e8e0d0'); jk(p, g); p.rect(8, 5, 2, 3, g[0]); p.rect(5, 14, 8, 1, g[0]);
+    for (let x = 2; x <= 15; x++) { p.set(x, 8, x % 2 ? w : g[0]); p.set(x, 9, x % 2 ? g[0] : w); } });
+  mk('shelljk', p => { const g = T('#3a4430', '#566246', '#76845c'); jk(p, g); p.rect(6, 1, 6, 3, g[1]); p.rect(6, 1, 6, 1, g[2]); p.rect(7, 2, 4, 2, g[0]);
+    p.rect(9, 4, 1, 11, C('#c8ccc0')); p.set(9, 6, C('#c03a2a')); p.rect(5, 8, 3, 1, g[0]); p.rect(11, 8, 3, 1, g[0]); });
+  mk('leafy', p => { const g = T('#3a4a24', '#5a6e30', '#7e9040'), b = C('#8a6a30'); jk(p, g);
+    for (const [x, y, c] of [[1, 6, g[2]], [1, 10, g[1]], [16, 7, g[2]], [16, 11, g[1]], [4, 15, g[1]], [8, 15, g[2]], [12, 15, g[1]], [6, 2, g[2]], [11, 2, g[1]], [6, 7, g[2]], [10, 6, b], [7, 11, g[0]], [11, 9, g[2]], [9, 13, b], [3, 9, g[0]], [14, 6, b]]) p.set(x, y, c); });
+  mk('shootglove', p => { glove(p, T('#1e2420', '#343c36', '#505a52'), T('#34482c', '#506a38', '#728a48')); p.rect(7, 2, 1, 2, C('#c48e68')); });
+  mk('mitten', p => { const g = T('#7a2a22', '#a83c2e', '#cc5a44'), w = C('#e8e0d0'); p.ell(8.5, 7, 4, 5, g[1]); p.ell(13, 9, 1.6, 2.4, g[1]); p.rect(5, 7, 8, 6, g[1]); p.set(6, 4, g[2]); p.set(6, 5, g[2]);
+    for (const [x, y] of [[7, 6], [10, 6], [8.5, 8], [7, 10], [10, 10]]) p.set(x, y, w); p.rect(4, 13, 9, 3, w); p.rect(5, 14, 7, 1, C('#c8c0b0')); });
+  mk('rubber', p => { const g = T('#1e3a24', '#2e5634', '#467a4a'); p.rect(5, 1, 6, 11, g[1]); p.rect(5, 1, 1, 11, g[2]); p.rect(10, 1, 1, 10, g[0]); p.rect(5, 1, 6, 1, g[0]); p.rect(5, 11, 10, 4, g[1]); p.rect(11, 11, 3, 1, g[2]); p.set(14, 12, g[0]); p.rect(4, 15, 11, 2, C('#1a1a18')); });
+  mk('sneaker', p => { const b = T('#24406a', '#3a6ab0', '#6a98d8'), w = C('#eeeeea');
+    p.rect(3, 8, 9, 6, b[1]); p.ell(12.5, 11.5, 3, 2.5, b[1]); p.rect(3, 8, 9, 1, b[2]); p.rect(3, 8, 4, 2, C('#1c2a44'));
+    for (const x of [8, 10]) { p.set(x, 9, w); p.set(x + 1, 10, w); } p.rect(4, 12, 9, 1, b[2]); p.rect(2, 14, 14, 2, w); p.rect(2, 15, 14, 1, C('#c8c8c0')); });
+  mk('leather', p => { const l = T('#3a2418', '#5a3a24', '#7a5236'), s = T('#9a9080', '#c8c0b0', '#e8e0d0');
+    p.rect(5, 4, 6, 8, l[1]); p.rect(5, 4, 1, 8, l[2]); p.rect(10, 4, 1, 8, l[0]); p.rect(5, 11, 10, 4, l[1]); p.rect(11, 11, 3, 1, l[2]); p.rect(4, 15, 11, 2, C('#201814'));
+    for (const [x, y] of [[7, 6], [8, 7], [7, 8], [8, 9], [7, 10]]) p.set(x, y, br[2]);
+    p.rect(4, 1, 8, 3, s[1]); p.rect(4, 1, 8, 1, s[2]); for (const x of [5, 7, 9, 11]) p.rect(x, 2, 1, 2, s[0]); });
+  // stallen: fjording fra siden, sal med stigbøyle og den ekstra ryggsekken til hesten
+  mk('horse', p => {
+    const c = T('#8a6a40', '#b08a56', '#cca870', '#e0c490'), d = C('#2a2018');
+    p.rect(3, 8, 10, 5, c[2]); p.rect(3, 8, 10, 1, c[3]); p.rect(3, 12, 10, 1, c[1]); p.rect(11, 4, 3, 5, c[2]); p.rect(12, 2, 4, 3, c[2]); p.rect(15, 4, 2, 2, c[1]);
+    p.set(12, 1, c[2]); p.set(14, 3, d); p.rect(10, 3, 1, 5, d); p.set(11, 2, d); p.rect(2, 8, 1, 6, d);
+    for (const x of [4, 6, 10, 12]) { p.rect(x, 13, 1, 3, c[1]); p.set(x, 16, d); }
+  });
+  mk('saddle', p => {
+    const l = T('#3e2616', '#5c3a22', '#7c5232', '#9a6c44'), s = C('#a8aca6');
+    p.rect(3, 6, 12, 3, l[2]); p.rect(3, 4, 2, 2, l[2]); p.rect(13, 3, 2, 3, l[2]); p.rect(4, 6, 10, 1, l[3]);
+    p.rect(5, 9, 8, 5, l[1]); p.rect(5, 9, 1, 5, l[2]); p.rect(6, 13, 6, 1, l[0]);
+    p.rect(9, 13, 1, 2, l[0]); p.rect(8, 15, 3, 1, s); p.set(8, 16, s); p.set(10, 16, s); p.rect(8, 17, 3, 1, s);
+  });
+  mk('hbag', p => {
+    const g = T('#5c3e28', '#80583a', '#a07448', '#b88c5c'), l = C('#3e2616');
+    p.rect(4, 4, 10, 12, g[1]); p.rect(4, 4, 10, 2, g[2]); p.rect(4, 4, 1, 12, g[2]); p.rect(13, 5, 1, 11, g[0]); p.rect(5, 2, 8, 2, g[2]); p.rect(5, 2, 8, 1, g[3]);
+    p.rect(6, 10, 6, 4, g[0]); p.rect(6, 10, 6, 1, g[2]); p.rect(8, 5, 2, 4, l); p.set(8, 8, br[2]); p.set(9, 8, br[2]);
+  });
+  // hundesekk: to sidevesker i oransje med refleks, festet sammen over ryggen, med håndtak på toppen og reim under buken
+  mk('dogpack', p => {
+    const g = T('#8a3418', '#c45a1c', '#ee7c2a'), bk = C('#2a2a28');
+    p.rect(8, 2, 2, 2, bk); p.rect(5, 4, 8, 3, g[1]); p.rect(5, 4, 8, 1, g[2]);
+    for (const x of [2, 11]) { p.rect(x, 6, 5, 9, g[1]); p.rect(x, 6, 5, 2, g[0]); p.rect(x, 6, 5, 1, g[2]); p.rect(x, 12, 5, 1, C('#e8e8d8')); p.set(x + 2, 9, br[2]); }
+    p.rect(2, 6, 1, 9, g[2]); p.rect(15, 6, 1, 9, g[0]); p.rect(7, 13, 4, 1, bk);
+  });
+  // jaktbukse i samme grønne stoff som jakka, med belte, lårlommer og et gap mellom beina
+  mk('pants', p => {
+    const g = T('#2e4a2a', '#4a6e3a', '#6a8e4e');
+    p.rect(4, 2, 10, 7, g[1]); p.rect(4, 9, 4, 7, g[1]); p.rect(10, 9, 4, 7, g[1]);
+    p.rect(4, 2, 1, 14, g[2]); p.rect(10, 9, 1, 7, g[2]); p.rect(13, 2, 1, 14, g[0]); p.rect(7, 9, 1, 7, g[0]);
+    p.rect(4, 2, 10, 2, wd[1]); p.rect(4, 2, 10, 1, wd[2]); p.rect(8, 2, 2, 2, br[1]); p.set(8, 2, br[2]); p.rect(9, 4, 1, 4, g[0]);
+    for (const x of [4, 11]) { p.rect(x, 10, 3, 3, g[0]); p.rect(x, 10, 3, 1, g[2]); }
+    p.rect(4, 15, 4, 1, g[0]); p.rect(10, 15, 4, 1, g[0]);
+  });
+  // Jaktknivene, ett ikon per trinn i bua, på skrå med skaftet nede til venstre og spissen oppe til høyre. u går langs
+  // kniven (0 til 16) og v på tvers, negativ mot ryggen og positiv mot eggen; at(u, v) gir fargen der, eller 0
+  const knife = (id, at) => mk(id, p => { for (let y = 0; y < 18; y++) for (let x = 0; x < 18; x++) { const c = at((x - y + 15) / 2, x + y - 17); if (c) p.set(x, y, c); } });
+  // skaft fra a til b, så bredt som hw(t) til hver side (t går fra 0 til 1), lyst mot ryggen og mørkt mot eggen
+  const hilt = (u, v, a, b, hw, P) => { if (u < a || u >= b) return 0; const w = Math.floor(hw((u - a) / (b - a)) + 1e-6); return Math.abs(v) > w ? 0 : v === -w ? P[2] : v === w ? P[0] : P[1]; };
+  // blad fra a til spissen b: ryggen ligger sp(t) og eggen eg(t) ut fra midten. Mørk rygg, flate, slipt fas og blank egg
+  const blade = (u, v, a, b, sp, eg, P) => {
+    if (u < a || u > b) return 0;
+    const t = (u - a) / (b - a), lo = Math.ceil(-sp(t) - 1e-6), hi = Math.floor(eg(t) + 1e-6);
+    return v < lo || v > hi ? 0 : v === hi && hi > lo ? P[3] : v === lo ? P[0] : v === hi - 1 ? P[2] : P[1];
+  };
+  const steel = T('#3a4044', '#646c70', '#9aa2a6', '#d8e0e0'), dull = T('#3a4044', '#5c6468', '#848c90', '#aab2b4');
+  // 0 enkel speiderkniv: kort, butt blad og skaft i rød plast
+  knife('knife0', (u, v) => hilt(u, v, 1, 6.5, t => t < 0.08 ? 0 : 1, T('#7a1e18', '#b83228', '#e0584a'))
+    || blade(u, v, 6.5, 11.5, t => t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3, t => t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4 * 1.5, dull));
+  // 1 tollekniv: tønneformet bjørkeskaft, messingholk og slankt blad i mørkt karbonstål med rett rygg
+  knife('knife1', (u, v) => hilt(u, v, 0.5, 7, t => 1 + Math.sin(Math.PI * t), T('#a07a48', '#d4b07a', '#f0d8a8'))
+    || hilt(u, v, 7, 7.6, () => 1, br)
+    || blade(u, v, 7.6, 14, () => 1, t => t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45 * 2, T('#24282a', '#40474b', '#6e777b', '#d0d8d8')));
+  // 2 jaktkniv med parerplate: skinnskaft i ringer med messingknott, parerplate og et bredt blad med blodrenne
+  knife('knife2', (u, v) => hilt(u, v, 0, 1, () => 1, br)
+    || (u >= 1 && u < 6.5 && Math.abs(v) <= 1 ? (Math.floor(u * 2) % 3 === 0 ? C('#2a1a10') : hilt(u, v, 1, 6.5, () => 1, T('#4a2e1c', '#7a5236', '#9a6e48'))) : 0)
+    || hilt(u, v, 6.5, 7.5, () => 3, br)
+    || (u > 8 && u < 11.5 && v === 0 ? steel[0] : blade(u, v, 7.5, 15, t => t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25, t => t < 0.55 ? 2 : 2 - (t - 0.55) / 0.45 * 2, steel)));
+  // 3 flåkniv: svart gummiskaft med oransje innlegg, stålbolster og et kort blad med stor buk og spissen bøyd opp
+  knife('knife3', (u, v) => (u >= 1.5 && u < 5.5 && v === 0 ? C('#ee7c2a') : hilt(u, v, 0.5, 6.5, t => t < 0.08 ? 1 : 1.5, T('#141414', '#2a2c2a', '#4a4e4a')))
+    || hilt(u, v, 6.5, 7.2, () => 1.5, steel)
+    || blade(u, v, 7.2, 14.5, t => 1 + 1.5 * t * t, t => 1 + 3 * Math.sin(Math.PI * t) - 4 * t * t, steel));
+  // 4 samekniv: skaft av hvitt reinhorn med inngraverte brune prikker og to messingringer, og et langt, rett blad
+  const horn = T('#a89878', '#e4dcc4', '#fbf6ea');
+  knife('knife4', (u, v) => {
+    const hc = hilt(u, v, 0, 6.8, t => t < 0.05 ? 1 : 1.5, horn);
+    if (hc) return u >= 1 && u < 1.5 || u >= 5.8 && u < 6.3 ? br[1] : hc !== horn[0] && u >= 1.5 && u < 5.8 && (Math.floor(u * 2) + v + 8) % 4 === 0 ? C('#7a4a26') : hc;
+    return blade(u, v, 6.8, 15.5, t => t < 0.88 ? 1 : 1 - (t - 0.88) / 0.12 * 1.5, t => t < 0.65 ? 2 : 2 - (t - 0.65) / 0.35 * 3, steel);
+  });
+  // 5 damaskuskniv: skaft i flammebjørk med sølvknott, svarte og messing mellomlegg, gullbolster og et bredt
+  // blad i bølgete damaskusmønster med blank egg
+  const dam = T('#2e3236', '#5a6064', '#a8b0b4', '#f0f6f6');
+  knife('knife5', (u, v) => hilt(u, v, 0, 0.8, () => 1, steel)
+    || hilt(u, v, 0.8, 1.3, () => 1.5, T('#0e0e0e', '#1e1e1e', '#3a3a3a'))
+    || (u >= 1.3 && u < 6 && Math.abs(v) <= 1.5 + 1e-6 ? (Math.sin(u * 3 + v * 1.4) > 0.55 ? C('#5a2e10') : hilt(u, v, 1.3, 6, () => 1.5, T('#7a4416', '#b8702c', '#e0a050'))) : 0)
+    || hilt(u, v, 6, 6.5, () => 1.5, T('#0e0e0e', '#1e1e1e', '#3a3a3a'))
+    || hilt(u, v, 6.5, 7.3, () => 2, br)
+    || ((c => c === dam[1] || c === dam[2] ? ((Math.floor(u * 2 + v * 0.7 + Math.sin(u * 1.4) * 1.6) % 3 + 3) % 3 ? C('#626a70') : C('#c8d0d4')) : c)(blade(u, v, 7.3, 15.8, t => t < 0.78 ? 1 : 1 - (t - 0.78) / 0.22 * 2, t => t < 0.5 ? 3 : 3 - (t - 0.5) / 0.5 * 4, dam))));
   return I;
 }
 
 function genAll() {
   for (let i = 0; i < 7; i++) genSpruce(100 + i * 13);
   for (let i = 0; i < 5; i++) genPine(200 + i * 17);
-  for (let i = 0; i < 8; i++) genBirch(300 + i * 19, BIRCH_TONES[i % 4]);
+  for (let i = 0; i < BIRCH_TONES.length * 2; i++) genBirch(300 + i * 19, BIRCH_TONES[i % BIRCH_TONES.length]);
   for (let i = 0; i < 3; i++) genRowan(400 + i * 7);
   for (let i = 0; i < 2; i++) genSnag(450 + i * 7);
   for (let i = 0; i < 3; i++) genJuniper(500 + i * 11);
@@ -756,7 +1643,11 @@ function genAll() {
   for (let i = 0; i < 2; i++) genReed(950 + i * 5);
   [[4, 3], [5, 4], [7, 5], [9, 6], [12, 8]].forEach((s, i) => genRock(1000 + i * 9, s[0], s[1]));
   genStump(1100); genStump(1107); genLog(1200); genLog(1213);
-  genCabin();
+  genCairn(); genBauta(); genTower(); genFence(); genPalisade(); genGates();
+  genWell(); for (let k = 0; k < 3; k++) genStall(k); genLamp(); genVProps();
+  [...NPC_PAL, ...VIL_PAL].forEach(pal => (SPR.npc = SPR.npc || []).push(Object.assign(genHunter('down', 0, -1, false, -1, pal), { r: 3 })));
+  // folkene som går rundt i landsbyen: står og går i tre retninger, og hogger (smedgutten, bonden og vedhoggeren)
+  for (const pal of VIL_PAL) { const o = { chop: [0, 1, 2, 3].map(k => genHunter('side', 0, -1, false, k, pal)) }; for (const d of ['side', 'down', 'up']) o[d] = [0, 1, 2, 3, 4].map(i => genHunter(d, i, -1, false, -1, pal)); VSPR.push(o); }
   for (const sp of SPECIES) {
     ANI[sp] = {};
     for (const sex of ['m', 'f']) {
@@ -771,6 +1662,10 @@ function genAll() {
   }
   DOGSPR.stand = [genAnimal(null, 'm', 'stand', 0, DOG)]; DOGSPR.mark = [genAnimal(null, 'm', 'alert', 0, DOG)];
   DOGSPR.walk = [0, 1, 2, 3].map(f => genAnimal(null, 'm', 'walk', f, DOG)); DOGSPR.run = [0, 1, 2, 3].map(f => genAnimal(null, 'm', 'run', f, DOG));
+  // bakfra (up, går fra deg) og forfra (down, kommer mot deg); de bruker gangen også når den løper
+  for (const [d, back] of [['up', true], ['down', false]]) { const w = [0, 1, 2, 3].map(f => genDogEnd(back, 'walk', f)); DOGSPR[d] = { stand: genDogEnd(back, 'stand', 0), mark: genDogEnd(back, 'alert', 0), walk: w, run: w }; }
+  // på skrå mot høyre: ur skrått fra deg, dr skrått mot deg
+  for (const [d, away] of [['ur', true], ['dr', false]]) DOGSPR[d] = { stand: genDogQuarter(away, 'stand', 0), mark: genDogQuarter(away, 'alert', 0), walk: [0, 1, 2, 3].map(f => genDogQuarter(away, 'walk', f)), run: [0, 1, 2, 3].map(f => genDogQuarter(away, 'run', f)) };
   // HUN[retning]: [står/går, sikter (siste løftebilde), de fire bildene der børsa tas opp]
   for (const d of ['side', 'down', 'up']) { const r = [0, 1, 2, 3].map(k => genHunter(d, 0, k)); HUN[d] = [[0, 1, 2, 3, 4].map(i => genHunter(d, i)), [r[3], r[3], r[3], r[3], r[3]], r]; }
   HUN.ots = [0, 1, 2, 3].map(k => genHunter('up', 0, k, true));

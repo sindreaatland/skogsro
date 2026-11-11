@@ -1,0 +1,88 @@
+- generic [active] [ref=e1]:
+  - generic "Skogen sett ovenfra" [ref=e2]
+  - generic:
+    - generic: 0 kr
+    - generic: Dag 1 · 12:00
+  - generic:
+    - img "Vindretning"
+    - generic:
+      - generic: Vind
+      - generic: Lett bris
+      - generic: fra øst
+  - generic [ref=e3]:
+    - button "Pause (Esc)" [ref=e4] [cursor=pointer]
+    - button "Inventar (E)" [ref=e5] [cursor=pointer]
+    - button "Jaktbok" [ref=e6] [cursor=pointer]
+    - button "Lyd" [ref=e7] [cursor=pointer]
+  - generic:
+    - generic:
+      - generic:
+        - generic: Rifle
+        - generic: Patron i kammeret · 20 i sekken
+      - generic: R
+    - generic:
+      - generic:
+        - generic: Rådyrpipe
+        - generic: Lokk
+    - generic:
+      - generic:
+        - generic: × 2
+        - generic: Luktstoff
+    - generic:
+      - generic:
+        - generic: Ved × 0 · kjøtt 0 kg
+        - generic: Sekken 0 / 20 kg
+    - generic:
+      - generic:
+        - generic: × 3
+        - generic: Send ut hunden
+  - generic:
+    - generic: WASDgå
+    - generic: Høyreklikksikt
+    - generic: Venstreklikkskyt
+    - generic: Fhandling
+    - generic: Qhold for hjulet
+    - generic: Einventar
+    - generic: Escpause
+  - generic [ref=e9]:
+    - heading "Skogsro" [level=1] [ref=e10]
+    - paragraph [ref=e11]: Gå stille gjennom en skog som aldri tar slutt. Les vinden, lokk på dyrene og vent på det rette skuddet.
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - text: Navnet ditt
+        - textbox "Navnet ditt" [ref=e14]: Anna
+      - generic [ref=e15]: 1 annen jeger er koblet til. Andre på samme nett kan åpne http://192.168.1.147:8080
+    - generic [ref=e16]:
+      - button "Fortsett jakt" [ref=e17] [cursor=pointer]
+      - button "Start på nytt" [ref=e18] [cursor=pointer]
+    - generic [ref=e19]: "Lagret jakt: dag 1 · 0 kr · 0 dyr felt"
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - generic [ref=e22]: WASD
+        - text: Gå ·
+        - generic [ref=e23]: Shift
+        - text: snik
+      - generic [ref=e24]:
+        - generic [ref=e25]: Høyreklikk
+        - text: Sikt (hold)
+      - generic [ref=e26]:
+        - generic [ref=e27]: Venstreklikk
+        - text: Skyt
+      - generic [ref=e28]:
+        - generic [ref=e29]: Space
+        - text: Spring · hold pusten i siktet
+      - generic [ref=e30]:
+        - generic [ref=e31]: R
+        - text: Lad om
+      - generic [ref=e32]:
+        - generic [ref=e33]: F
+        - text: Ta vare på dyr · bua · hogg · stek · sov · kjør ATV
+      - generic [ref=e34]:
+        - generic [ref=e35]: Q
+        - text: "Hold for hjulet: lokk, hund, bål og mer"
+      - generic [ref=e36]:
+        - generic [ref=e37]: E
+        - text: Inventar
+      - generic [ref=e38]:
+        - generic [ref=e39]: Esc
+        - text: Pause

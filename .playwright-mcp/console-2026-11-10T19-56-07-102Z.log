@@ -1,0 +1,1 @@
+[    2229ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:8791/ws' failed: Error during WebSocket handshake: Unexpected response code: 404 @ http://127.0.0.1:8791/test.html:6040

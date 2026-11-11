@@ -1,7 +1,8 @@
-// Skogsro på lokalnettet: serverer spillet og videresender meldinger mellom nettleserne.
-// Ingen avhengigheter. Bygg først (bash build.sh), start så med: node server.js
+// Ud på jakt på lokalnettet: serverer spillet og videresender meldinger mellom nettleserne.
+// Ingen avhengigheter. Bygg først (bash build.sh), start så med: node --watch server.js
+// (--watch starter serveren på nytt når denne fila endres; endringer i src/ bygges og lastes inn i nettleserne av seg selv)
 // Én nettleser (verten) simulerer dyra; serveren velger vert og sender meldingene videre.
-const http = require('http'), crypto = require('crypto'), fs = require('fs'), path = require('path'), os = require('os');
+const http = require('http'), crypto = require('crypto'), fs = require('fs'), path = require('path'), os = require('os'), { execFile } = require('child_process');
 
 const PORT = Number(process.env.PORT) || 8080;
 const PAGE = path.join(__dirname, 'dist', 'test.html');
@@ -14,6 +15,14 @@ function lanUrls() {
   const out = [];
   for (const list of Object.values(os.networkInterfaces())) for (const n of list || []) if (n.family === 'IPv4' && !n.internal) out.push(`http://${n.address}:${PORT}`);
   return out;
+}
+
+// Nettlesere på maskinen som kjører serveren, kan kaste ut andre (localhost eller maskinens egne adresser)
+function isLocal(addr) {
+  const a = String(addr || '').replace(/^::ffff:/, '');
+  if (a === '::1' || a.startsWith('127.')) return true;
+  for (const list of Object.values(os.networkInterfaces())) for (const n of list || []) if (n.address === a) return true;
+  return false;
 }
 
 // ---------- WebSocket (RFC 6455), bare det spillet trenger ----------
@@ -69,16 +78,21 @@ function onMessage(c, text) {
   try { m = JSON.parse(text); } catch (e) { return; }
   if (!m || typeof m !== 'object') return;
   if (m.t === 'away') { c.away = !!m.v; elect(); return; }
+  if (m.t === 'kick') {
+    const t = clients.get(m.id);
+    if (c.admin && t && t !== c) { send(t, { t: 'kicked' }); t.sock.end(); console.log(`Jeger ${t.id} ble kastet ut`); }
+    return;
+  }
   m.from = c.id;
   if (m.to) { const t = clients.get(m.to); if (t) send(t, m); }
   else broadcast(m, c);
 }
 
 function join(sock) {
-  const c = { id: nextId++, sock, buf: Buffer.alloc(0), parts: [], away: false, alive: true };
+  const c = { id: nextId++, sock, buf: Buffer.alloc(0), parts: [], away: false, alive: true, admin: isLocal(sock.remoteAddress) };
   clients.set(c.id, c);
   elect();
-  send(c, { t: 'hello', id: c.id, host: hostId, peers: [...clients.keys()].filter(id => id !== c.id), urls: lanUrls() });
+  send(c, { t: 'hello', id: c.id, host: hostId, peers: [...clients.keys()].filter(id => id !== c.id), urls: lanUrls(), admin: c.admin });
   broadcast({ t: 'join', id: c.id }, c);
   console.log(`Jeger ${c.id} koblet til (${clients.size} totalt)`);
   sock.on('data', d => onData(c, d));
@@ -99,6 +113,23 @@ setInterval(() => {
     c.alive = false; write(c, frame(9, Buffer.alloc(0)));
   }
 }, 15000);
+
+// ---------- omlasting: endres noe i src/, bygges spillet på nytt og nettleserne laster inn siden ----------
+const SRC = path.join(__dirname, 'src');
+let buildT = null, building = false, again = false;
+function rebuild() {
+  if (building) { again = true; return; }
+  building = true;
+  execFile('bash', [path.join(__dirname, 'build.sh')], (err, out, errOut) => {
+    building = false;
+    // feiler bygget (f.eks. en syntaksfeil), får nettleserne beholde versjonen de har
+    if (err) console.log('Bygget feilet, nettleserne beholder den gamle versjonen:\n' + String(errOut || err.message).trim());
+    else { console.log(`Bygget på nytt, laster inn siden hos ${clients.size} nettleser${clients.size === 1 ? '' : 'e'}`); broadcast({ t: 'reload' }); }
+    if (again) { again = false; rebuild(); }
+  });
+}
+// editorer lagrer gjerne i flere steg, så den venter litt før den bygger
+if (fs.existsSync(SRC)) fs.watch(SRC, (ev, file) => { if (!file || !/\.(js|html)$/.test(file)) return; clearTimeout(buildT); buildT = setTimeout(rebuild, 150); });
 
 // ---------- http ----------
 const server = http.createServer((req, res) => {
@@ -121,7 +152,7 @@ server.on('upgrade', (req, sock, head) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Skogsro kjører på http://localhost:${PORT}`);
+  console.log(`Ud på jakt kjører på http://localhost:${PORT}`);
   const urls = lanUrls();
   if (urls.length) console.log('Andre på samme nett kan åpne:\n  ' + urls.join('\n  '));
 });
