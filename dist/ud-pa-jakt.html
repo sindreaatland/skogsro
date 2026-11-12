@@ -35,6 +35,7 @@ body.aiming #tbtns { pointer-events: none; }
 #tl { top: calc(14px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); padding: 8px 12px; display: grid; gap: 2px; }
 #kr { font-size: 26px; font-weight: 600; color: var(--amber); font-variant-numeric: tabular-nums; line-height: 1.1; }
 #clock { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+#xp { font-size: 13px; color: var(--amber); font-variant-numeric: tabular-nums; } #story { font-size: 13px; max-width: 34ch; }
 #who { font-size: 13px; color: var(--moss); max-width: 34ch; }
 #cold { display: grid; gap: 3px; margin-top: 4px; } #cold .lab { color: #a4ccc6; } #coldFill { background: #7fb0c8; }
 #hp { display: grid; gap: 3px; margin-top: 4px; } #hpFill.low { background: var(--rust); }
@@ -79,66 +80,33 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 .money { font-size: 22px; color: var(--amber); font-variant-numeric: tabular-nums; }
 .xbtn, .act { background: #2b382f; border: 2px solid #44574a; padding: 6px 12px; cursor: pointer; font-size: 15px; }
 .xbtn:hover, .act:hover { border-color: var(--moss); }
-/* Bua: det du har til venstre (blir stående mens du blar), bua til høyre */
-.shop-card { width: min(1180px, 100%); }
-.shop-body { display: grid; grid-template-columns: auto minmax(0, 1fr); background: #1d2620; }
-.shop-mine { position: sticky; top: 0; align-self: start; padding: 14px 20px 20px; display: grid; gap: 12px; align-content: start; }
-.shop-mine .mc { --s: clamp(34px, 3.4vw, 44px); margin: 0; justify-self: start; }
-#shopMc { display: grid; gap: 12px; }
-.shop-main { position: relative; padding: 14px 20px 20px; min-width: 0; background: #1a231d; border-left: 2px solid #2b382f; }
-@media (max-width: 900px) { .shop-body { grid-template-columns: 1fr; } .shop-mine { position: static; } .shop-main { border-left: 0; border-top: 2px solid #2b382f; } }
-.mc-slot.sell, .mc-slot.move { cursor: grab; }
-.mc-slot.pick { outline: 3px solid var(--amber); outline-offset: 1px; }
-/* mens du drar: bua lyser opp, og står du på en annen fane, sier den hvor du slipper */
-#shop.dragging .shop-main { outline: 3px dashed #6a8442; outline-offset: -8px; }
-#shop.dragging .shop-main.over { outline-color: var(--amber); background: #212c22; }
-#shop.dragging .shop-main:not([data-cat="sell"])::after { content: "Slipp her for å selge"; position: absolute; inset: 0; display: grid; justify-items: center; align-content: start; padding-top: 140px; background: rgba(16,24,18,.82); color: var(--amber); font-size: 24px; pointer-events: none; }
-#shopStats { display: grid; gap: 8px; margin-bottom: 12px; padding: 10px 12px; background: #1d2620; border: 2px solid #2b382f; }
-#stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 18px; }
-.drop { display: grid; gap: 8px; padding: 14px; background: #1d2620; border: 3px dashed #44574a; }
-.drop.full { border-style: solid; border-color: #6a8442; }
-.drop .clo-h { margin-top: 0; }
-/* hjelpeteksten under inventaret følger bredden på inventaret, og gjør ikke kolonnen bredere */
-.shop-mine > .side-note { width: 0; min-width: 100%; }
-#shop.dragging .drop { border-color: var(--amber); background: #222c22; }
-.drop-empty { display: flex; gap: 16px; align-items: center; padding: 10px 4px; }
-.drop-slot { --s: 64px; flex: none; }
-.drop-t { font-size: 22px; } .drop-s { font-size: 14px; color: var(--muted); line-height: 1.4; margin-top: 2px; max-width: 46ch; }
-.drop-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.sold { font-size: 15px; color: var(--amber); }
-/* fanene i grupper: våpen, utstyr, og salg for seg til høyre i gult */
-#shopTabs { display: flex; gap: 8px 22px; margin-bottom: 12px; flex-wrap: wrap; align-items: end; }
-.tab-g { display: grid; gap: 4px; } .tab-g > div:last-child { display: flex; gap: 6px; flex-wrap: wrap; }
-.tab-sell { margin-left: auto; } .tab-sell .lab { text-align: right; }
-#shopTabs .tab-sell button { border-color: #6a5426; color: var(--amber); }
-#shopTabs .tab-sell button[aria-selected="true"] { border-color: var(--amber); background: #33290f; color: var(--paper); }
-/* underfanene i klærne: plassen på kroppen, og under den plagget du har på deg */
-.sub-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
-.sub-tabs button { display: grid; gap: 1px; padding: 6px 8px; text-align: left; background: transparent; border: 2px solid #2f3d33; cursor: pointer; font-size: 16px; color: var(--muted); min-width: 0; }
-.sub-tabs small { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sub-tabs button[aria-selected="true"] { color: var(--paper); border-color: var(--moss); background: #24301f; }
-/* forbruksvarer er lave rader, et våpen du ikke eier, én stor; det du ikke kan kjøpe, er dempet */
-.item.sup { grid-template-columns: 36px minmax(0, 1fr) auto; padding: 6px 12px; } .item.sup .ico { width: 36px; height: 36px; }
-.have { font-size: 14px; color: var(--amber); }
-.item.hero { grid-template-columns: 96px minmax(0, 1fr) auto; padding: 18px 16px; border-color: #44574a; } .item.hero .ico { width: 96px; height: 96px; } .item.hero .it-name { font-size: 24px; }
-.item.cant .ico, .item.cant .it-body { opacity: .6; }
-.buy small { display: block; font-size: 12px; color: var(--rust); }
-.buy.poor:disabled { color: #b89c84; border-color: #4a3a2e; }
-/* stolpene blir stående øverst mens du blar, og viser hva varen under musa endrer */
-#shopStats { position: sticky; top: 0; z-index: 1; }
+/* Bua: ett lyst vindu som inventaret, med det du har til venstre og butikkens inventar til høyre. De to står med
+   rutene på linje nederst; over butikkens ruter står hva stedet kjøper og stolpene for våpenet eller klærne */
+.shop-card { width: auto; max-width: 100%; background: #b9bfae; border-color: #f2f4ea #4b5244 #4b5244 #f2f4ea; }
+.shop-card .card-h { background: none; border-bottom: 0; padding-bottom: 4px; } .shop-card .card-h h2 { color: #2c3326; }
+.shop-body { display: flex; flex-wrap: wrap; align-items: end; justify-content: center; gap: 16px 28px; padding: 8px 20px 20px; }
+.shop-body .mc { --s: clamp(20px, min((100vw - 230px) / 18, (100dvh - 330px) / 7), 44px); margin: 0; padding: 0; border: 0; box-shadow: none; background: none; }
+.shop-body .mc-foot { min-height: 34px; align-items: center; }
+/* teksten og stolpene over varene følger bredden på rutene, og gjør ikke butikken bredere */
+.shop-top { display: grid; gap: 10px; width: 0; min-width: 100%; }
+.shop-main .mc-foot { justify-content: end; width: 0; min-width: 100%; } .shop-main .act { color: var(--paper); }
+.mc-slot.sell, .mc-slot.move { cursor: grab; } .mc-slot.ware { cursor: pointer; }
+/* mens du drar noe over for å selge det, lyser butikkens ruter opp */
+#shop.dragging #shopStore { outline: 3px dashed #4b5244; outline-offset: 2px; }
+#shop.dragging .over #shopStore { outline-style: solid; outline-color: #8a2a12; }
+#shopStats { display: grid; gap: 8px; padding: 8px 10px; background: #1d2620; color: var(--paper); border: 3px solid; border-color: #3a4034 #eef0e4 #eef0e4 #3a4034; }
+#stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 14px; }
+/* oppdragene hos grunneieren står som en mørk liste i det lyse vinduet */
+#shopList { display: grid; gap: 8px; padding: 10px; background: #1a231d; color: var(--paper); border: 3px solid; border-color: #3a4034 #eef0e4 #eef0e4 #3a4034; } #shopList:empty { display: none; }
+/* stolpene viser hva varen under musa endrer */
 #stats .meter { display: flex; } #stats .meter i.gain { background: var(--amber); } #stats .meter i.loss { background: var(--rust); }
 .st-v.new { color: var(--amber); }
-#shop.dragging .shop-main::after { z-index: 2; }
-#shopTabs button { background: transparent; border: 2px solid #2f3d33; padding: 6px 14px; cursor: pointer; font-size: 16px; color: var(--muted); }
-#shopTabs button[aria-selected="true"] { color: var(--paper); border-color: var(--moss); background: #24301f; }
-#shopList { display: grid; gap: 8px; }
 .item { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 10px 12px; background: #202a23; border: 2px solid #2b382f; }
 .ico { width: 54px; height: 54px; background: #2a362d; }
-/* klesfanen: en overskrift per plass på kroppen, og plagget du har på deg er merket */
+/* overskriftene i lista */
 .clo-h { margin-top: 10px; font-size: 12px; color: var(--paper); }
 .clo-h:first-child { margin-top: 0; }
 #shopList .side-note { margin: 0; }
-.item.worn { border-color: var(--moss); }
 .it-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .it-name { font-size: 18px; font-weight: 600; }
 .pips { display: flex; gap: 3px; } .pips i { width: 10px; height: 10px; background: #2e3a31; border: 1px solid #44574a; } .pips i.on { background: var(--amber); border-color: #9a7424; }
@@ -151,7 +119,6 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 .stat { display: grid; gap: 4px; } .st-top { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; } .st-v { color: var(--muted); font-size: 13px; text-align: right; }
 .side-note { font-size: 13px; color: var(--muted); line-height: 1.4; }
 .side-note b { color: var(--paper); font-weight: 500; }
-.side-acts { display: grid; gap: 8px; margin-top: 4px; }
 
 .book-body { padding: 16px 20px 20px; display: grid; gap: 16px; }
 #bookSpecies { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 8px; }
@@ -159,7 +126,11 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 .sp img { height: 52px; image-rendering: pixelated; }
 .sp.none img { filter: brightness(0) opacity(.35); }
 .sp-n { font-size: 16px; font-weight: 600; } .sp-c { font-size: 12px; color: var(--muted); }
-#bookList { display: grid; gap: 2px; }
+#bookList, #bookStory { display: grid; gap: 2px; }
+#talk { position: fixed; z-index: 5; left: 50%; transform: translateX(-50%); bottom: calc(90px + env(safe-area-inset-bottom, 0px)); width: min(560px, calc(100vw - 32px)); padding: 12px 16px; display: grid; gap: 6px; cursor: pointer; }
+#talkWho { color: var(--amber); } #talkTxt { font-size: 17px; line-height: 1.45; }
+.ch { display: grid; gap: 2px; padding: 7px 10px; background: #202a23; font-size: 14px; line-height: 1.4; } .ch b { font-weight: 600; }
+.ch.done { grid-template-columns: 1fr auto; color: var(--muted); } .ch.now { border-left: 3px solid var(--amber); }
 .entry { display: grid; grid-template-columns: 64px minmax(0, 1fr) 70px minmax(0, 1fr) 90px; gap: 10px; padding: 7px 10px; background: #202a23; font-size: 14px; font-variant-numeric: tabular-nums; }
 @media (max-width: 640px) { .entry { grid-template-columns: 1fr 1fr; } }
 .e-d, .e-z { color: var(--muted); } .e-kr { color: var(--amber); text-align: right; }
@@ -213,7 +184,6 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 #mcHeld { position: fixed; z-index: 31; width: 40px; height: 40px; margin: -20px 0 0 -20px; object-fit: contain; image-rendering: pixelated; pointer-events: none; }
 .mc-foot { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; color: #2c3326; }
 .mc-foot .warn { color: #8a2a12; }
-.qty { width: 100%; min-width: 150px; accent-color: var(--amber); cursor: pointer; }
 .wh-k { position: absolute; left: 5px; top: 2px; font-family: var(--f-lab); font-size: 13px; font-weight: 400; color: var(--muted); }
 .mc-dur { position: absolute; left: 3px; right: 3px; bottom: 2px; height: 3px; background: #1a1c18; }
 .mc-dur b { display: block; height: 100%; }
@@ -257,26 +227,15 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 .card { display: flex; flex-direction: column; max-height: var(--vh); overflow: hidden; }
 .card > .card-h, .card > .menu-h { flex: none; }
 .card > :last-child { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-.shop-card { height: min(860px, var(--vh)); }
 #book .card { height: min(760px, var(--vh)); }
 .menu-card { height: min(600px, var(--vh)); }
-.book-body { align-content: start; grid-template-rows: auto auto minmax(0, 1fr); }
+.book-body { align-content: start; grid-template-rows: auto auto auto minmax(0, 1fr); }
 #bookList { overflow-y: auto; align-content: start; min-height: 0; }
 #plSheet .menu-body { grid-template-rows: minmax(0, 1fr) auto; overflow: hidden; }
 #plList { overflow-y: auto; align-content: start; min-height: 0; }
 .inv-card .mc { --s: clamp(20px, min(5.2vw, (100dvh - 412px) / 6), 52px); }
 /* linja under rutene står der alltid, så inventaret er like høyt i alle fanene */
 .mc-store .mc-sum, .mc-store .mc-sum:empty { display: block; min-height: 20px; }
-@media (min-width: 901px) {
-  .card > .shop-body { overflow: hidden; grid-template-rows: minmax(0, 1fr); }
-  .shop-mine { position: static; align-self: stretch; overflow-y: auto; }
-  .shop-mine .mc { --s: clamp(20px, min(3.4vw, (100dvh - 516px) / 6), 44px); }
-  /* på lave skjermer viker hjelpeteksten, så rutene får plassen */
-  @media (max-height: 690px) { .shop-mine > .side-note { display: none; } }
-  .shop-main { display: flex; flex-direction: column; overflow: hidden; }
-  #shopTabs, #shopStats { flex: none; }
-  #shopList { flex: 1; min-height: 0; overflow-y: auto; align-content: start; overscroll-behavior: contain; }
-}
 
 /* Tittel */
 #title { position: fixed; inset: 0; z-index: 6; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(10,16,12,.25), rgba(10,16,12,.75)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px; }
@@ -312,6 +271,8 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 .map-leg img { width: 22px; margin: 0 -5px; flex: none; }
 @media (max-width: 900px) { #keys { display: none; } #log { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); } #bar { max-width: none; } }
 
+/* smale skjermer: butikken står under det du har, og rutene fyller bredden */
+@media (max-width: 700px) { .shop-body .mc { --s: clamp(20px, (100vw - 122px) / 9, 44px); } }
 /* Telefon: vinduene holder seg innenfor de trygge kantene, og rutene i inventaret fyller bredden */
 body { overscroll-behavior: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-text-size-adjust: 100%; }
 #cv { touch-action: none; }
@@ -321,15 +282,13 @@ body { overscroll-behavior: none; touch-action: manipulation; -webkit-tap-highli
   .sheet { padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
   .card-h { padding: 10px 12px; gap: 10px; } .card-h h2 { font-size: 22px; }
   .mc { margin: 8px; padding: 8px; }
-  .inv-card .mc, .shop-mine .mc { --s: clamp(20px, (100vw - 122px) / 9, 44px); }
-  .shop-mine, .shop-main { padding: 8px; }
-  .sub-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .inv-card .mc { --s: clamp(20px, (100vw - 122px) / 9, 44px); }
+  .shop-body { padding: 8px; }
 }
 /* telefonen på tvers: lavt, så vinduene går nesten helt ut, og inventaret blar heller enn å krympe rutene */
 @media (max-height: 500px) {
   .sheet { --pad: 8px; }
   .inv-card .mc { --s: clamp(28px, 4vw, 36px); }
-  #shopStats { position: static; }
   .menu-h { padding: 10px 20px 8px; } .menu-name { font-size: 40px; }
   .t-wrap { gap: 10px; } .t-name { font-size: clamp(48px, 20vh, 168px); } .t-sub { font-size: 16px; }
 }
@@ -356,14 +315,14 @@ body.touch #gunName { padding-right: 0; }
 body.touch #prompt { pointer-events: auto; padding: 12px 18px; }
 body.touch #breath { bottom: calc(26vh + 60px + env(safe-area-inset-bottom, 0px)); }
 /* meldingene står oppe under klokka, så tomlene og handlingsknappen har nedre del av bildet for seg selv */
-body.touch #log { top: calc(180px + env(safe-area-inset-top, 0px)); bottom: auto; max-width: calc(100vw - 32px); }
-@media (orientation: landscape) { body.touch #log { top: 130px; max-width: 40vw; } }
+body.touch #log { top: calc(216px + env(safe-area-inset-top, 0px)); bottom: auto; max-width: calc(100vw - 32px); }
+@media (orientation: landscape) { body.touch #log { top: 166px; max-width: 40vw; } }
 @media (prefers-reduced-motion: reduce) { #windArrow, .msg { transition: none; } }
 </style>
 
 <canvas id="cv" aria-label="Skogen sett ovenfra"></canvas>
 
-<div id="tl" class="hud box"><div id="kr">0 kr</div><div id="clock">Dag 1 · 06:30</div><div id="who" hidden></div><div id="hp" hidden><div class="lab" id="hpTxt">Helse</div><div class="meter"><i id="hpFill"></i></div></div><div id="cold" hidden><div class="lab" id="coldTxt"></div><div class="meter"><i id="coldFill"></i></div></div></div>
+<div id="tl" class="hud box"><div id="kr">0 kr</div><div id="clock">Dag 1 · 06:30</div><div id="xp"></div><div id="story"></div><div id="who" hidden></div><div id="hp" hidden><div class="lab" id="hpTxt">Helse</div><div class="meter"><i id="hpFill"></i></div></div><div id="cold" hidden><div class="lab" id="coldTxt"></div><div class="meter"><i id="coldFill"></i></div></div></div>
 <div id="tr" class="hud box"><img id="windArrow" alt="Vindretning"><div><div class="lab">Vind</div><div id="windS">Svak vind</div><div id="windD">fra sørvest</div></div></div>
 <div id="tbtns" class="hud"><button class="tbtn" id="pauseBtn" type="button">Pause (Esc)</button><button class="tbtn" id="invBtn" type="button">Inventar (E)</button><button class="tbtn" id="mapBtn" type="button">Kart (M)</button><button class="tbtn" id="bookBtn" type="button">Jaktbok</button><button class="tbtn" id="muteBtn" type="button" aria-pressed="false">Lyd</button></div>
 <div id="log" class="hud" aria-live="polite"></div>
@@ -384,39 +343,34 @@ body.touch #log { top: calc(180px + env(safe-area-inset-top, 0px)); bottom: auto
 
 <div id="shop" class="sheet" hidden>
   <div class="card shop-card" role="dialog" aria-label="Handel">
-    <div class="card-h"><h2 id="shopName">Bua</h2><span class="money" id="shopKr">0 kr</span><button class="xbtn" type="button" data-close>Gå ut (Esc)</button></div>
+    <div class="card-h"><h2 id="shopName">Bua</h2><button class="xbtn" type="button" data-close>Gå ut (Esc)</button></div>
     <div class="shop-body">
-      <div class="shop-mine">
-        <div class="lab">Det du har</div>
-        <div id="shopMc"></div>
-        <div class="side-note">Klikk på noe for å selge det. Shift+klikk selger hele stabelen med en gang. Det som er dempet, kjøpes ikke her. Våpnene lades fra sekken når du går inn.</div>
-        <div class="side-acts"><button class="act" type="button" id="sleepBtn">Sov til morgengry</button></div>
-      </div>
-      <div class="shop-main" id="shopMain">
-        <div id="shopTabs" role="tablist">
-          <div class="tab-g"><div class="lab">Våpen</div><div><button type="button" role="tab" data-cat="rifle">Rifla</button><button type="button" role="tab" data-cat="hagle">Hagla</button><button type="button" role="tab" data-cat="bue">Pil og bue</button></div></div>
-          <div class="tab-g"><div class="lab">Utstyr</div><div><button type="button" role="tab" data-cat="lure">Lokking</button><button type="button" role="tab" data-cat="gear">Utstyr</button><button type="button" role="tab" data-cat="clo">Klær</button><button type="button" role="tab" data-cat="camp">Leir</button></div></div>
-          <div class="tab-g"><div class="lab">Smeden</div><div><button type="button" role="tab" data-cat="smith">Kniv og øks</button></div></div>
-          <div class="tab-g"><div class="lab">Stallen</div><div><button type="button" role="tab" data-cat="stable">Hest og utstyr</button></div></div>
-          <div class="tab-g"><div class="lab">Påfyll</div><div><button type="button" role="tab" data-cat="post">Forbruksvarer</button></div></div>
-          <div class="tab-g"><div class="lab">Grunneieren</div><div><button type="button" role="tab" data-cat="quest">Oppdrag</button></div></div>
-          <div class="tab-g tab-sell"><div class="lab" id="shopSellLab">Kjøper</div><div><button type="button" role="tab" data-cat="sell">Selg</button></div></div>
+      <div id="shopMc"></div>
+      <div class="mc shop-main" id="shopMain">
+        <div class="mc-lab" id="shopWho"></div>
+        <div class="shop-top">
+          <div class="mc-sum" id="shopNote"></div>
+          <div id="shopStats">
+            <div class="lab" id="statLab">Rifla di nå</div>
+            <div id="stats"></div>
+            <div class="side-note" id="statNote"></div>
+          </div>
+          <div id="shopList"></div>
         </div>
-        <div id="shopStats">
-          <div class="lab" id="statLab">Rifla di nå</div>
-          <div id="stats"></div>
-          <div class="side-note" id="statNote"></div>
-        </div>
-        <div id="shopList"></div>
+        <div class="mc-tabs" id="shopTabs" role="tablist"></div>
+        <div class="mc-store" id="shopStore"><div class="mc-grid" id="shopGrid"></div><div class="mc-sum" id="shopSum"></div></div>
+        <div class="mc-foot"><button class="act" type="button" id="meatBtn" hidden></button><button class="act" type="button" id="sleepBtn">Sov til morgengry</button></div>
       </div>
     </div>
   </div>
 </div>
 
+<div id="talk" class="box" hidden><div class="lab" id="talkWho"></div><div id="talkTxt"></div><div class="side-note">F eller trykk for å gå videre</div></div>
+
 <div id="book" class="sheet" hidden>
   <div class="card" role="dialog" aria-label="Jaktbok">
     <div class="card-h"><h2>Jaktbok</h2><span class="money" id="bookTot"></span><button class="xbtn" type="button" data-close>Lukk (Esc)</button></div>
-    <div class="book-body"><div id="bookSpecies"></div><div class="lab">Felt vilt, nyeste først</div><div id="bookList"></div></div>
+    <div class="book-body"><div id="bookStory"></div><div id="bookSpecies"></div><div class="lab">Felt vilt, nyeste først</div><div id="bookList"></div></div>
   </div>
 </div>
 
@@ -486,7 +440,7 @@ body.touch #log { top: calc(180px + env(safe-area-inset-top, 0px)); bottom: auto
     <div class="card-h"><h2 id="keysT">Taster</h2><button class="xbtn" type="button" data-back>Tilbake (Esc)</button></div>
     <div class="menu-body">
       <div class="key-list">
-        <kbd>WASD</kbd><span>Gå · musa snur deg og bildet · A/D flytter deg rolig til sidene i siktet</span>
+        <kbd>WASD</kbd><span>Gå · musa snur deg og bildet · i siktet flytter du deg rolig</span>
         <kbd>Shift</kbd><span>Snik</span>
         <kbd>Space</kbd><span>Spring · hold pusten i siktet</span>
         <kbd>Høyreklikk</kbd><span>Sikt (hold)</span>
@@ -1037,6 +991,8 @@ const VIL_PAL = [
   { civ: 1, cap: 1, hat: '#34404c', hatD: '#242e38', hatL: '#4a5866', band: '#34404c', jac: '#5a3a34', jacD: '#402824', jacL: '#744e46', pant: '#34322e', pantD: '#242220', beard: '#8a8a84' },
   { civ: 1, cap: 1, hat: '#d8a83c', hatD: '#a87e28', hatL: '#ecc460', band: '#d8a83c', jac: '#8c3a34', jacD: '#642824', jacL: '#aa5048', dress: '#8c3a34', apron: '#e8e2d2', beard: SKIN, hair: '#3a2a20' },
   { civ: 1, cap: 1, hat: '#3a4e6a', hatD: '#28384e', hatL: '#506886', band: '#3a4e6a', jac: '#c8c0a8', jacD: '#9c947e', jacL: '#e0d8c0', pant: '#3a3e4a', pantD: '#282c36', apron: '#6a7c84', beard: '#a04a22' },
+  // bestefar: grå filthatt, grønn vadmelsjakke og hvitt skjegg
+  { civ: 1, hat: '#5c5448', hatD: '#40392f', hatL: '#766c5c', band: '#2c2c2c', jac: '#5e6b4a', jacD: '#434d34', jacL: '#78865f', pant: '#4a4238', pantD: '#342e27', beard: '#e8e6e0' },
 ];
 
 // ---------- Hus ----------
@@ -1057,7 +1013,7 @@ const ROOFC = {
   slate: ['#2a3036', '#3a424a', '#4e5860', '#667076', '#828a8e'], thatch: ['#6e5424', '#927230', '#b08e40', '#c8aa56', '#dcc474'],
 };
 const HOUSE_STYLE = [
-  { id: 'store', sign: 'BUA', wall: 'panel', wc: 'ochre', roof: 'tile', awn: 1, side: 'crates', flowers: 1, L: 52 },
+  { id: 'store', sign: 'BUTIKK', wall: 'panel', wc: 'ochre', roof: 'tile', awn: 1, side: 'crates', flowers: 1, L: 52 },
   { id: 'gun', sign: 'VÅPEN', wall: 'log', wc: 'tar', roof: 'slate', antler: 1, side: 'wood' },
   { id: 'game', sign: 'VILT', wall: 'panel', wc: 'red', roof: 'slate', side: 'rack' },
   { id: 'farm', sign: 'GARD', wall: 'log', wc: 'log', roof: 'thatch', side: 'wood', flowers: 1, L: 54, D: 34 },
@@ -2127,6 +2083,8 @@ for (let ky = -8; ky < 8; ky++) for (let kx = -8; kx < 8; kx++) {
   if (Math.abs(x) < WORLD - 300 && Math.abs(y) < WORLD - 300) PLACES.push(mkPlace(post ? 'post' : 'koie', x, y, post ? post[2] : 'Koia'));
 }
 const inVillage = c => c.name === 'Landsbyen';
+// der den som holder til i huset, står: ute ved veggen ved siden av døra
+const keeperAt = c => [Math.round(c.door[0] + Math.cos(c.rot) * 12 - c.out[0] * 2), Math.round(c.door[1] + Math.sin(c.rot) * 12 - c.out[1] * 2)];
 // ---------- landsbyen ----------
 // Landsbyen ligger innenfor palisaden (VPOLY, en åttekant med urviseren). Husene står tett og i ulike vinkler rundt
 // torget med brønnen, og stiene bukter seg mellom dem og ut gjennom fire grinder.
@@ -2139,6 +2097,8 @@ const HOUSES = [['bakery', -150, -178, -35, 'bakery'], ['church', 28, -275, 50, 
 const VB = {};
 for (const c of PLACES) if (c.name === 'Landsbyen') VB[c.kind] = c;
 for (const c of HOUSES) VB[c.id] = c;
+// bestefar (se STORY i 05-game.js) står foran bua, litt til side for døra, der du starter
+const GF = [Math.round(VB.store.door[0] + VB.store.out[0] * 10 - Math.cos(VB.store.rot) * 16), Math.round(VB.store.door[1] + VB.store.out[1] * 10 - Math.sin(VB.store.rot) * 16)];
 const V_PLAZA = [[0, -150, 52], [-38, -142, 36], [42, -158, 38]];
 const V_PATH = [
   [8, [-300, -150], [-230, -146], [-170, -128], [-110, -135], [-50, -145]], [8, [310, -160], [240, -158], [180, -140], [110, -150], [50, -152]],
@@ -2223,7 +2183,7 @@ const VOBJ = [
   ...GATES.flatMap(g => g.vert ? [['gate', g.x, g.y - g.w / 2 - 2, gateV++], ['gate', g.x, g.y + g.w / 2 + 2, gateV++]] : [['gate', g.x, g.y, gateV++]]),
   // torget: brønn, tre boder med de to som selger grønnsaker og fisk (bakeren går selv til brødboden), benker og varer
   ['well', 0, -150, 0], ['stall', -50, -120, 0], ['stall', 44, -124, 2], ['stall', 58, -178, 1],
-  ['npc', 68, -122, NPC_PAL.length + 10], ['npc', 82, -176, NPC_PAL.length + 11],
+  ['npc', 68, -122, NPC_PAL.length + 10], ['npc', 82, -176, NPC_PAL.length + 11], ['npc', GF[0], GF[1], NPC_PAL.length + 12],
   ['vprop', -28, -182, 7], ['vprop', 24, -110, 7], ['vprop', -74, -118, 0], ['vprop', 20, -128, 1], ['vprop', 34, -182, 0],
   // lykter langs stiene
   ...[[-82, -158], [86, -148], [68, -226], [14, -84], [-196, -142], [204, -146], [-140, -44], [100, -34], [110, -292], [-140, -236], [20, 34]].map(([x, y]) => ['lamp', x, y, 0]),
@@ -2711,7 +2671,7 @@ function genChunk(cx, cy) {
   for (const c of [...ch.cabs, ...HOUSES]) if (inC(c.x, c.y)) { const v = houseV(c.kind, c.rot), o = { k: 'cabin', x: c.x, y: c.y, v, ph: 0, a: 1, r: 0, obb: SPR.cabin[v].obb }; ch.objs.push(o); ch.col.push(o); }
   // den som holder til i huset, står ute ved veggen ved siden av døra
   for (const c of ch.cabs) {
-    const x = Math.round(c.door[0] + Math.cos(c.rot) * 12 - c.out[0] * 2), y = Math.round(c.door[1] + Math.sin(c.rot) * 12 - c.out[1] * 2);
+    const [x, y] = keeperAt(c);
     if (NPC_V[c.kind] != null && inC(x, y)) { const o = { k: 'npc', x, y, v: NPC_V[c.kind], ph: 0, a: 1, r: 3 }; ch.objs.push(o); ch.col.push(o); }
   }
   for (const q of marks) if (inC(q.x, q.y)) { const o = { k: q.k, x: q.x, y: q.y, v: 0, ph: 0, a: 1, r: SPR[q.k][0].r }; ch.objs.push(o); ch.col.push(o); }
@@ -3206,6 +3166,8 @@ const G = {
   wear: { ...CLO_START }, shoeHp: 100, cargo: {},
   // oppdraget du har tatt hos grunneieren (se QUEST), og hvilke av dagens tilbud som er brukt opp
   quest: null, qd: { day: 0, used: [] },
+  // erfaringen du har tjent, og kapitlet du står i (se STORY)
+  xp: 0, story: 0, sst: 0,
   // rutene i inventaret slik du har lagt dem: utstyr, kjøtt og hesten, med en nøkkel (wood, meat:elg …) eller et plagg i hver
   slots: { gear: [], meat: [], horse: [] },
   // de to våpenplassene i inventaret (se GUNS); G.gun er det av dem du har i hendene, null når begge er tomme
@@ -3279,15 +3241,19 @@ function seenPack() { const b = new Uint8Array(G.seen.length >> 3); G.seen.forEa
 function seenUnpack(t) { const b = atob(t || ''); G.seen.forEach((v, i) => { G.seen[i] = b.charCodeAt(i >> 3) >> (i & 7) & 1; }); G.seenAt = -1; }
 
 // ---------- lagring (localStorage i denne nettleseren) ----------
-const SAVE_KEY = 'skogsro.v1';
+const SAVE_KEY = 'ud-pa-jakt.v1';
+// flytter lagring fra det gamle prosjektnavnet, så ingen mister spillet sitt
+try { for (const k of ['v1', 'name']) { const o = localStorage.getItem('skogsro.' + k); if (o != null) { if (localStorage.getItem('ud-pa-jakt.' + k) == null) localStorage.setItem('ud-pa-jakt.' + k, o); localStorage.removeItem('skogsro.' + k); } } } catch (e) { }
 function save() {
   try {
     // som gjest hos en annen vert er gapahukene og stubbene vertens, så da beholdes de du hadde lagret fra før
     const old = isAuth() ? null : JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') || {};
     localStorage.setItem(SAVE_KEY, JSON.stringify({ money: G.money, up: G.up, scents: G.scents, treats: G.treats, journal: G.journal, day: G.day, hour: G.hour,
-      quest: G.quest, qd: G.qd, wood: G.wood, matches: G.matches, meat: G.meat, rack: G.rack, cargo: G.cargo, slots: G.slots, hp: Math.round(P.hp), sick: P.sick, wear: G.wear, shoeHp: Math.round(G.shoeHp * 10) / 10,
+      quest: G.quest, qd: G.qd, xp: G.xp, story: G.story, sst: G.sst, wood: G.wood, matches: G.matches, meat: G.meat, rack: G.rack, cargo: G.cargo, slots: G.slots, hp: Math.round(P.hp), sick: P.sick, wear: G.wear, shoeHp: Math.round(G.shoeHp * 10) / 10,
       // patronene lagres med dem som sitter i våpnene; de lades igjen når du starter
       rounds: G.rounds + inGun('rifle'), shells: G.shells + inGun('hagle'), arrows: G.arrows + inGun('bue'), arms: G.arms, gun: G.gun, seen: seenPack(),
+      // hvor du og hesten står, og om du satt i salen
+      pos: [Math.round(P.x), Math.round(P.y), P.face, P.flip], horse: [Math.round(HORSE.x), Math.round(HORSE.y), Math.round(HORSE.h * 100) / 100, HORSE.on],
       huts: old ? old.huts || [] : G.huts.map(h => [Math.round(h.x), Math.round(h.y)]), cut: old ? old.cut || [] : [...G.cut] }));
   } catch (e) { }
 }
@@ -3318,6 +3284,7 @@ function load() {
     if (GUNS[s.gun]) G.gun = s.gun;
     G.quest = s.quest && SPEC[s.quest.sp] && (s.quest.kind === 'meat' || REGIONS[s.quest.area]) ? s.quest : null;
     G.qd = s.qd && Array.isArray(s.qd.used) ? s.qd : { day: 0, used: [] };
+    G.xp = Math.max(0, s.xp | 0); G.story = clamp(s.story | 0, 0, STORY.length); G.sst = clamp(s.sst | 0, 0, 2);
     // uten hest (lagringer fra før hesten måtte kjøpes): det som lå på lasteplanet, er hos deg igjen
     if (!lv('horse')) {
       for (const k of CARGO) { G[k] += G.cargo[k]; G.cargo[k] = 0; }
@@ -3325,6 +3292,10 @@ function load() {
       G.rack = []; for (const o of G.slots.horse) if (o && o.clo) { const L = G.slots.gear, i = L.indexOf(null); L[i < 0 ? L.length : i] = o; }
       G.slots.horse = [];
     }
+    // stedet du sto på sist, og hesten der du satte den (eldre lagringer: ved bua og stallen, som er satt fra før)
+    const at = A => Array.isArray(A) && Number.isFinite(A[0]) && Number.isFinite(A[1]);
+    if (at(s.horse)) Object.assign(HORSE, { x: clamp(s.horse[0], -WORLD, WORLD), y: clamp(s.horse[1], -WORLD, WORLD), h: +s.horse[2] || 0, on: !!s.horse[3] && !!lv('horse') });
+    if (at(s.pos)) { P.x = clamp(s.pos[0], -WORLD, WORLD); P.y = clamp(s.pos[1], -WORLD, WORLD); if (HUN[s.pos[2]]) P.face = s.pos[2]; P.flip = !!s.pos[3]; CAM.x = P.x; CAM.y = P.y - 30; }
     armsFix();
     return true;
   } catch (e) { return false; }
@@ -3731,10 +3702,10 @@ function credit(a, cut, first) {
   const onHorse = kg1(Math.min(kg, rackFree())), inSack = kg1(kg - onHorse), horseKr = Math.round(kr * onHorse / kg);
   const add = (L, k, v) => { if (!(k > 0)) return; const l = L.find(l => l.sp === a.sp); if (l) { l.kg = kg1(l.kg + k); l.kr += v; } else L.push({ sp: a.sp, kg: k, kr: v }); };
   add(G.rack, onHorse, horseKr); add(G.meat, inSack, kr - horseKr);
-  if (first) questKill(a);
+  if (first) { questKill(a); xpAdd(killXp(a.sp)); storyEv('kill', a); }
   if (first) G.journal.unshift({ sp: a.sp, sex: a.sex, kg: a.kg, m: Math.round((a.shotDist || 0) * M_PER_PX), zone: a.lastZone || 'body', kr: all, day: G.day, h: G.hour });
   const where = onHorse > 0 ? inSack > 0 ? 'på hesten og i sekken' : 'på hesten' : 'i sekken';
-  sfx.kneel(); msg((first ? A.name + ', ' + A.sexn[a.sex] + ', ' + fmtKg(a.kg) + ' · ' : '') + fmtKg(kg) + ' kjøtt ' + where + ', verdt ' + fmtKr(kr) + ' i landsbyen', 'good');
+  sfx.kneel(); msg((first ? A.name + ', ' + A.sexn[a.sex] + ', ' + fmtKg(a.kg) + ' · ' : '') + fmtKg(kg) + ' kjøtt ' + where + ', verdt ' + fmtKr(kr) + ' i landsbyen' + (first ? ' · +' + killXp(a.sp) + ' XP' : ''), 'good');
   if (a.left > 0) msg((horseNear() ? 'Sekken og hesten er fulle. ' : 'Sekken er full. ') + fmtKg(kg1(a.left * K)) + ' kjøtt ligger igjen på dyret. ' + (horseNear() ? 'Selg i landsbyen og kom tilbake.' : `Selg i landsbyen, eller ${horseHint()}.`), 'warn');
   save();
 }
@@ -3783,6 +3754,8 @@ function action() {
     return [(a.left === undefined ? 'Ta vare på ' + A.name.toLowerCase() + ' (' + A.sexn[a.sex] + ')' : 'Skjær ut mer kjøtt (' + A.name.toLowerCase() + ', ' + fmtKg(kg1(a.left * knifeK())) + ' igjen)')
       + (rest <= 3 ? rest < 1 ? ' · råtner snart' : ' · råtner om ' + Math.ceil(rest) + ' t' : '') + (onH > 0 ? inS > 0 ? ' · ' + fmtKg(onH) + ' på hesten, ' + fmtKg(inS) + ' i sekken' : ' · lastes på hesten' : ''), () => collect(a)];
   }
+  // har den du står ved, noe å si i historien, snakker du med dem før du går inn
+  const w = storyNear(); if (w) return ['Snakk med ' + WHO[w][0].toLowerCase(), () => storyTalk(w)];
   const c = cabinsNear(P.x, P.y).find(c => hyp(P.x - c.door[0], P.y - c.door[1]) < 18);
   if (c) return [doorText(c), () => openShop(c)];
   const atHorse = lv('horse') && hyp(HORSE.x - P.x, HORSE.y - P.y) < 18;
@@ -3847,7 +3820,67 @@ function questDeliver() {
       if (l.kg <= 0) L.splice(L.indexOf(l), 1);
     }
   }
-  G.money += q.kr; G.quest = null; sfx.coin(); msg('Grunneieren takker for hjelpa. +' + fmtKr(q.kr), 'good'); save();
+  G.money += q.kr; G.quest = null; sfx.coin(); msg('Grunneieren takker for hjelpa. +' + fmtKr(q.kr) + ' · +' + XP_QUEST + ' XP', 'good'); xpAdd(XP_QUEST); storyEv('quest'); save();
+}
+
+// ---------- historien og erfaring ----------
+// En enkel historie i kapitler, ett om gangen, fortalt i samtaler med folk (F når du står ved dem). G.story er kapitlet
+// du står i, og G.sst hvor langt du er i det: 0 du må snakke med den som gir oppdraget (who), 1 oppdraget er i gang, og
+// 2 det er utført og du må snakke med den som tar imot (to, ellers who). who og to er 'gf' (bestefar, som står foran
+// bua, se GF) eller slaget hus den som står ved døra, hører til. Oppdraget utføres av en hendelse (ev): 'kill' et dyr du
+// tar vare på (sp: bare disse artene), 'sell' kjøtt solgt, 'quest' et oppdrag levert hos grunneieren og 'hut' en natt i
+// gapahuk; uten ev er oppdraget bare å gå til den som tar imot. d er replikkene til den som gir oppdraget, og done det
+// mottakeren sier. Erfaring (G.xp) får du for hvert kapittel, hvert dyr du tar vare på og hvert oppdrag for
+// grunneieren, og nivået følger av den
+const STORY = [
+  { t: 'Første bytte', who: 'gf', ev: 'kill', xp: 50, goal: 'Fell et dyr og ta vare på det',
+    d: ['Der er du! Jeg har lagt børsa på hylla, så rifla, hunden og jaktretten er dine nå.', 'Vis bygda at du duger. Fell et dyr og ta vare på det, så snakkes vi.'], done: 'Se der, ja! Du har det i deg.' },
+  { t: 'Mat til bygda', who: 'game', ev: 'sell', xp: 50, goal: 'Selg kjøtt på viltmottaket',
+    d: ['Så det er du som har tatt over etter bestefaren din? Mottaket har stått tomt siden han ga seg.', 'Kom inn med kjøtt, så kjøper jeg det.'], done: 'Godt kjøtt. Nå ser folk at det er en jeger i bygda igjen.' },
+  { t: 'Grunneierens ærend', who: 'farm', ev: 'quest', xp: 100, goal: 'Fullfør et oppdrag for grunneieren',
+    d: ['Jeg vil vite om du er til å stole på før du jakter lenger inn på feltet mitt.', 'Gå inn og ta et av oppdragene mine, og lever det.'], done: 'Du holder ord. Det liker jeg.' },
+  { t: 'Natt i skogen', who: 'gf', ev: 'hut', xp: 150, goal: 'Sov i en gapahuk ved bålet',
+    d: ['De store dyrene går langt fra landsbyen, så du må kunne ligge ute.', 'Kjøp øks hos smeden og fyrstikker i bua. Bygg en gapahuk, tenn bål foran den og sov der.'], done: 'Du ser uthvilt ut. Da skal du få høre om Slagbjørnen.' },
+  { t: 'Spor etter Slagbjørnen', who: 'gf', to: 'post', xp: 150, goal: 'Snakk med verten på en utpost',
+    d: ['En stor bjørn tar sauene til bygda, og jeg rakk aldri å felle den.', 'Folk på utpostene har sett spor. Fjellstua ligger langt mot nord, Austbua mot øst og Vestgarden mot sørvest. Gå ut og snakk med en av vertene.'], done: 'Slagbjørnen, ja. Den har gått her i hele høst, og sporene er store som tallerkener.' },
+  { t: 'Storvilt', who: 'post', to: 'gf', ev: 'kill', sp: ['elg', 'hjort'], xp: 200, goal: 'Fell en elg eller en hjort',
+    d: ['Men den er ikke noe for den som aldri har felt storvilt.', 'Fell en elg eller en hjort først, og si fra til bestefaren din.'], done: 'Storvilt! Da er du klar.' },
+  { t: 'Slagbjørnen', who: 'gf', ev: 'kill', sp: ['bjorn'], xp: 400, goal: 'Fell en bjørn',
+    d: ['Finn bjørnen som har herjet i bygda, og fell den.', 'Sikt godt, for den tåler mye.'], done: 'Slagbjørnen er felt! Bygda kan slippe sauene på beite igjen. Skogen er din nå.' },
+];
+// [navnet i samtalen, hvor du finner dem]
+const WHO = { gf: ['Bestefar', 'bestefar foran bua'], game: ['Viltmottakeren', 'viltmottakeren i landsbyen'], farm: ['Grunneieren', 'grunneieren på garden'], post: ['Verten', 'verten på en utpost'] };
+const XP_QUEST = 50, RANKS = ['Nybegynner', 'Lærling', 'Jeger', 'Storviltjeger', 'Mesterjeger'];
+// Nivå n krever 100 · (n − 1)² XP: 100, 400, 900, 1600 …
+const xpLevel = (xp = G.xp) => 1 + Math.floor(Math.sqrt(xp / 100));
+const xpNext = () => 100 * xpLevel() ** 2;
+const rankName = () => RANKS[Math.min(xpLevel(), RANKS.length) - 1];
+const killXp = sp => Math.max(5, Math.round(SPEC[sp].value / 100) * 5);
+function xpAdd(n) {
+  const l = xpLevel(); G.xp += n;
+  if (xpLevel() > l) msg('Nytt nivå! Du er nå ' + rankName().toLowerCase() + ' (nivå ' + xpLevel() + ').', 'money');
+}
+// Den du skal snakke med nå (null mens oppdraget er i gang), og det som står som oppdrag i HUD-en og jaktboka
+const storyWho = () => { const c = STORY[G.story]; return !c ? null : G.sst === 2 ? c.to || c.who : G.sst ? null : c.who; };
+const storyGoal = () => { const w = storyWho(); return w ? 'Snakk med ' + WHO[w][1] : STORY[G.story].goal; };
+// ... hvis du står like ved dem
+function storyNear() {
+  const w = storyWho(); if (!w) return null;
+  let p = GF; if (w !== 'gf') { const c = cabinsNear(P.x, P.y).find(c => c.kind === w); if (!c) return null; p = keeperAt(c); }
+  return hyp(P.x - p[0], P.y - p[1]) < 30 ? w : null;
+}
+// Samtalen: mottakeren kvitterer for et utført oppdrag (og du får erfaringen), og har de neste oppdrag selv, gir de det
+// med en gang; ellers sier de hvem du skal gå til
+function storyTalk(w) {
+  let c = STORY[G.story]; const L = [];
+  if (G.sst === 2) { L.push(c.done); xpAdd(c.xp); msg(c.t + ' fullført · +' + c.xp + ' XP', 'money'); G.story++; G.sst = 0; c = STORY[G.story]; }
+  if (c && c.who === w) { L.push(...c.d); G.sst = c.ev ? 1 : 2; msg('Nytt oppdrag: ' + c.goal, 'good'); }
+  else if (c) L.push('Gå og snakk med ' + WHO[c.who][1] + '.');
+  save(); talk(WHO[w][0], L);
+}
+function storyEv(ev, a) {
+  const c = STORY[G.story]; if (!c || G.sst !== 1 || c.ev !== ev || c.sp && !c.sp.includes(a.sp)) return;
+  G.sst = 2; msg('Oppdraget er utført. Snakk med ' + WHO[c.to || c.who][1] + '.', 'good'); save();
 }
 // Hva som står ved døra til hvert slags hus
 function doorText(c) {
@@ -4388,6 +4421,7 @@ function sleepToDawn(text) {
   if (kr) { const t = 'Viltet du lot ligge, råtnet mens du sov. Kjøttet kan ikke selges, og du får bot for å la vilt ligge.'; rotNotice(t, fine(kr, t)); } else save();
 }
 function sleepHut() {
+  storyEv('hut');
   if (mp()) { healFull(); msg('Du hvilte i gapahuken ved bålet. Du er varm og frisk igjen.', 'good'); save(); return; }
   sleepToDawn('Du sov godt i gapahuken ved bålet. Det lysner over skogen, og du er frisk igjen.');
 }
@@ -4434,7 +4468,7 @@ function playerUpdate(dt) {
   P.cycle = Math.max(0, P.cycle - dt); P.callCd = Math.max(0, P.callCd - dt);
   if (P.reload > 0) { P.reload -= dt; if (P.reload <= 0) { const k = ammoKey(), n = Math.min(gunCap() - inGun(), G[k]); P.reload = 0; if (G.gun) { P.mag[G.gun] += n; G[k] -= n; } } }
   aimUpdate(dt);
-  // du står i ro mens du tar børsa opp; i siktet kan du flytte deg rolig til sidene med A/D, men ikke ute på djupt vann
+  // du står i ro mens du tar børsa opp; i siktet kan du flytte deg rolig med W/A/S/D, men ikke ute på djupt vann
   let mx = 0, my = 0;
   if (G.started && !G.paused && !P.aim && !AIM.want) {
     if (KEYS.KeyA || KEYS.ArrowLeft) mx -= 1; if (KEYS.KeyD || KEYS.ArrowRight) mx += 1;
@@ -4442,7 +4476,8 @@ function playerUpdate(dt) {
     mx += STICK.x; my += STICK.y;
   } else if (G.started && !G.paused && P.aim && AIM.want && !P.deep) {
     if (KEYS.KeyA || KEYS.ArrowLeft) mx -= 1; if (KEYS.KeyD || KEYS.ArrowRight) mx += 1;
-    mx += STICK.x;
+    if (KEYS.KeyW || KEYS.ArrowUp) my -= 1; if (KEYS.KeyS || KEYS.ArrowDown) my += 1;
+    mx += STICK.x; my += STICK.y;
   }
   // på hesten driver W den fram, S holder igjen og A/D styrer, både på kartet og i 3D
   // til fots på kartet snur musa jegeren (P.h, se mousemove i 07-ui.js) og bildet med ham, W/S går fram og tilbake dit
@@ -4894,6 +4929,7 @@ function windName() {
 function hudUpdate(dt) {
   HUD.t -= dt; if (HUD.t > 0 && !HUD.dirtyMsg) return; HUD.t = 0.1;
   setText('kr', fmtKr(G.money));
+  setText('xp', 'Nivå ' + xpLevel() + ' · ' + G.xp + ' / ' + xpNext() + ' XP'); setText('story', STORY[G.story] ? 'Oppdrag: ' + storyGoal() : 'Historien er fullført');
   const hh = Math.floor(G.hour), mm = Math.floor((G.hour - hh) * 60 / 10) * 10;
   setText('clock', 'Dag ' + G.day + ' · ' + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'));
   const [ws, wd] = windName(); setText('windS', ws); setText('windD', wd);
@@ -4948,18 +4984,18 @@ function hudUpdate(dt) {
 }
 
 // ---------- handel ----------
-// Hvert slags hus (se PLACES) har sine faner og kjøper sine ting (gruppene i sellOffer). meatK er hvor mye av verdien
-// stedet gir for kjøtt, bed om du kan sove der, og sells det som står øverst under Selg. I koia og på puben er det ingen
-// som handler (ingen faner): da står note i stedet for varene
+// Hvert slags hus (se PLACES) har sine faner med varer og kjøper sine ting (gruppene i sellOffer). meatK er hvor mye av
+// verdien stedet gir for kjøtt, bed om du kan sove der, og sells det som står over varene om hva stedet kjøper. I koia og
+// på puben er det ingen som handler: da står note i stedet for varene
 const SHOPS = {
-  store: { name: 'Bua', who: 'Landhandleren', tabs: ['lure', 'gear', 'clo', 'camp', 'sell'], buys: ['use', 'clo', 'upg'], bed: true,
-    sells: 'Landhandleren kjøper ved til fastpris, og utstyr, klær og forbruksvarer for halv pris. Kjøttet leverer du på viltmottaket, våpen selger du til børsemakeren, og kniv og øks til smeden.' },
-  gun: { name: 'Børsemakeren', who: 'Børsemakeren', tabs: ['rifle', 'hagle', 'bue', 'sell'], buys: ['gun'], sells: 'Børsemakeren tar våpen og våpendeler tilbake for halv pris, ett trinn om gangen.' },
-  game: { name: 'Viltmottaket', who: 'Viltmottaket', tabs: ['sell'], buys: ['meat'], sells: 'Viltmottaket betaler det dyret var verdt.' },
-  smith: { name: 'Smia', who: 'Smeden', tabs: ['smith', 'sell'], buys: ['smith'], sells: 'Smeden tar kniver og økser tilbake for halv pris, ett trinn om gangen.' },
+  store: { name: 'Bua', who: 'Landhandleren', tabs: ['lure', 'gear', 'clo', 'camp'], buys: ['use', 'clo', 'upg'], bed: true,
+    sells: 'Landhandleren kjøper ved til fastpris, og utstyr, klær og forbruksvarer for halv pris.' },
+  gun: { name: 'Børsemakeren', who: 'Børsemakeren', tabs: ['rifle', 'hagle', 'bue'], buys: ['gun'], sells: 'Børsemakeren tar våpen og våpendeler tilbake for halv pris, ett trinn om gangen.' },
+  game: { name: 'Viltmottaket', who: 'Viltmottaket', tabs: [], buys: ['meat'], sells: 'Viltmottaket betaler det dyret var verdt.' },
+  smith: { name: 'Smia', who: 'Smeden', tabs: ['smith'], buys: ['smith'], sells: 'Smeden tar kniver og økser tilbake for halv pris, ett trinn om gangen.' },
   stable: { name: 'Stallen', who: 'Stallkaren', tabs: ['stable'], buys: [] },
   farm: { name: 'Garden', who: 'Grunneieren', tabs: ['quest'], buys: [] },
-  post: { name: '', who: 'Verten', tabs: ['post', 'sell'], buys: ['meat', 'use'], meatK: 0.8, bed: true, sells: 'Verten gir 80 % av det viltmottaket i landsbyen betaler for kjøttet, og halv pris for forbruksvarer.' },
+  post: { name: '', who: 'Verten', tabs: ['post'], buys: ['meat', 'use'], meatK: 0.8, bed: true, sells: 'Verten gir 80 % av det viltmottaket i landsbyen betaler for kjøttet, og halv pris for forbruksvarer.' },
   pub: { name: 'Puben', who: 'Verten', tabs: [], buys: [], bed: true, note: 'Verten har ei seng til deg på loftet. Peisen varmer deg og tørker klærne, og du kan sove her til morgengry.' },
   koie: { name: 'Koia', who: '', tabs: [], buys: [], bed: true, note: 'Koia er ubetjent. Ovnen varmer deg og tørker klærne, og du kan sove her til morgengry. Handle må du gjøre i landsbyen eller på en av utpostene.' },
 };
@@ -5034,13 +5070,6 @@ function renderStats(ov) {
   $('statNote').hidden = shopCat !== 'rifle';
   setText('statNote', ST.cap[lv('mag')] === 1 ? 'Enkeltskudd: ett skudd, så må du lade.' : ST.cap[lv('mag')] + ' patroner i magasinet.');
 }
-// Kjøpsknapp med prisen. Har du ikke råd, står det hvor mye som mangler; why er en annen grunn til at det ikke går
-function buyBtn(id, price, why) {
-  const bt = document.createElement('button'), short = price - G.money; bt.className = 'buy'; bt.id = 'buy-' + id; bt.type = 'button';
-  bt.textContent = fmtKr(price);
-  if (short > 0 || why) { bt.disabled = true; bt.classList.add('poor'); const sm = document.createElement('small'); sm.textContent = why || 'mangler ' + fmtKr(short); bt.appendChild(sm); }
-  return bt;
-}
 const shopHead = (list, t) => { const h = document.createElement('div'); h.className = 'lab clo-h'; h.textContent = t; list.appendChild(h); };
 // Forbruksvarene i hver fane: [ikon, navn, antall du har, hva du får, id, pris, kjøp]
 function supplies(cat) {
@@ -5054,61 +5083,100 @@ function supplies(cat) {
     camp: [['match', 'Fyrstikker', G.matches, `Eske med ${MATCH_N}. Hver fyrstikk tenner ett bål.`, 'match', MATCH_PRICE, () => { G.matches += MATCH_N; }]],
   })[cat] || [];
 }
-// Hagla og buen før du eier dem: én stor rad med hva du får
+// Hagla og buen før du eier dem: én rute med hva du får
 const GUN_PITCH = {
   hagle: 'Til fugl i flukt og småvilt på kort hold. Haglpatroner, choke og grovere hagl kjøper du her etterpå.',
   bue: `Nesten lydløs, og dyr du feller med bue, gir ${Math.round((BOW_MEAT - 1) * 100)} % mer kjøtt. Pila faller på veien, så du sikter med pinnene for 20, 30 og 40 m. Piler kjøper du her etterpå.`,
 };
-function gunHero(list, u) {
-  const row = document.createElement('div'); row.className = 'item hero';
-  row.innerHTML = `<img class="ico" alt="" src="${ICONURL[u.icon]}"><div class="it-body"><div class="it-head"><span class="it-name">${u.lv[1]}</span></div><div class="it-now">${u.d[1]}</div><div class="it-next">${GUN_PITCH[u.id]}</div><div class="it-next">Den havner i utstyret. Dra den opp i en våpenplass i inventaret (E).</div></div>`;
-  const bt = buyBtn(u.id, u.price[1], newGunFull(u) && 'utstyret er fullt'); bt.onclick = () => buy(u);
-  row.appendChild(bt); list.appendChild(row);
-}
-function renderShop() {
-  setText('shopKr', fmtKr(G.money));
-  const SH = shopNow();
-  setText('shopName', SH.name || shopAt.name); setText('shopSellLab', SH.who + ' kjøper');
-  document.querySelectorAll('#shopTabs button').forEach(bt => { bt.hidden = !SH.tabs.includes(bt.dataset.cat); bt.setAttribute('aria-selected', bt.dataset.cat === shopCat); });
-  document.querySelectorAll('#shopTabs .tab-g').forEach(g => { g.hidden = ![...g.querySelectorAll('button')].some(bt => !bt.hidden); });
-  const list = $('shopList'); list.innerHTML = '';
-  $('shopMain').dataset.cat = shopCat;
-  renderMine(); renderStats(null);
-  if (!SH.tabs.length) { const n = document.createElement('p'); n.className = 'side-note'; n.textContent = SH.note; list.appendChild(n); return; }
-  if (shopCat === 'quest') return renderQuest(list);
-  if (shopCat === 'post') return renderPost(list);
-  if (shopCat === 'sell') return renderSell(list);
-  if (shopCat === 'clo') return renderClo(list);
-  // et våpen du ikke eier ennå, er bare én rad; resten av fanen kommer når du har det
-  if (GUNS[shopCat] && !GUNS[shopCat].own()) return gunHero(list, upg(shopCat));
-  if (shopCat === 'lure') { const n = document.createElement('p'); n.className = 'side-note'; n.textContent = 'Lokkefløyta di når ' + CALLSP[lv('call')].map(s => SPEC[s].name.toLowerCase()).join(', ') + '.'; list.appendChild(n); }
-  // forbruksvarene øverst, så oppgraderingene
-  const S = supplies(shopCat);
-  if (S.length) shopHead(list, 'Påfyll');
-  for (const a of S) supplyRow(list, ...a);
-  const U = UPG.filter(u => u.cat === shopCat);
-  if (U.length) shopHead(list, shopCat === 'smith' ? 'Kniv og øks' : shopCat === 'stable' ? 'Hest og utstyr' : 'Oppgraderinger');
-  for (const u of U) {
-    const L = lv(u.id), max = L >= u.lv.length - 1, next = max ? null : L + 1;
-    const row = document.createElement('div'); row.className = 'item';
-    row.innerHTML = `<img class="ico" alt="" src="${ICONURL[upgIco(u, L)]}"><div class="it-body"><div class="it-head"><span class="it-name">${u.name}</span><span class="pips">${u.lv.map((_, i) => `<i class="${i <= L ? 'on' : ''}"></i>`).join('')}</span></div>
-      <div class="it-now">${u.lv[L]}</div><div class="it-next">${max ? 'Fullt oppgradert.' : '<b>Neste:</b> ' + u.lv[next] + '. ' + u.d[next]}</div></div>`;
-    let bt;
-    if (max) { bt = document.createElement('button'); bt.className = 'buy'; bt.type = 'button'; bt.textContent = 'Ferdig'; bt.disabled = true; }
-    else {
-      bt = buyBtn(u.id, u.price[next], u.need && !lv(u.need) && 'kjøp hest først'); bt.onclick = () => buy(u); row.classList.toggle('cant', bt.disabled);
-      // stolpene øverst viser hva neste trinn gir mens du holder musa over raden
-      row.onmouseenter = () => renderStats({ id: u.id, lv: next }); row.onmouseleave = () => renderStats(null);
-      bt.onfocus = row.onmouseenter; bt.onblur = row.onmouseleave;
+// Varene i fanen cat, som ruter i butikkens inventar: { ico, n, d, price, why, buy, ov, back, max }. why er en grunn til
+// at du ikke kan kjøpe (utenom pengene), ov det stolpene viser mens musa står over ruta (se statsFor), back raden fra
+// sellOffer når stedet tar varen tilbake ett trinn, og max at den er fullt oppgradert
+const SHOP_TAB = { rifle: 'Rifla', hagle: 'Hagla', bue: 'Pil og bue', lure: 'Lokking', gear: 'Utstyr', clo: 'Klær', camp: 'Leir', smith: 'Kniv og øks', stable: 'Hest og utstyr', post: 'Påfyll', quest: 'Oppdrag' };
+function wares(cat) {
+  const W = [];
+  const sup = c => {
+    for (const [ico, name, have, desc, , price, add] of supplies(c)) W.push({ ico, n: name, d: desc + ' Du har ' + have + '.', price,
+      buy: () => { G.money -= price; add(); sfx.buy(); save(); renderShop(); } });
+  };
+  // utpostene har bare påfyll av det du bruker opp, til de våpnene du eier
+  if (cat === 'post') { for (const c of ['rifle', 'hagle', 'bue', 'lure', 'gear', 'camp']) if (!GUNS[c] || GUNS[c].own()) sup(c); return W; }
+  // klærne etter plass på kroppen; det du har på deg, er merket
+  if (cat === 'clo') {
+    const room = slotsOf('gear').includes(null);
+    for (const [sl] of CLO_SLOTS) for (const id in CLO) {
+      const c = CLO[id]; if (c.slot !== sl || !c.price) continue;
+      const on = G.wear[sl] === id, k = G.slots.gear.filter(o => o && o.clo === id).length;
+      W.push({ ico: c.icon, n: c.name + (on ? ' · på deg' : '') + (k ? ' · ' + k + ' i utstyret' : ''), d: cloTags(c) + '. ' + c.d + ' Havner i utstyret; dra det over på kroppen for å ta det på.',
+        on, price: c.price, why: !room && 'Utstyret er fullt, så selg noe først.', buy: () => buyClo(id), ov: !on && { clo: id } });
     }
-    row.appendChild(bt); list.appendChild(row);
+    return W;
   }
+  // et våpen du ikke eier ennå, er bare én rute; resten av fanen kommer når du har det
+  if (GUNS[cat] && !GUNS[cat].own()) {
+    const u = upg(cat);
+    return [{ ico: u.icon, n: u.lv[1], d: u.d[1] + ' ' + GUN_PITCH[u.id] + ' Den havner i utstyret. Dra den opp i en våpenplass i inventaret (E).', price: u.price[1], why: newGunFull(u) && 'Utstyret er fullt, så selg noe først.', buy: () => buy(u) }];
+  }
+  // forbruksvarene først, så oppgraderingene: ruta viser neste trinn, og tallet hvilket trinn du har
+  sup(cat);
+  for (const u of UPG.filter(u => u.cat === cat)) {
+    const L = lv(u.id), top = u.lv.length - 1, max = L >= top, next = max ? L : L + 1;
+    W.push({ ico: upgIco(u, next), n: u.name + ': ' + u.lv[next], d: u.d[next] + (max ? '' : ' Du har nå: ' + u.lv[L].toLowerCase() + '.'), c: 1, lab: L + '/' + top, max, price: u.price[next],
+      why: u.need && !lv(u.need) && 'Kjøp hest først.', buy: () => buy(u), ov: !max && { id: u.id, lv: next }, back: sellOffer(u.id).find(r => r[6] === 'u:' + u.id) });
+  }
+  return W;
 }
-// Utpostene har bare påfyll av det du bruker opp, til de våpnene du eier
-function renderPost(list) {
-  const n = document.createElement('p'); n.className = 'side-note'; n.textContent = 'Her får du påfyll av det du bruker opp. Våpen, klær og utstyr får du i landsbyen.'; list.appendChild(n);
-  shopHead(list, 'Påfyll');
-  for (const cat of ['rifle', 'hagle', 'bue', 'lure', 'gear', 'camp']) if (!GUNS[cat] || GUNS[cat].own()) for (const a of supplies(cat)) supplyRow(list, ...a);
+// På berøringsskjerm viser første trykk på en rute tipset med prisen, og neste trykk på den samme handler
+let tapKey = null;
+function tapFirst(s, it, key) {
+  if (!TOUCH.on || tapKey === key) return false;
+  tapKey = key; const r = s.getBoundingClientRect(); mcTip(it, r.right - 8, r.top + 8); return true;
+}
+// En vare i butikkens inventar: prisen står i tipset, klikk kjøper, og Shift+klikk selger ett trinn tilbake der stedet
+// tar varen. Det du ikke har råd til, er dempet
+function wareOn(s, w) {
+  if (!w) return;
+  const short = w.price - G.money, cant = !w.max && (w.why || short > 0), b = w.back && w.back[4][0];
+  w.hint = (w.max ? 'Fullt oppgradert.' : 'Pris: ' + fmtKr(w.price) + '. ' + (w.why || (short > 0 ? 'Du mangler ' + fmtKr(short) + '.' : 'Klikk for å kjøpe.')))
+    + (b ? b[3] ? ' ' + w.back[3] : ` Shift+klikk selger ett trinn tilbake for ${fmtKr(b[1])}.` : '');
+  s.classList.add('ware'); s.classList.toggle('nosell', !!cant);
+  // stolpene over varene viser hva varen endrer mens musa står over den
+  if (w.ov) { const tip = s.onmouseenter; s.onmouseenter = e => { tip(e); renderStats(w.ov); }; s.onmouseleave = () => { mcTip(null); renderStats(null); }; }
+  const act = e => {
+    if (e.shiftKey) { if (!b || b[3]) return sfx.deny(); b[2](); return sellDone(w.back[1], b[1], w.back[5]); }
+    if (w.max || tapFirst(s, w, 'w:' + w.n)) return;
+    if (cant) return sfx.deny();
+    w.buy();
+  };
+  s.onclick = act;
+  s.onkeydown = e => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); act(e); } };
+}
+// Bua: det du har til venstre og butikkens inventar til høyre, med en fane per slags vare. Over varene står hva stedet
+// kjøper og stolpene for våpenet eller klærne; oppdragene til grunneieren står som en liste
+function renderShop() {
+  const SH = shopNow(), quest = shopCat === 'quest';
+  setText('shopName', SH.name || shopAt.name); setText('shopWho', SH.who || SH.name);
+  setText('shopNote', SH.note || (SH.tabs.includes(shopCat) && !quest ? 'Klikk på en vare for å kjøpe den. ' : '') + (SH.buys.length ? 'Shift+klikk på det du har, eller dra det hit, for å selge det. ' + SH.sells : ''));
+  setText('shopSum', sold ? 'Solgt: ' + sold : '');
+  const tabs = $('shopTabs'); tabs.innerHTML = ''; tabs.hidden = SH.tabs.length < 2;
+  for (const k of SH.tabs) {
+    const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'mc-tab'; bt.setAttribute('role', 'tab'); bt.setAttribute('aria-selected', k === shopCat);
+    bt.textContent = SHOP_TAB[k]; bt.onclick = () => { if (shopCat === k) return; shopCat = k; sfx.ui(); renderShop(); };
+    tabs.appendChild(bt);
+  }
+  const grid = $('shopGrid'), list = $('shopList'); grid.innerHTML = ''; list.innerHTML = '';
+  renderMine(); renderStats(null);
+  $('shopStore').hidden = !!SH.note || quest;
+  if (quest) renderQuest(list);
+  else if (!SH.note) {
+    // varene først, og tomme ruter ut de tre radene, som i sekken
+    const W = wares(shopCat);
+    for (const w of W) grid.appendChild(mcSlot(w, wareOn));
+    for (let i = W.length; i < Math.max(27, Math.ceil(W.length / 9) * 9); i++) grid.appendChild(mcSlot(null));
+  }
+  // alt kjøttet på én knapp når du har flere partier med deg
+  const k0 = G.meat[0] ? 'meat:' + G.meat[0].sp : G.rack[0] ? 'rack:' + G.rack[0].sp : null, am = sellOffer(k0).find(r => r[6] === 'allmeat'), mb = $('meatBtn');
+  mb.hidden = !am;
+  if (am) { mb.textContent = 'Selg alt kjøttet · ' + fmtKr(am[4][0][1]); mb.onclick = () => { am[4][0][2](); sellDone(am[1], am[4][0][1], 'meat'); }; }
 }
 // ---------- oppdrag ----------
 const COMPASS = ['nord', 'nordøst', 'øst', 'sørøst', 'sør', 'sørvest', 'vest', 'nordvest'], MARK_N = { cairn: 'Varden', bauta: 'Bautasteinen', tower: 'Jakttårnet' };
@@ -5145,8 +5213,8 @@ function renderQuest(list) {
   for (const [o, i] of L) questRow(list, o, 'Premie ' + fmtKr(o.kr), [['Ta oppdraget', () => { G.quest = o; G.qd.used.push(i); sfx.buy(); msg('Nytt oppdrag: ' + questText(o), 'good'); save(); }]]);
   if (!L.length) { const n = document.createElement('p'); n.className = 'side-note'; n.textContent = 'Ingen flere oppdrag i dag. Kom tilbake i morgen.'; list.appendChild(n); }
 }
-// Klær: ett plagg av hvert på kroppen. Det du kjøper, havner i utstyret, og du tar det på i inventaret ved å dra det
-// over på kroppen; det du hadde på deg, havner da i utstyret
+// Klær: ett plagg av hvert på kroppen. Det du kjøper, havner i utstyret, og du tar det på ved å dra det over på kroppen
+// (i inventaret eller til venstre i bua); det du hadde på deg, havner da i utstyret
 function cloTags(c) {
   const T = [];
   if (c.warm) T.push(c.warm >= 0.3 ? 'Svært varm' : c.warm > 0 ? 'Varm' : 'Kald');
@@ -5161,36 +5229,6 @@ function cloTags(c) {
   if (c.dry) T.push('Tørker fort');
   return T.join(' · ') || 'Vanlig';
 }
-let cloTab = 'hat';
-function renderClo(list) {
-  const room = slotsOf('gear').includes(null), own = id => G.slots.gear.filter(o => o && o.clo === id).length;
-  // en underfane per plass på kroppen, med plagget du har på deg under navnet
-  const tabs = document.createElement('div'); tabs.className = 'sub-tabs'; tabs.setAttribute('role', 'tablist');
-  for (const [sl, lab] of CLO_SLOTS) {
-    const bt = document.createElement('button'); bt.type = 'button'; bt.setAttribute('role', 'tab'); bt.setAttribute('aria-selected', sl === cloTab);
-    bt.innerHTML = '<span></span><small></small>'; bt.firstChild.textContent = lab; bt.lastChild.textContent = worn(sl).name;
-    bt.onclick = () => { cloTab = sl; sfx.ui(); renderShop(); };
-    tabs.appendChild(bt);
-  }
-  list.appendChild(tabs);
-  const top = document.createElement('p'); top.className = 'side-note';
-  top.textContent = 'Det du kjøper, havner i utstyret. Ta det på i inventaret (E) ved å dra det over på kroppen.' + (room ? '' : ' Utstyret er fullt, så selg noe først.');
-  list.appendChild(top);
-  const sl = cloTab;
-  for (const id in CLO) {
-    const c = CLO[id]; if (c.slot !== sl || !c.price) continue;
-    const on = G.wear[sl] === id, k = own(id);
-    const row = document.createElement('div'); row.className = 'item' + (on ? ' worn' : '');
-    row.innerHTML = `<img class="ico" alt="" src="${ICONURL[c.icon]}"><div class="it-body"><div class="it-head"><span class="it-name"></span></div><div class="it-now"></div><div class="it-next"></div></div>`;
-    row.querySelector('.it-name').textContent = c.name + (on ? ' · på deg' + (sl === 'shoes' && c.life ? ', ' + Math.ceil(G.shoeHp) + ' % igjen' : '') : '') + (k ? ' · ' + k + ' i utstyret' : '');
-    row.querySelector('.it-now').textContent = cloTags(c);
-    row.querySelector('.it-next').textContent = c.d;
-    const bt = buyBtn(id, c.price, !room && 'utstyret er fullt'); bt.onclick = () => buyClo(id); row.classList.toggle('cant', bt.disabled);
-    // stolpene øverst viser hvordan du er kledd med dette plagget på
-    if (!on) { row.onmouseenter = () => renderStats({ clo: id }); row.onmouseleave = () => renderStats(null); bt.onfocus = row.onmouseenter; bt.onblur = row.onmouseleave; }
-    row.appendChild(bt); list.appendChild(row);
-  }
-}
 function buyClo(id) {
   const c = CLO[id], j = slotsOf('gear').indexOf(null);
   if (j < 0 || G.money < c.price) { sfx.deny(); return; }
@@ -5198,41 +5236,15 @@ function buyClo(id) {
   msg(c.name + ' ligger i utstyret. Ta det på i inventaret (E): dra plagget over på kroppen.', 'good');
   sfx.buy(); save(); renderShop();
 }
-// Forbruksvarer som kjøpes i pakker: en lav rad med antallet du har
-function supplyRow(list, ico, name, have, desc, id, price, add) {
-  const row = document.createElement('div'); row.className = 'item sup';
-  row.innerHTML = `<img class="ico" alt="" src="${ICONURL[ico]}"><div class="it-body"><div class="it-head"><span class="it-name">${name}</span><span class="have">Du har ${have}</span></div><div class="it-next">${desc}</div></div>`;
-  const bt = buyBtn(id, price); row.classList.toggle('cant', bt.disabled);
-  bt.onclick = () => { if (G.money < price) return sfx.deny(); G.money -= price; add(); sfx.buy(); save(); renderShop(); };
-  row.appendChild(bt); list.appendChild(row);
-}
 // ---------- salg ----------
-// Til venstre i bua ligger det du har, i de samme rutene som i inventaret. Dra en rute over til bua (eller klikk på
-// den): en stabel (kjøtt, ved, forbruksvarer) står da øverst under Selg med en glidebryter for hvor mye du selger, og
-// Shift+klikk selger hele stabelen med en gang. Utstyr, klær og våpen bekrefter du til høyre. sellKey er ruta du har
-// valgt, sold det du sist solgte
-let sellKey = null, dragKey = null, sold = '';
-const sellDone = (name, kr) => { G.money += kr; sold = name + ' · ' + fmtKr(kr); sfx.coin(); save(); renderShop(); };
-// q er mengden du kan velge med glidebryteren: { max, step, fmt(n), kr(n), take(n) }
+// Til venstre i bua ligger det du har, i de samme rutene som i inventaret. Shift+klikk på en rute, eller dra den over til
+// butikken, selger den: hele stabelen av kjøtt, ved og forbruksvarer, og utstyr og klær stykkevis. Et vanlig klikk på en
+// stabel selger én (ett kilo kjøtt). Prisen står i tipset. Våpendeler og annet i flere trinn selges fra butikkens side
+// (se wareOn). dragKey er ruta du drar, sold det du sist solgte, og grp gruppa i sellOffer (kjøtt teller i historien)
+let dragKey = null, sold = '';
+const sellDone = (name, kr, grp) => { if (grp === 'meat') storyEv('sell'); G.money += kr; sold = name + ' · ' + fmtKr(kr); sfx.coin(); save(); renderShop(); };
+// q er mengden en stabel kan deles i: { max, step, fmt(n), kr(n), take(n) }
 const qMany = q => !!q && q.max > q.step;
-function sellRow(list, ico, name, now, next, btns, q) {
-  const row = document.createElement('div'); row.className = 'item';
-  row.innerHTML = `<img class="ico" alt="" src="${ICONURL[ico]}"><div class="it-body"><div class="it-head"><span class="it-name">${name}</span></div><div class="it-now">${now}</div><div class="it-next">${next}</div></div>`;
-  const box = document.createElement('div'); box.className = 'sell-bts';
-  if (qMany(q)) {
-    const sl = document.createElement('input'), bt = document.createElement('button'), val = () => Math.min(q.max, kg1(+sl.value));
-    sl.type = 'range'; sl.className = 'qty'; sl.min = q.step; sl.max = q.max; sl.step = q.step; sl.value = q.max; sl.setAttribute('aria-label', 'Hvor mye du selger');
-    bt.className = 'buy'; bt.type = 'button';
-    (sl.oninput = () => { bt.textContent = 'Selg ' + q.fmt(val()) + ' · ' + fmtKr(q.kr(val())); })();
-    bt.onclick = () => { const n = val(), kr = q.kr(n); q.take(n); sellDone(name, kr); };
-    box.append(sl, bt);
-  } else for (const [lab, kr, take, off] of btns) {
-    const bt = document.createElement('button'); bt.className = 'buy'; bt.type = 'button'; bt.textContent = lab + ' · ' + fmtKr(kr); bt.disabled = !!off;
-    bt.onclick = () => { take(); sellDone(name, kr); };
-    box.appendChild(bt);
-  }
-  row.appendChild(box); list.appendChild(row);
-}
 // én eller alle av noe du har flere av
 const sellN = (n, each, take) => n > 1 ? [['Selg 1', each, () => take(1)], ['Selg alle', each * n, () => take(n)]] : [['Selg', each, () => take(1)]];
 const halfKr = p => Math.max(1, Math.round(p * SELL_K));
@@ -5293,14 +5305,15 @@ function sellOffer0(k) {
   }
   return R;
 }
-// Legg ruta k i salgsfeltet og vis budet
-function offerFor(k) { sellKey = k; sold = ''; shopCat = 'sell'; sfx.ui(); renderShop(); }
-// Klikk på (eller dra over) ruta k: en stabel med mer enn én i selges fra glidebryteren, og med all (Shift) selges
-// hele med en gang. Én enkelt forbruksvare selges direkte; alt annet bekrefter du til høyre
+// Klikk på ruta k hos deg: en stabel selger én om gangen, og med all (Shift, eller dratt over til butikken) hele. Utstyr
+// og klær selges bare med all, så du ikke selger noe med et uhell
 function sellClick(k, all) {
-  const r = sellOffer(k)[0]; if (!r) return;
-  if ((r[5] === 'meat' || r[5] === 'use') && (all || !qMany(r[7]))) { const b = r[4][r[4].length - 1]; b[2](); sellKey = null; shopCat = 'sell'; return sellDone(r[1], b[1]); }
-  offerFor(k);
+  const r = sellOffer(k)[0]; if (!r || GUNS[k]) return;
+  const stack = r[5] === 'meat' || r[5] === 'use', q = r[7], b = r[4][r[4].length - 1];
+  if (!stack && !all) return;
+  if (b[3]) return sfx.deny();
+  if (!all && qMany(q)) { const n = Math.min(q.max, 1), kr = q.kr(n); q.take(n); return sellDone(r[1], kr, r[5]); }
+  b[2](); sellDone(r[1], b[1], r[5]);
 }
 // hvor ruta k kan selges, når stedet du er på, ikke kjøper den
 function buyers(k) {
@@ -5309,70 +5322,31 @@ function buyers(k) {
   return N.length ? 'Kjøpes ikke her. Selges her: ' + N.join(', ') + '.' : '';
 }
 function dragDone() { dragKey = null; $('shop').classList.remove('dragging'); $('shopMain').classList.remove('over'); }
-// Alt bua kjøper av det du har med deg, én rad per ting (se sellOffer): [ikon, navn, nå, mer, knapper, gruppe, id]
-function sellAll() {
-  const here = horseNear(HORSE_SHOP), K = [...G.meat.map(l => 'meat:' + l.sp), ...(here ? G.rack.map(l => 'rack:' + l.sp) : []),
-    'wood', 'rounds', 'shells', 'arrows', 'scent', 'treat', 'match', ...CARGO.map(k => 'horse:' + k), ...CLO_SLOTS.map(([sl]) => 'clo:' + sl)];
-  for (const g of ['gear', 'horse']) G.slots[g].forEach((o, i) => { if (o && typeof o === 'object' && o.clo) K.push('o:' + g + ':' + i); });
-  for (const u of UPG) K.push(u.id);
-  const seen = new Set(), R = [];
-  for (const k of K) for (const r of sellOffer(k)) if (!seen.has(r[6])) { seen.add(r[6]); R.push(r); }
-  return R;
-}
-// Selg-fanen: alt bua kjøper, gruppert, med pris og selgknapp på hver rad, og alt kjøttet på én knapp øverst.
-// Det du klikker på eller drar over fra venstre, står øverst som valgt
-function renderSell(list) {
-  const R = sellAll(), pick = new Set(sellOffer(sellKey).map(r => r[6])); if (!pick.size) sellKey = null;
-  if (sold) { const d = document.createElement('div'); d.className = 'sold'; d.textContent = 'Solgt: ' + sold; list.appendChild(d); }
-  const total = R.reduce((a, r) => a + (r[6] === 'allmeat' ? 0 : r[4].filter(b => !b[3]).reduce((m, b) => Math.max(m, b[1]), 0)), 0);
-  const top = document.createElement('p'); top.className = 'side-note';
-  top.textContent = shopNow().sells + (R.length ? ' Det du har med deg av det, er verdt ' + fmtKr(total) + '.' : ' Du har ikke noe av det med deg nå.');
-  list.appendChild(top);
-  // kjøttet på hesten selges bare når den står ved bua; står den lenger unna, sier bua fra om det
-  if (shopNow().buys.includes('meat') && G.rack.length && !horseNear(HORSE_SHOP)) {
-    const far = document.createElement('p'); far.className = 'side-note';
-    far.textContent = 'Hesten står for langt unna til å selge fra. ' + fmtKg(rackKg()) + ' kjøtt ligger på den. Hent den bort til bua.';
-    list.appendChild(far);
-  }
-  const sec = (title, rows, box) => {
-    if (!rows.length) return;
-    const to = box || list; shopHead(to, title);
-    for (const r of rows) sellRow(to, ...r.slice(0, 5), box && r[7]);
-    if (box) list.appendChild(box);
-  };
-  const z = document.createElement('div'); z.className = 'drop full';
-  sec('Valgt', R.filter(r => pick.has(r[6])), z);
-  const rest = R.filter(r => !pick.has(r[6])), by = t => rest.filter(r => r[5] === t);
-  // alt kjøttet på én knapp først, så hvert parti
-  sec('Kjøtt', by('meat').sort((a, b) => (b[6] === 'allmeat') - (a[6] === 'allmeat')));
-  sec('Ved og forbruksvarer', by('use'));
-  sec('Klær', by('clo'));
-  sec('Utstyr · ett trinn ned om gangen', by('upg'));
-  sec('Våpen · ett trinn ned om gangen', by('gun'));
-  sec('Kniv og øks · ett trinn ned om gangen', by('smith'));
-}
-// Det du har, til venstre i bua, og lasten på hesten når den står parkert ved bua. Det bua kjøper, kan dras over (eller
-// klikkes på); ruta som ligger i salgsfeltet, er merket
+// Det du har, til venstre i bua, og lasten på hesten når den står parkert ved bua. Det bua kjøper, kan selges med
+// Shift+klikk eller dras over til butikken, og tipset sier hva du får for det
 function renderMine() {
   const on = (s, it, at) => {
     // et plagg du har kjøpt, kan dras rett over på plassen sin på kroppen her også
     if (at && at.g === 'wear') {
       const src = () => { const m = /^o:(gear|horse):(\d+)$/.exec(dragKey || ''), o = m && G.slots[m[1]][+m[2]]; return o && typeof o === 'object' && o.clo && CLO[o.clo].slot === at.i ? { g: m[1], i: +m[2], obj: o } : null; };
-      s.ondragover = e => { if (!src()) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
-      s.ondrop = e => { const d = src(); if (!d) return; e.preventDefault(); dragDone(); invDrop(d, 'wear', at.i); if (sellKey && sellKey.startsWith('o:')) sellKey = null; sfx.kneel(); save(); renderShop(); };
+      s.ondragover = e => { if (!src()) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; };
+      s.ondrop = e => { const d = src(); if (!d) return; e.preventDefault(); dragDone(); invDrop(d, 'wear', at.i); sfx.kneel(); save(); renderShop(); };
     }
     if (!it || it.empty || !it.sk) return;
-    const R = sellOffer(it.sk), r = R[0];
+    const r = sellOffer(it.sk)[0];
     // det stedet ikke kjøper, er dempet og sier hvor det kan selges
     if (!r) { s.classList.add('nosell'); it.hint = buyers(it.sk); return; }
-    const stack = r[5] === 'meat' || r[5] === 'use';
-    it.hint = (stack || R.length === 1 ? 'Her får du ' + fmtKr(r[4][r[4].length - 1][1]) + '. ' : '')
-      + (!stack ? 'Klikk for å selge, og bekreft til høyre.' : qMany(r[7]) ? 'Klikk for å velge hvor mye du selger. Shift+klikk selger alt.' : 'Klikk for å selge.');
-    s.classList.add('sell'); s.classList.toggle('pick', it.sk === sellKey); s.draggable = true;
+    // våpnene består av flere deler, som selges én for én fra butikkens side
+    if (GUNS[it.sk]) { it.hint = 'Delene selger du én for én: Shift+klikk på delen til høyre.'; return; }
+    const stack = r[5] === 'meat' || r[5] === 'use', q = r[7], b = r[4][r[4].length - 1], one = q && Math.min(q.max, 1);
+    it.hint = b[3] ? r[3] : (stack && qMany(q) ? `Klikk selger ${q.fmt(one)} for ${fmtKr(q.kr(one))}. Shift+klikk, eller dra over til høyre, selger alt for ${fmtKr(b[1])}.`
+      : `Shift+klikk, eller dra over til høyre, selger for ${fmtKr(b[1])}.`);
+    s.classList.add('sell'); s.draggable = true;
     s.ondragstart = e => { mcTip(null); dragKey = it.sk; e.dataTransfer.setData('text/plain', it.n); e.dataTransfer.effectAllowed = 'move'; $('shop').classList.add('dragging'); };
     s.ondragend = dragDone;
-    s.onclick = e => sellClick(it.sk, e.shiftKey);
-    s.onkeydown = e => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); sellClick(it.sk, e.shiftKey); } };
+    const act = e => { if (!tapFirst(s, it, it.sk)) sellClick(it.sk, e.shiftKey || TOUCH.on); };
+    s.onclick = act;
+    s.onkeydown = e => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); act(e); } };
   };
   mcRender($('shopMc'), on, renderMine, horseNear(HORSE_SHOP) && gridItems('horse').some(Boolean) && 'Hesten står utenfor.', true);
 }
@@ -5404,15 +5378,21 @@ function openShop(c) {
   if (!G.rounds && !G.cargo.rounds && !inGun('rifle') && G.money + meatKr() < AMMO.rifle.price) { G.rounds = AMMO_AID; msg(`Du fikk ${AMMO_AID} riflepatroner på krita, så du kan jakte igjen.`, 'good'); }
   // våpnene lades fra sekken, og ovnen og maten i bua gjør deg tørr, varm og frisk
   refill(); if (P.sick) msg('Du varmet deg ved ovnen og er frisk igjen.', 'good'); healFull();
-  // har du kjøtt med deg, står bua klar til å kjøpe det, og kjøttet vises til venstre
-  if (S.buys.includes('meat') && (G.meat.length || G.rack.length && horseNear(HORSE_SHOP))) { shopCat = 'sell'; invTab = 'meat'; }
-  else if (!S.tabs.includes(shopCat)) shopCat = S.tabs[0] || 'koie';
-  sellKey = null; sold = ''; invNote = '';
+  // har du kjøtt med deg der de kjøper det, vises kjøttet til venstre
+  if (S.buys.includes('meat') && (G.meat.length || G.rack.length && horseNear(HORSE_SHOP))) invTab = 'meat';
+  if (!S.tabs.includes(shopCat)) shopCat = S.tabs[0] || '';
+  sold = ''; tapKey = null; invNote = '';
   $('sleepBtn').hidden = mp() || !S.bed;
   renderShop(); $('shop').hidden = false; sfx.ui();
 }
 function openBook() {
   G.paused = true; G.panel = 'book'; aimReset(); try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
+  const st = $('bookStory'); st.innerHTML = '';
+  const row = (cls, t, d) => { const r = document.createElement('div'); r.className = 'ch ' + cls; const b = document.createElement('b'); b.textContent = t; r.append(b, d); st.appendChild(r); };
+  const lab = document.createElement('div'); lab.className = 'lab'; lab.textContent = `Historien · nivå ${xpLevel()}, ${rankName().toLowerCase()} · ${G.xp} / ${xpNext()} XP`; st.appendChild(lab);
+  STORY.slice(0, G.story).forEach(c => row('done', '✓ ' + c.t, '+' + c.xp + ' XP'));
+  const c = STORY[G.story];
+  if (c) row('now', c.t + ' · ' + storyGoal() + ' (+' + c.xp + ' XP)', G.sst ? c.d.join(' ') : ''); else row('now', 'Historien er fullført', '');
   const sum = $('bookSpecies'); sum.innerHTML = '';
   for (const sp of SPECIES) {
     const k = G.journal.filter(j => j.sp === sp), best = k.reduce((a, j) => Math.max(a, j.kg), 0);
@@ -5837,9 +5817,24 @@ function notice(title, text, sub) {
   $('notice').hidden = false; sfx.deny(); $('noticeOk').focus();
 }
 
+// ---------- samtaler ----------
+// Det den du snakker med, sier, står i en boks nederst, én replikk om gangen. F, Enter, Space eller et trykk går videre
+const TALK = { lines: [], i: 0 };
+function talk(who, lines) {
+  if (G.panel) return;
+  G.paused = true; G.panel = 'talk'; aimReset(); wheelClose(false); try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
+  TALK.lines = lines; TALK.i = -1; setText('talkWho', who); $('talk').hidden = false; talkNext();
+}
+function talkNext() {
+  if (++TALK.i >= TALK.lines.length) return resume();
+  setText('talkTxt', TALK.lines[TALK.i]); sfx.ui();
+}
+
 // ---------- start ----------
+// Utenfor døra på bua, med hesten ved stallen: der et nytt spill begynner
+function spawnHome() { P.x = PLACES[0].door[0] + PLACES[0].out[0] * 8; P.y = PLACES[0].door[1] + PLACES[0].out[1] * 8; P.face = 'down'; P.flip = false; CAM.x = P.x; CAM.y = P.y - 30; horsePark(); }
 function startGame(fresh) {
-  if (fresh) { G.money = 0; for (const u of UPG) G.up[u.id] = 0; G.scents = 2; G.treats = TREAT_START; G.wood = G.matches = 0; G.rounds = AMMO.rifle.start; G.shells = 0; G.meat = []; G.rack = []; for (const k of CARGO) G.cargo[k] = 0; G.slots = { gear: [], meat: [], horse: [] }; G.arms = ['rifle', null]; G.gun = 'rifle'; G.arrows = 0; G.wear = { ...CLO_START }; G.shoeHp = 100; healFull(); G.huts = []; G.cut = new Set(); seenUnpack(''); chunks.clear(); G.journal = []; G.quest = null; G.qd = { day: 0, used: [] }; if (!mp()) { G.day = 1; G.hour = 6.6; G.animals = []; } save(); }
+  if (fresh) { spawnHome(); G.money = 0; for (const u of UPG) G.up[u.id] = 0; G.scents = 2; G.treats = TREAT_START; G.wood = G.matches = 0; G.rounds = AMMO.rifle.start; G.shells = 0; G.meat = []; G.rack = []; for (const k of CARGO) G.cargo[k] = 0; G.slots = { gear: [], meat: [], horse: [] }; G.arms = ['rifle', null]; G.gun = 'rifle'; G.arrows = 0; G.wear = { ...CLO_START }; G.shoeHp = 100; healFull(); G.huts = []; G.cut = new Set(); seenUnpack(''); chunks.clear(); G.journal = []; G.quest = null; G.qd = { day: 0, used: [] }; G.xp = 0; G.story = 0; G.sst = 0; if (!mp()) { G.day = 1; G.hour = 6.6; G.animals = []; } save(); }
   netSetName(); auInit(); G.started = true; G.paused = false; $('title').hidden = true; netAway();
   armsFix();
   // alle patronene ligger i sekken når du starter (lagringen tar med dem som satt i våpnene)
@@ -5938,6 +5933,7 @@ function bindInput() {
     }
     // Enter eller Space lukker en beskjed og går rett tilbake til spillet
     if (G.panel === 'notice' && !e.repeat && (e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); resume(); return; }
+    if (G.panel === 'talk' && !e.repeat && (e.code === 'KeyF' || e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); talkNext(); return; }
     if (KEYS[e.code]) return; KEYS[e.code] = true;
     if (!G.started) { if (e.code === 'Enter') startGame(false); return; }
     if (G.panel === 'inv' && e.code === 'KeyE') { closePanel(); return; }
@@ -5991,17 +5987,16 @@ function bindInput() {
   addEventListener('pagehide', () => { if (G.started) save(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden && G.started) save(); });
   addEventListener('resize', () => { resize(); if (TOUCH.on) touchPoint(); });
-  document.querySelectorAll('#shopTabs button').forEach(bt => bt.onclick = () => { shopCat = bt.dataset.cat; sfx.ui(); renderShop(); });
-  // det du drar fra venstre side, kan slippes hvor som helst i bua og havner i salgsfeltet
+  // det du drar fra venstre side, kan slippes hvor som helst på butikkens side og selges da
   const sm = $('shopMain');
   sm.ondragenter = sm.ondragover = e => { if (!dragKey) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; sm.classList.add('over'); };
   sm.ondragleave = e => { if (!sm.contains(e.relatedTarget)) sm.classList.remove('over'); };
-  sm.ondrop = e => { e.preventDefault(); const k = dragKey; dragDone(); if (k) sellClick(k, e.shiftKey); };
+  sm.ondrop = e => { e.preventDefault(); const k = dragKey; dragDone(); if (k) sellClick(k, true); };
   document.querySelectorAll('[data-close]').forEach(bt => bt.onclick = closePanel);
   $('sleepBtn').onclick = () => { if (mp()) return; sleepToDawn('Du sov godt. Det lysner over skogen.'); closePanel(); };
   $('startBtn').onclick = () => startGame(false);
   $('pauseBtn').onclick = () => openPause();
-  $('resumeBtn').onclick = () => { auInit(); resume(); }; $('noticeOk').onclick = resume;
+  $('resumeBtn').onclick = () => { auInit(); resume(); }; $('noticeOk').onclick = resume; $('talk').onclick = talkNext;
   $('keysBtn').onclick = () => pauseSub('keysSheet');
   $('plBtn').onclick = () => { plList(); pauseSub('plSheet'); };
   document.querySelectorAll('[data-back]').forEach(bt => bt.onclick = pauseBack);
@@ -6027,8 +6022,8 @@ function boot() {
   ICONURL.dog = dataURL(cropSprite(DOGSPR.stand[0], 1)); ICONURL.hut = dataURL(cropSprite(FX.hut, 1));
   for (const k of ['house', 'horse', 'dog', 'deer']) $('leg_' + k).src = dataURL(FX[k]);
   $('windArrow').src = dataURL(FX.arrow); $('callIco').src = ICONURL.call; $('scentIco').src = ICONURL.scent; $('treatIco').src = ICONURL.treat; $('campIco').src = ICONURL.pack;
+  spawnHome();
   const has = load();
-  P.x = PLACES[0].door[0] + PLACES[0].out[0] * 8; P.y = PLACES[0].door[1] + PLACES[0].out[1] * 8; CAM.x = P.x; CAM.y = P.y - 30; horsePark();
   if (has) {
     $('startBtn').textContent = 'Fortsett jakt'; $('newBtn').hidden = false;
     setText('saveTxt', 'Lagret jakt: dag ' + G.day + ' · ' + fmtKr(G.money) + ' · ' + G.journal.length + ' dyr felt'); $('saveTxt').hidden = false;
@@ -6052,7 +6047,7 @@ const NET = { on: false, seen: false, ws: null, id: null, host: null, peers: new
 const isAuth = () => !NET.on || NET.host === NET.id;
 // Flerspiller i spillets forstand: minst én annen er faktisk i skogen (ikke bare på tittelskjermen)
 function mp() { if (!NET.on) return false; for (const r of NET.peers.values()) if (r.started) return true; return false; }
-const NAME_KEY = 'skogsro.name';
+const NAME_KEY = 'ud-pa-jakt.name';
 
 // Borte = skjult fane eller tittelskjerm; serveren lar helst en som spiller styre dyra
 function netAway() { netSend({ t: 'away', v: document.hidden || !G.started }); }
@@ -6266,7 +6261,7 @@ function netUi() {
 // ---------- omlasting når koden endres: serveren har bygget spillet på nytt ----------
 // Var du i skogen, lagres jakta, og etter omlastingen står du på samme sted og ser samme vei, uten tittelskjermen.
 // Spillet åpner med pausemenyen, siden nettleseren vil ha et klikk før den gir fra seg musepekeren og lyden
-const RELOAD_KEY = 'skogsro.reload';
+const RELOAD_KEY = 'ud-pa-jakt.reload';
 function devReload() {
   try { if (G.started) { save(); sessionStorage.setItem(RELOAD_KEY, JSON.stringify({ x: P.x, y: P.y, f: P.face, fl: P.flip })); } } catch (e) { }
   location.reload();

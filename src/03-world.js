@@ -27,6 +27,8 @@ for (let ky = -8; ky < 8; ky++) for (let kx = -8; kx < 8; kx++) {
   if (Math.abs(x) < WORLD - 300 && Math.abs(y) < WORLD - 300) PLACES.push(mkPlace(post ? 'post' : 'koie', x, y, post ? post[2] : 'Koia'));
 }
 const inVillage = c => c.name === 'Landsbyen';
+// der den som holder til i huset, står: ute ved veggen ved siden av døra
+const keeperAt = c => [Math.round(c.door[0] + Math.cos(c.rot) * 12 - c.out[0] * 2), Math.round(c.door[1] + Math.sin(c.rot) * 12 - c.out[1] * 2)];
 // ---------- landsbyen ----------
 // Landsbyen ligger innenfor palisaden (VPOLY, en åttekant med urviseren). Husene står tett og i ulike vinkler rundt
 // torget med brønnen, og stiene bukter seg mellom dem og ut gjennom fire grinder.
@@ -39,6 +41,8 @@ const HOUSES = [['bakery', -150, -178, -35, 'bakery'], ['church', 28, -275, 50, 
 const VB = {};
 for (const c of PLACES) if (c.name === 'Landsbyen') VB[c.kind] = c;
 for (const c of HOUSES) VB[c.id] = c;
+// bestefar (se STORY i 05-game.js) står foran bua, litt til side for døra, der du starter
+const GF = [Math.round(VB.store.door[0] + VB.store.out[0] * 10 - Math.cos(VB.store.rot) * 16), Math.round(VB.store.door[1] + VB.store.out[1] * 10 - Math.sin(VB.store.rot) * 16)];
 const V_PLAZA = [[0, -150, 52], [-38, -142, 36], [42, -158, 38]];
 const V_PATH = [
   [8, [-300, -150], [-230, -146], [-170, -128], [-110, -135], [-50, -145]], [8, [310, -160], [240, -158], [180, -140], [110, -150], [50, -152]],
@@ -123,7 +127,7 @@ const VOBJ = [
   ...GATES.flatMap(g => g.vert ? [['gate', g.x, g.y - g.w / 2 - 2, gateV++], ['gate', g.x, g.y + g.w / 2 + 2, gateV++]] : [['gate', g.x, g.y, gateV++]]),
   // torget: brønn, tre boder med de to som selger grønnsaker og fisk (bakeren går selv til brødboden), benker og varer
   ['well', 0, -150, 0], ['stall', -50, -120, 0], ['stall', 44, -124, 2], ['stall', 58, -178, 1],
-  ['npc', 68, -122, NPC_PAL.length + 10], ['npc', 82, -176, NPC_PAL.length + 11],
+  ['npc', 68, -122, NPC_PAL.length + 10], ['npc', 82, -176, NPC_PAL.length + 11], ['npc', GF[0], GF[1], NPC_PAL.length + 12],
   ['vprop', -28, -182, 7], ['vprop', 24, -110, 7], ['vprop', -74, -118, 0], ['vprop', 20, -128, 1], ['vprop', 34, -182, 0],
   // lykter langs stiene
   ...[[-82, -158], [86, -148], [68, -226], [14, -84], [-196, -142], [204, -146], [-140, -44], [100, -34], [110, -292], [-140, -236], [20, 34]].map(([x, y]) => ['lamp', x, y, 0]),
@@ -611,7 +615,7 @@ function genChunk(cx, cy) {
   for (const c of [...ch.cabs, ...HOUSES]) if (inC(c.x, c.y)) { const v = houseV(c.kind, c.rot), o = { k: 'cabin', x: c.x, y: c.y, v, ph: 0, a: 1, r: 0, obb: SPR.cabin[v].obb }; ch.objs.push(o); ch.col.push(o); }
   // den som holder til i huset, står ute ved veggen ved siden av døra
   for (const c of ch.cabs) {
-    const x = Math.round(c.door[0] + Math.cos(c.rot) * 12 - c.out[0] * 2), y = Math.round(c.door[1] + Math.sin(c.rot) * 12 - c.out[1] * 2);
+    const [x, y] = keeperAt(c);
     if (NPC_V[c.kind] != null && inC(x, y)) { const o = { k: 'npc', x, y, v: NPC_V[c.kind], ph: 0, a: 1, r: 3 }; ch.objs.push(o); ch.col.push(o); }
   }
   for (const q of marks) if (inC(q.x, q.y)) { const o = { k: q.k, x: q.x, y: q.y, v: 0, ph: 0, a: 1, r: SPR[q.k][0].r }; ch.objs.push(o); ch.col.push(o); }

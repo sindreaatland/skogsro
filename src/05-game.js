@@ -176,6 +176,8 @@ const G = {
   wear: { ...CLO_START }, shoeHp: 100, cargo: {},
   // oppdraget du har tatt hos grunneieren (se QUEST), og hvilke av dagens tilbud som er brukt opp
   quest: null, qd: { day: 0, used: [] },
+  // erfaringen du har tjent, og kapitlet du står i (se STORY)
+  xp: 0, story: 0, sst: 0,
   // rutene i inventaret slik du har lagt dem: utstyr, kjøtt og hesten, med en nøkkel (wood, meat:elg …) eller et plagg i hver
   slots: { gear: [], meat: [], horse: [] },
   // de to våpenplassene i inventaret (se GUNS); G.gun er det av dem du har i hendene, null når begge er tomme
@@ -249,15 +251,19 @@ function seenPack() { const b = new Uint8Array(G.seen.length >> 3); G.seen.forEa
 function seenUnpack(t) { const b = atob(t || ''); G.seen.forEach((v, i) => { G.seen[i] = b.charCodeAt(i >> 3) >> (i & 7) & 1; }); G.seenAt = -1; }
 
 // ---------- lagring (localStorage i denne nettleseren) ----------
-const SAVE_KEY = 'skogsro.v1';
+const SAVE_KEY = 'ud-pa-jakt.v1';
+// flytter lagring fra det gamle prosjektnavnet, så ingen mister spillet sitt
+try { for (const k of ['v1', 'name']) { const o = localStorage.getItem('skogsro.' + k); if (o != null) { if (localStorage.getItem('ud-pa-jakt.' + k) == null) localStorage.setItem('ud-pa-jakt.' + k, o); localStorage.removeItem('skogsro.' + k); } } } catch (e) { }
 function save() {
   try {
     // som gjest hos en annen vert er gapahukene og stubbene vertens, så da beholdes de du hadde lagret fra før
     const old = isAuth() ? null : JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') || {};
     localStorage.setItem(SAVE_KEY, JSON.stringify({ money: G.money, up: G.up, scents: G.scents, treats: G.treats, journal: G.journal, day: G.day, hour: G.hour,
-      quest: G.quest, qd: G.qd, wood: G.wood, matches: G.matches, meat: G.meat, rack: G.rack, cargo: G.cargo, slots: G.slots, hp: Math.round(P.hp), sick: P.sick, wear: G.wear, shoeHp: Math.round(G.shoeHp * 10) / 10,
+      quest: G.quest, qd: G.qd, xp: G.xp, story: G.story, sst: G.sst, wood: G.wood, matches: G.matches, meat: G.meat, rack: G.rack, cargo: G.cargo, slots: G.slots, hp: Math.round(P.hp), sick: P.sick, wear: G.wear, shoeHp: Math.round(G.shoeHp * 10) / 10,
       // patronene lagres med dem som sitter i våpnene; de lades igjen når du starter
       rounds: G.rounds + inGun('rifle'), shells: G.shells + inGun('hagle'), arrows: G.arrows + inGun('bue'), arms: G.arms, gun: G.gun, seen: seenPack(),
+      // hvor du og hesten står, og om du satt i salen
+      pos: [Math.round(P.x), Math.round(P.y), P.face, P.flip], horse: [Math.round(HORSE.x), Math.round(HORSE.y), Math.round(HORSE.h * 100) / 100, HORSE.on],
       huts: old ? old.huts || [] : G.huts.map(h => [Math.round(h.x), Math.round(h.y)]), cut: old ? old.cut || [] : [...G.cut] }));
   } catch (e) { }
 }
@@ -288,6 +294,7 @@ function load() {
     if (GUNS[s.gun]) G.gun = s.gun;
     G.quest = s.quest && SPEC[s.quest.sp] && (s.quest.kind === 'meat' || REGIONS[s.quest.area]) ? s.quest : null;
     G.qd = s.qd && Array.isArray(s.qd.used) ? s.qd : { day: 0, used: [] };
+    G.xp = Math.max(0, s.xp | 0); G.story = clamp(s.story | 0, 0, STORY.length); G.sst = clamp(s.sst | 0, 0, 2);
     // uten hest (lagringer fra før hesten måtte kjøpes): det som lå på lasteplanet, er hos deg igjen
     if (!lv('horse')) {
       for (const k of CARGO) { G[k] += G.cargo[k]; G.cargo[k] = 0; }
@@ -295,6 +302,10 @@ function load() {
       G.rack = []; for (const o of G.slots.horse) if (o && o.clo) { const L = G.slots.gear, i = L.indexOf(null); L[i < 0 ? L.length : i] = o; }
       G.slots.horse = [];
     }
+    // stedet du sto på sist, og hesten der du satte den (eldre lagringer: ved bua og stallen, som er satt fra før)
+    const at = A => Array.isArray(A) && Number.isFinite(A[0]) && Number.isFinite(A[1]);
+    if (at(s.horse)) Object.assign(HORSE, { x: clamp(s.horse[0], -WORLD, WORLD), y: clamp(s.horse[1], -WORLD, WORLD), h: +s.horse[2] || 0, on: !!s.horse[3] && !!lv('horse') });
+    if (at(s.pos)) { P.x = clamp(s.pos[0], -WORLD, WORLD); P.y = clamp(s.pos[1], -WORLD, WORLD); if (HUN[s.pos[2]]) P.face = s.pos[2]; P.flip = !!s.pos[3]; CAM.x = P.x; CAM.y = P.y - 30; }
     armsFix();
     return true;
   } catch (e) { return false; }
@@ -701,10 +712,10 @@ function credit(a, cut, first) {
   const onHorse = kg1(Math.min(kg, rackFree())), inSack = kg1(kg - onHorse), horseKr = Math.round(kr * onHorse / kg);
   const add = (L, k, v) => { if (!(k > 0)) return; const l = L.find(l => l.sp === a.sp); if (l) { l.kg = kg1(l.kg + k); l.kr += v; } else L.push({ sp: a.sp, kg: k, kr: v }); };
   add(G.rack, onHorse, horseKr); add(G.meat, inSack, kr - horseKr);
-  if (first) questKill(a);
+  if (first) { questKill(a); xpAdd(killXp(a.sp)); storyEv('kill', a); }
   if (first) G.journal.unshift({ sp: a.sp, sex: a.sex, kg: a.kg, m: Math.round((a.shotDist || 0) * M_PER_PX), zone: a.lastZone || 'body', kr: all, day: G.day, h: G.hour });
   const where = onHorse > 0 ? inSack > 0 ? 'på hesten og i sekken' : 'på hesten' : 'i sekken';
-  sfx.kneel(); msg((first ? A.name + ', ' + A.sexn[a.sex] + ', ' + fmtKg(a.kg) + ' · ' : '') + fmtKg(kg) + ' kjøtt ' + where + ', verdt ' + fmtKr(kr) + ' i landsbyen', 'good');
+  sfx.kneel(); msg((first ? A.name + ', ' + A.sexn[a.sex] + ', ' + fmtKg(a.kg) + ' · ' : '') + fmtKg(kg) + ' kjøtt ' + where + ', verdt ' + fmtKr(kr) + ' i landsbyen' + (first ? ' · +' + killXp(a.sp) + ' XP' : ''), 'good');
   if (a.left > 0) msg((horseNear() ? 'Sekken og hesten er fulle. ' : 'Sekken er full. ') + fmtKg(kg1(a.left * K)) + ' kjøtt ligger igjen på dyret. ' + (horseNear() ? 'Selg i landsbyen og kom tilbake.' : `Selg i landsbyen, eller ${horseHint()}.`), 'warn');
   save();
 }
@@ -753,6 +764,8 @@ function action() {
     return [(a.left === undefined ? 'Ta vare på ' + A.name.toLowerCase() + ' (' + A.sexn[a.sex] + ')' : 'Skjær ut mer kjøtt (' + A.name.toLowerCase() + ', ' + fmtKg(kg1(a.left * knifeK())) + ' igjen)')
       + (rest <= 3 ? rest < 1 ? ' · råtner snart' : ' · råtner om ' + Math.ceil(rest) + ' t' : '') + (onH > 0 ? inS > 0 ? ' · ' + fmtKg(onH) + ' på hesten, ' + fmtKg(inS) + ' i sekken' : ' · lastes på hesten' : ''), () => collect(a)];
   }
+  // har den du står ved, noe å si i historien, snakker du med dem før du går inn
+  const w = storyNear(); if (w) return ['Snakk med ' + WHO[w][0].toLowerCase(), () => storyTalk(w)];
   const c = cabinsNear(P.x, P.y).find(c => hyp(P.x - c.door[0], P.y - c.door[1]) < 18);
   if (c) return [doorText(c), () => openShop(c)];
   const atHorse = lv('horse') && hyp(HORSE.x - P.x, HORSE.y - P.y) < 18;
@@ -817,7 +830,67 @@ function questDeliver() {
       if (l.kg <= 0) L.splice(L.indexOf(l), 1);
     }
   }
-  G.money += q.kr; G.quest = null; sfx.coin(); msg('Grunneieren takker for hjelpa. +' + fmtKr(q.kr), 'good'); save();
+  G.money += q.kr; G.quest = null; sfx.coin(); msg('Grunneieren takker for hjelpa. +' + fmtKr(q.kr) + ' · +' + XP_QUEST + ' XP', 'good'); xpAdd(XP_QUEST); storyEv('quest'); save();
+}
+
+// ---------- historien og erfaring ----------
+// En enkel historie i kapitler, ett om gangen, fortalt i samtaler med folk (F når du står ved dem). G.story er kapitlet
+// du står i, og G.sst hvor langt du er i det: 0 du må snakke med den som gir oppdraget (who), 1 oppdraget er i gang, og
+// 2 det er utført og du må snakke med den som tar imot (to, ellers who). who og to er 'gf' (bestefar, som står foran
+// bua, se GF) eller slaget hus den som står ved døra, hører til. Oppdraget utføres av en hendelse (ev): 'kill' et dyr du
+// tar vare på (sp: bare disse artene), 'sell' kjøtt solgt, 'quest' et oppdrag levert hos grunneieren og 'hut' en natt i
+// gapahuk; uten ev er oppdraget bare å gå til den som tar imot. d er replikkene til den som gir oppdraget, og done det
+// mottakeren sier. Erfaring (G.xp) får du for hvert kapittel, hvert dyr du tar vare på og hvert oppdrag for
+// grunneieren, og nivået følger av den
+const STORY = [
+  { t: 'Første bytte', who: 'gf', ev: 'kill', xp: 50, goal: 'Fell et dyr og ta vare på det',
+    d: ['Der er du! Jeg har lagt børsa på hylla, så rifla, hunden og jaktretten er dine nå.', 'Vis bygda at du duger. Fell et dyr og ta vare på det, så snakkes vi.'], done: 'Se der, ja! Du har det i deg.' },
+  { t: 'Mat til bygda', who: 'game', ev: 'sell', xp: 50, goal: 'Selg kjøtt på viltmottaket',
+    d: ['Så det er du som har tatt over etter bestefaren din? Mottaket har stått tomt siden han ga seg.', 'Kom inn med kjøtt, så kjøper jeg det.'], done: 'Godt kjøtt. Nå ser folk at det er en jeger i bygda igjen.' },
+  { t: 'Grunneierens ærend', who: 'farm', ev: 'quest', xp: 100, goal: 'Fullfør et oppdrag for grunneieren',
+    d: ['Jeg vil vite om du er til å stole på før du jakter lenger inn på feltet mitt.', 'Gå inn og ta et av oppdragene mine, og lever det.'], done: 'Du holder ord. Det liker jeg.' },
+  { t: 'Natt i skogen', who: 'gf', ev: 'hut', xp: 150, goal: 'Sov i en gapahuk ved bålet',
+    d: ['De store dyrene går langt fra landsbyen, så du må kunne ligge ute.', 'Kjøp øks hos smeden og fyrstikker i bua. Bygg en gapahuk, tenn bål foran den og sov der.'], done: 'Du ser uthvilt ut. Da skal du få høre om Slagbjørnen.' },
+  { t: 'Spor etter Slagbjørnen', who: 'gf', to: 'post', xp: 150, goal: 'Snakk med verten på en utpost',
+    d: ['En stor bjørn tar sauene til bygda, og jeg rakk aldri å felle den.', 'Folk på utpostene har sett spor. Fjellstua ligger langt mot nord, Austbua mot øst og Vestgarden mot sørvest. Gå ut og snakk med en av vertene.'], done: 'Slagbjørnen, ja. Den har gått her i hele høst, og sporene er store som tallerkener.' },
+  { t: 'Storvilt', who: 'post', to: 'gf', ev: 'kill', sp: ['elg', 'hjort'], xp: 200, goal: 'Fell en elg eller en hjort',
+    d: ['Men den er ikke noe for den som aldri har felt storvilt.', 'Fell en elg eller en hjort først, og si fra til bestefaren din.'], done: 'Storvilt! Da er du klar.' },
+  { t: 'Slagbjørnen', who: 'gf', ev: 'kill', sp: ['bjorn'], xp: 400, goal: 'Fell en bjørn',
+    d: ['Finn bjørnen som har herjet i bygda, og fell den.', 'Sikt godt, for den tåler mye.'], done: 'Slagbjørnen er felt! Bygda kan slippe sauene på beite igjen. Skogen er din nå.' },
+];
+// [navnet i samtalen, hvor du finner dem]
+const WHO = { gf: ['Bestefar', 'bestefar foran bua'], game: ['Viltmottakeren', 'viltmottakeren i landsbyen'], farm: ['Grunneieren', 'grunneieren på garden'], post: ['Verten', 'verten på en utpost'] };
+const XP_QUEST = 50, RANKS = ['Nybegynner', 'Lærling', 'Jeger', 'Storviltjeger', 'Mesterjeger'];
+// Nivå n krever 100 · (n − 1)² XP: 100, 400, 900, 1600 …
+const xpLevel = (xp = G.xp) => 1 + Math.floor(Math.sqrt(xp / 100));
+const xpNext = () => 100 * xpLevel() ** 2;
+const rankName = () => RANKS[Math.min(xpLevel(), RANKS.length) - 1];
+const killXp = sp => Math.max(5, Math.round(SPEC[sp].value / 100) * 5);
+function xpAdd(n) {
+  const l = xpLevel(); G.xp += n;
+  if (xpLevel() > l) msg('Nytt nivå! Du er nå ' + rankName().toLowerCase() + ' (nivå ' + xpLevel() + ').', 'money');
+}
+// Den du skal snakke med nå (null mens oppdraget er i gang), og det som står som oppdrag i HUD-en og jaktboka
+const storyWho = () => { const c = STORY[G.story]; return !c ? null : G.sst === 2 ? c.to || c.who : G.sst ? null : c.who; };
+const storyGoal = () => { const w = storyWho(); return w ? 'Snakk med ' + WHO[w][1] : STORY[G.story].goal; };
+// ... hvis du står like ved dem
+function storyNear() {
+  const w = storyWho(); if (!w) return null;
+  let p = GF; if (w !== 'gf') { const c = cabinsNear(P.x, P.y).find(c => c.kind === w); if (!c) return null; p = keeperAt(c); }
+  return hyp(P.x - p[0], P.y - p[1]) < 30 ? w : null;
+}
+// Samtalen: mottakeren kvitterer for et utført oppdrag (og du får erfaringen), og har de neste oppdrag selv, gir de det
+// med en gang; ellers sier de hvem du skal gå til
+function storyTalk(w) {
+  let c = STORY[G.story]; const L = [];
+  if (G.sst === 2) { L.push(c.done); xpAdd(c.xp); msg(c.t + ' fullført · +' + c.xp + ' XP', 'money'); G.story++; G.sst = 0; c = STORY[G.story]; }
+  if (c && c.who === w) { L.push(...c.d); G.sst = c.ev ? 1 : 2; msg('Nytt oppdrag: ' + c.goal, 'good'); }
+  else if (c) L.push('Gå og snakk med ' + WHO[c.who][1] + '.');
+  save(); talk(WHO[w][0], L);
+}
+function storyEv(ev, a) {
+  const c = STORY[G.story]; if (!c || G.sst !== 1 || c.ev !== ev || c.sp && !c.sp.includes(a.sp)) return;
+  G.sst = 2; msg('Oppdraget er utført. Snakk med ' + WHO[c.to || c.who][1] + '.', 'good'); save();
 }
 // Hva som står ved døra til hvert slags hus
 function doorText(c) {
@@ -1358,6 +1431,7 @@ function sleepToDawn(text) {
   if (kr) { const t = 'Viltet du lot ligge, råtnet mens du sov. Kjøttet kan ikke selges, og du får bot for å la vilt ligge.'; rotNotice(t, fine(kr, t)); } else save();
 }
 function sleepHut() {
+  storyEv('hut');
   if (mp()) { healFull(); msg('Du hvilte i gapahuken ved bålet. Du er varm og frisk igjen.', 'good'); save(); return; }
   sleepToDawn('Du sov godt i gapahuken ved bålet. Det lysner over skogen, og du er frisk igjen.');
 }
@@ -1404,7 +1478,7 @@ function playerUpdate(dt) {
   P.cycle = Math.max(0, P.cycle - dt); P.callCd = Math.max(0, P.callCd - dt);
   if (P.reload > 0) { P.reload -= dt; if (P.reload <= 0) { const k = ammoKey(), n = Math.min(gunCap() - inGun(), G[k]); P.reload = 0; if (G.gun) { P.mag[G.gun] += n; G[k] -= n; } } }
   aimUpdate(dt);
-  // du står i ro mens du tar børsa opp; i siktet kan du flytte deg rolig til sidene med A/D, men ikke ute på djupt vann
+  // du står i ro mens du tar børsa opp; i siktet kan du flytte deg rolig med W/A/S/D, men ikke ute på djupt vann
   let mx = 0, my = 0;
   if (G.started && !G.paused && !P.aim && !AIM.want) {
     if (KEYS.KeyA || KEYS.ArrowLeft) mx -= 1; if (KEYS.KeyD || KEYS.ArrowRight) mx += 1;
@@ -1412,7 +1486,8 @@ function playerUpdate(dt) {
     mx += STICK.x; my += STICK.y;
   } else if (G.started && !G.paused && P.aim && AIM.want && !P.deep) {
     if (KEYS.KeyA || KEYS.ArrowLeft) mx -= 1; if (KEYS.KeyD || KEYS.ArrowRight) mx += 1;
-    mx += STICK.x;
+    if (KEYS.KeyW || KEYS.ArrowUp) my -= 1; if (KEYS.KeyS || KEYS.ArrowDown) my += 1;
+    mx += STICK.x; my += STICK.y;
   }
   // på hesten driver W den fram, S holder igjen og A/D styrer, både på kartet og i 3D
   // til fots på kartet snur musa jegeren (P.h, se mousemove i 07-ui.js) og bildet med ham, W/S går fram og tilbake dit

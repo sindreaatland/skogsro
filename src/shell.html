@@ -35,6 +35,7 @@ body.aiming #tbtns { pointer-events: none; }
 #tl { top: calc(14px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); padding: 8px 12px; display: grid; gap: 2px; }
 #kr { font-size: 26px; font-weight: 600; color: var(--amber); font-variant-numeric: tabular-nums; line-height: 1.1; }
 #clock { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+#xp { font-size: 13px; color: var(--amber); font-variant-numeric: tabular-nums; } #story { font-size: 13px; max-width: 34ch; }
 #who { font-size: 13px; color: var(--moss); max-width: 34ch; }
 #cold { display: grid; gap: 3px; margin-top: 4px; } #cold .lab { color: #a4ccc6; } #coldFill { background: #7fb0c8; }
 #hp { display: grid; gap: 3px; margin-top: 4px; } #hpFill.low { background: var(--rust); }
@@ -79,66 +80,33 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 .money { font-size: 22px; color: var(--amber); font-variant-numeric: tabular-nums; }
 .xbtn, .act { background: #2b382f; border: 2px solid #44574a; padding: 6px 12px; cursor: pointer; font-size: 15px; }
 .xbtn:hover, .act:hover { border-color: var(--moss); }
-/* Bua: det du har til venstre (blir stående mens du blar), bua til høyre */
-.shop-card { width: min(1180px, 100%); }
-.shop-body { display: grid; grid-template-columns: auto minmax(0, 1fr); background: #1d2620; }
-.shop-mine { position: sticky; top: 0; align-self: start; padding: 14px 20px 20px; display: grid; gap: 12px; align-content: start; }
-.shop-mine .mc { --s: clamp(34px, 3.4vw, 44px); margin: 0; justify-self: start; }
-#shopMc { display: grid; gap: 12px; }
-.shop-main { position: relative; padding: 14px 20px 20px; min-width: 0; background: #1a231d; border-left: 2px solid #2b382f; }
-@media (max-width: 900px) { .shop-body { grid-template-columns: 1fr; } .shop-mine { position: static; } .shop-main { border-left: 0; border-top: 2px solid #2b382f; } }
-.mc-slot.sell, .mc-slot.move { cursor: grab; }
-.mc-slot.pick { outline: 3px solid var(--amber); outline-offset: 1px; }
-/* mens du drar: bua lyser opp, og står du på en annen fane, sier den hvor du slipper */
-#shop.dragging .shop-main { outline: 3px dashed #6a8442; outline-offset: -8px; }
-#shop.dragging .shop-main.over { outline-color: var(--amber); background: #212c22; }
-#shop.dragging .shop-main:not([data-cat="sell"])::after { content: "Slipp her for å selge"; position: absolute; inset: 0; display: grid; justify-items: center; align-content: start; padding-top: 140px; background: rgba(16,24,18,.82); color: var(--amber); font-size: 24px; pointer-events: none; }
-#shopStats { display: grid; gap: 8px; margin-bottom: 12px; padding: 10px 12px; background: #1d2620; border: 2px solid #2b382f; }
-#stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 18px; }
-.drop { display: grid; gap: 8px; padding: 14px; background: #1d2620; border: 3px dashed #44574a; }
-.drop.full { border-style: solid; border-color: #6a8442; }
-.drop .clo-h { margin-top: 0; }
-/* hjelpeteksten under inventaret følger bredden på inventaret, og gjør ikke kolonnen bredere */
-.shop-mine > .side-note { width: 0; min-width: 100%; }
-#shop.dragging .drop { border-color: var(--amber); background: #222c22; }
-.drop-empty { display: flex; gap: 16px; align-items: center; padding: 10px 4px; }
-.drop-slot { --s: 64px; flex: none; }
-.drop-t { font-size: 22px; } .drop-s { font-size: 14px; color: var(--muted); line-height: 1.4; margin-top: 2px; max-width: 46ch; }
-.drop-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.sold { font-size: 15px; color: var(--amber); }
-/* fanene i grupper: våpen, utstyr, og salg for seg til høyre i gult */
-#shopTabs { display: flex; gap: 8px 22px; margin-bottom: 12px; flex-wrap: wrap; align-items: end; }
-.tab-g { display: grid; gap: 4px; } .tab-g > div:last-child { display: flex; gap: 6px; flex-wrap: wrap; }
-.tab-sell { margin-left: auto; } .tab-sell .lab { text-align: right; }
-#shopTabs .tab-sell button { border-color: #6a5426; color: var(--amber); }
-#shopTabs .tab-sell button[aria-selected="true"] { border-color: var(--amber); background: #33290f; color: var(--paper); }
-/* underfanene i klærne: plassen på kroppen, og under den plagget du har på deg */
-.sub-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
-.sub-tabs button { display: grid; gap: 1px; padding: 6px 8px; text-align: left; background: transparent; border: 2px solid #2f3d33; cursor: pointer; font-size: 16px; color: var(--muted); min-width: 0; }
-.sub-tabs small { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sub-tabs button[aria-selected="true"] { color: var(--paper); border-color: var(--moss); background: #24301f; }
-/* forbruksvarer er lave rader, et våpen du ikke eier, én stor; det du ikke kan kjøpe, er dempet */
-.item.sup { grid-template-columns: 36px minmax(0, 1fr) auto; padding: 6px 12px; } .item.sup .ico { width: 36px; height: 36px; }
-.have { font-size: 14px; color: var(--amber); }
-.item.hero { grid-template-columns: 96px minmax(0, 1fr) auto; padding: 18px 16px; border-color: #44574a; } .item.hero .ico { width: 96px; height: 96px; } .item.hero .it-name { font-size: 24px; }
-.item.cant .ico, .item.cant .it-body { opacity: .6; }
-.buy small { display: block; font-size: 12px; color: var(--rust); }
-.buy.poor:disabled { color: #b89c84; border-color: #4a3a2e; }
-/* stolpene blir stående øverst mens du blar, og viser hva varen under musa endrer */
-#shopStats { position: sticky; top: 0; z-index: 1; }
+/* Bua: ett lyst vindu som inventaret, med det du har til venstre og butikkens inventar til høyre. De to står med
+   rutene på linje nederst; over butikkens ruter står hva stedet kjøper og stolpene for våpenet eller klærne */
+.shop-card { width: auto; max-width: 100%; background: #b9bfae; border-color: #f2f4ea #4b5244 #4b5244 #f2f4ea; }
+.shop-card .card-h { background: none; border-bottom: 0; padding-bottom: 4px; } .shop-card .card-h h2 { color: #2c3326; }
+.shop-body { display: flex; flex-wrap: wrap; align-items: end; justify-content: center; gap: 16px 28px; padding: 8px 20px 20px; }
+.shop-body .mc { --s: clamp(20px, min((100vw - 230px) / 18, (100dvh - 330px) / 7), 44px); margin: 0; padding: 0; border: 0; box-shadow: none; background: none; }
+.shop-body .mc-foot { min-height: 34px; align-items: center; }
+/* teksten og stolpene over varene følger bredden på rutene, og gjør ikke butikken bredere */
+.shop-top { display: grid; gap: 10px; width: 0; min-width: 100%; }
+.shop-main .mc-foot { justify-content: end; width: 0; min-width: 100%; } .shop-main .act { color: var(--paper); }
+.mc-slot.sell, .mc-slot.move { cursor: grab; } .mc-slot.ware { cursor: pointer; }
+/* mens du drar noe over for å selge det, lyser butikkens ruter opp */
+#shop.dragging #shopStore { outline: 3px dashed #4b5244; outline-offset: 2px; }
+#shop.dragging .over #shopStore { outline-style: solid; outline-color: #8a2a12; }
+#shopStats { display: grid; gap: 8px; padding: 8px 10px; background: #1d2620; color: var(--paper); border: 3px solid; border-color: #3a4034 #eef0e4 #eef0e4 #3a4034; }
+#stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 14px; }
+/* oppdragene hos grunneieren står som en mørk liste i det lyse vinduet */
+#shopList { display: grid; gap: 8px; padding: 10px; background: #1a231d; color: var(--paper); border: 3px solid; border-color: #3a4034 #eef0e4 #eef0e4 #3a4034; } #shopList:empty { display: none; }
+/* stolpene viser hva varen under musa endrer */
 #stats .meter { display: flex; } #stats .meter i.gain { background: var(--amber); } #stats .meter i.loss { background: var(--rust); }
 .st-v.new { color: var(--amber); }
-#shop.dragging .shop-main::after { z-index: 2; }
-#shopTabs button { background: transparent; border: 2px solid #2f3d33; padding: 6px 14px; cursor: pointer; font-size: 16px; color: var(--muted); }
-#shopTabs button[aria-selected="true"] { color: var(--paper); border-color: var(--moss); background: #24301f; }
-#shopList { display: grid; gap: 8px; }
 .item { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 10px 12px; background: #202a23; border: 2px solid #2b382f; }
 .ico { width: 54px; height: 54px; background: #2a362d; }
-/* klesfanen: en overskrift per plass på kroppen, og plagget du har på deg er merket */
+/* overskriftene i lista */
 .clo-h { margin-top: 10px; font-size: 12px; color: var(--paper); }
 .clo-h:first-child { margin-top: 0; }
 #shopList .side-note { margin: 0; }
-.item.worn { border-color: var(--moss); }
 .it-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .it-name { font-size: 18px; font-weight: 600; }
 .pips { display: flex; gap: 3px; } .pips i { width: 10px; height: 10px; background: #2e3a31; border: 1px solid #44574a; } .pips i.on { background: var(--amber); border-color: #9a7424; }
@@ -151,7 +119,6 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 .stat { display: grid; gap: 4px; } .st-top { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; } .st-v { color: var(--muted); font-size: 13px; text-align: right; }
 .side-note { font-size: 13px; color: var(--muted); line-height: 1.4; }
 .side-note b { color: var(--paper); font-weight: 500; }
-.side-acts { display: grid; gap: 8px; margin-top: 4px; }
 
 .book-body { padding: 16px 20px 20px; display: grid; gap: 16px; }
 #bookSpecies { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 8px; }
@@ -159,7 +126,11 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 .sp img { height: 52px; image-rendering: pixelated; }
 .sp.none img { filter: brightness(0) opacity(.35); }
 .sp-n { font-size: 16px; font-weight: 600; } .sp-c { font-size: 12px; color: var(--muted); }
-#bookList { display: grid; gap: 2px; }
+#bookList, #bookStory { display: grid; gap: 2px; }
+#talk { position: fixed; z-index: 5; left: 50%; transform: translateX(-50%); bottom: calc(90px + env(safe-area-inset-bottom, 0px)); width: min(560px, calc(100vw - 32px)); padding: 12px 16px; display: grid; gap: 6px; cursor: pointer; }
+#talkWho { color: var(--amber); } #talkTxt { font-size: 17px; line-height: 1.45; }
+.ch { display: grid; gap: 2px; padding: 7px 10px; background: #202a23; font-size: 14px; line-height: 1.4; } .ch b { font-weight: 600; }
+.ch.done { grid-template-columns: 1fr auto; color: var(--muted); } .ch.now { border-left: 3px solid var(--amber); }
 .entry { display: grid; grid-template-columns: 64px minmax(0, 1fr) 70px minmax(0, 1fr) 90px; gap: 10px; padding: 7px 10px; background: #202a23; font-size: 14px; font-variant-numeric: tabular-nums; }
 @media (max-width: 640px) { .entry { grid-template-columns: 1fr 1fr; } }
 .e-d, .e-z { color: var(--muted); } .e-kr { color: var(--amber); text-align: right; }
@@ -213,7 +184,6 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 #mcHeld { position: fixed; z-index: 31; width: 40px; height: 40px; margin: -20px 0 0 -20px; object-fit: contain; image-rendering: pixelated; pointer-events: none; }
 .mc-foot { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; color: #2c3326; }
 .mc-foot .warn { color: #8a2a12; }
-.qty { width: 100%; min-width: 150px; accent-color: var(--amber); cursor: pointer; }
 .wh-k { position: absolute; left: 5px; top: 2px; font-family: var(--f-lab); font-size: 13px; font-weight: 400; color: var(--muted); }
 .mc-dur { position: absolute; left: 3px; right: 3px; bottom: 2px; height: 3px; background: #1a1c18; }
 .mc-dur b { display: block; height: 100%; }
@@ -257,26 +227,15 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 .card { display: flex; flex-direction: column; max-height: var(--vh); overflow: hidden; }
 .card > .card-h, .card > .menu-h { flex: none; }
 .card > :last-child { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-.shop-card { height: min(860px, var(--vh)); }
 #book .card { height: min(760px, var(--vh)); }
 .menu-card { height: min(600px, var(--vh)); }
-.book-body { align-content: start; grid-template-rows: auto auto minmax(0, 1fr); }
+.book-body { align-content: start; grid-template-rows: auto auto auto minmax(0, 1fr); }
 #bookList { overflow-y: auto; align-content: start; min-height: 0; }
 #plSheet .menu-body { grid-template-rows: minmax(0, 1fr) auto; overflow: hidden; }
 #plList { overflow-y: auto; align-content: start; min-height: 0; }
 .inv-card .mc { --s: clamp(20px, min(5.2vw, (100dvh - 412px) / 6), 52px); }
 /* linja under rutene står der alltid, så inventaret er like høyt i alle fanene */
 .mc-store .mc-sum, .mc-store .mc-sum:empty { display: block; min-height: 20px; }
-@media (min-width: 901px) {
-  .card > .shop-body { overflow: hidden; grid-template-rows: minmax(0, 1fr); }
-  .shop-mine { position: static; align-self: stretch; overflow-y: auto; }
-  .shop-mine .mc { --s: clamp(20px, min(3.4vw, (100dvh - 516px) / 6), 44px); }
-  /* på lave skjermer viker hjelpeteksten, så rutene får plassen */
-  @media (max-height: 690px) { .shop-mine > .side-note { display: none; } }
-  .shop-main { display: flex; flex-direction: column; overflow: hidden; }
-  #shopTabs, #shopStats { flex: none; }
-  #shopList { flex: 1; min-height: 0; overflow-y: auto; align-content: start; overscroll-behavior: contain; }
-}
 
 /* Tittel */
 #title { position: fixed; inset: 0; z-index: 6; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(10,16,12,.25), rgba(10,16,12,.75)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px; }
@@ -312,6 +271,8 @@ kbd { font-family: var(--f-lab); font-size: 10px; color: var(--paper); backgroun
 .map-leg img { width: 22px; margin: 0 -5px; flex: none; }
 @media (max-width: 900px) { #keys { display: none; } #log { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); } #bar { max-width: none; } }
 
+/* smale skjermer: butikken står under det du har, og rutene fyller bredden */
+@media (max-width: 700px) { .shop-body .mc { --s: clamp(20px, (100vw - 122px) / 9, 44px); } }
 /* Telefon: vinduene holder seg innenfor de trygge kantene, og rutene i inventaret fyller bredden */
 body { overscroll-behavior: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-text-size-adjust: 100%; }
 #cv { touch-action: none; }
@@ -321,15 +282,13 @@ body { overscroll-behavior: none; touch-action: manipulation; -webkit-tap-highli
   .sheet { padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
   .card-h { padding: 10px 12px; gap: 10px; } .card-h h2 { font-size: 22px; }
   .mc { margin: 8px; padding: 8px; }
-  .inv-card .mc, .shop-mine .mc { --s: clamp(20px, (100vw - 122px) / 9, 44px); }
-  .shop-mine, .shop-main { padding: 8px; }
-  .sub-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .inv-card .mc { --s: clamp(20px, (100vw - 122px) / 9, 44px); }
+  .shop-body { padding: 8px; }
 }
 /* telefonen på tvers: lavt, så vinduene går nesten helt ut, og inventaret blar heller enn å krympe rutene */
 @media (max-height: 500px) {
   .sheet { --pad: 8px; }
   .inv-card .mc { --s: clamp(28px, 4vw, 36px); }
-  #shopStats { position: static; }
   .menu-h { padding: 10px 20px 8px; } .menu-name { font-size: 40px; }
   .t-wrap { gap: 10px; } .t-name { font-size: clamp(48px, 20vh, 168px); } .t-sub { font-size: 16px; }
 }
@@ -356,14 +315,14 @@ body.touch #gunName { padding-right: 0; }
 body.touch #prompt { pointer-events: auto; padding: 12px 18px; }
 body.touch #breath { bottom: calc(26vh + 60px + env(safe-area-inset-bottom, 0px)); }
 /* meldingene står oppe under klokka, så tomlene og handlingsknappen har nedre del av bildet for seg selv */
-body.touch #log { top: calc(180px + env(safe-area-inset-top, 0px)); bottom: auto; max-width: calc(100vw - 32px); }
-@media (orientation: landscape) { body.touch #log { top: 130px; max-width: 40vw; } }
+body.touch #log { top: calc(216px + env(safe-area-inset-top, 0px)); bottom: auto; max-width: calc(100vw - 32px); }
+@media (orientation: landscape) { body.touch #log { top: 166px; max-width: 40vw; } }
 @media (prefers-reduced-motion: reduce) { #windArrow, .msg { transition: none; } }
 </style>
 
 <canvas id="cv" aria-label="Skogen sett ovenfra"></canvas>
 
-<div id="tl" class="hud box"><div id="kr">0 kr</div><div id="clock">Dag 1 · 06:30</div><div id="who" hidden></div><div id="hp" hidden><div class="lab" id="hpTxt">Helse</div><div class="meter"><i id="hpFill"></i></div></div><div id="cold" hidden><div class="lab" id="coldTxt"></div><div class="meter"><i id="coldFill"></i></div></div></div>
+<div id="tl" class="hud box"><div id="kr">0 kr</div><div id="clock">Dag 1 · 06:30</div><div id="xp"></div><div id="story"></div><div id="who" hidden></div><div id="hp" hidden><div class="lab" id="hpTxt">Helse</div><div class="meter"><i id="hpFill"></i></div></div><div id="cold" hidden><div class="lab" id="coldTxt"></div><div class="meter"><i id="coldFill"></i></div></div></div>
 <div id="tr" class="hud box"><img id="windArrow" alt="Vindretning"><div><div class="lab">Vind</div><div id="windS">Svak vind</div><div id="windD">fra sørvest</div></div></div>
 <div id="tbtns" class="hud"><button class="tbtn" id="pauseBtn" type="button">Pause (Esc)</button><button class="tbtn" id="invBtn" type="button">Inventar (E)</button><button class="tbtn" id="mapBtn" type="button">Kart (M)</button><button class="tbtn" id="bookBtn" type="button">Jaktbok</button><button class="tbtn" id="muteBtn" type="button" aria-pressed="false">Lyd</button></div>
 <div id="log" class="hud" aria-live="polite"></div>
@@ -384,39 +343,34 @@ body.touch #log { top: calc(180px + env(safe-area-inset-top, 0px)); bottom: auto
 
 <div id="shop" class="sheet" hidden>
   <div class="card shop-card" role="dialog" aria-label="Handel">
-    <div class="card-h"><h2 id="shopName">Bua</h2><span class="money" id="shopKr">0 kr</span><button class="xbtn" type="button" data-close>Gå ut (Esc)</button></div>
+    <div class="card-h"><h2 id="shopName">Bua</h2><button class="xbtn" type="button" data-close>Gå ut (Esc)</button></div>
     <div class="shop-body">
-      <div class="shop-mine">
-        <div class="lab">Det du har</div>
-        <div id="shopMc"></div>
-        <div class="side-note">Klikk på noe for å selge det. Shift+klikk selger hele stabelen med en gang. Det som er dempet, kjøpes ikke her. Våpnene lades fra sekken når du går inn.</div>
-        <div class="side-acts"><button class="act" type="button" id="sleepBtn">Sov til morgengry</button></div>
-      </div>
-      <div class="shop-main" id="shopMain">
-        <div id="shopTabs" role="tablist">
-          <div class="tab-g"><div class="lab">Våpen</div><div><button type="button" role="tab" data-cat="rifle">Rifla</button><button type="button" role="tab" data-cat="hagle">Hagla</button><button type="button" role="tab" data-cat="bue">Pil og bue</button></div></div>
-          <div class="tab-g"><div class="lab">Utstyr</div><div><button type="button" role="tab" data-cat="lure">Lokking</button><button type="button" role="tab" data-cat="gear">Utstyr</button><button type="button" role="tab" data-cat="clo">Klær</button><button type="button" role="tab" data-cat="camp">Leir</button></div></div>
-          <div class="tab-g"><div class="lab">Smeden</div><div><button type="button" role="tab" data-cat="smith">Kniv og øks</button></div></div>
-          <div class="tab-g"><div class="lab">Stallen</div><div><button type="button" role="tab" data-cat="stable">Hest og utstyr</button></div></div>
-          <div class="tab-g"><div class="lab">Påfyll</div><div><button type="button" role="tab" data-cat="post">Forbruksvarer</button></div></div>
-          <div class="tab-g"><div class="lab">Grunneieren</div><div><button type="button" role="tab" data-cat="quest">Oppdrag</button></div></div>
-          <div class="tab-g tab-sell"><div class="lab" id="shopSellLab">Kjøper</div><div><button type="button" role="tab" data-cat="sell">Selg</button></div></div>
+      <div id="shopMc"></div>
+      <div class="mc shop-main" id="shopMain">
+        <div class="mc-lab" id="shopWho"></div>
+        <div class="shop-top">
+          <div class="mc-sum" id="shopNote"></div>
+          <div id="shopStats">
+            <div class="lab" id="statLab">Rifla di nå</div>
+            <div id="stats"></div>
+            <div class="side-note" id="statNote"></div>
+          </div>
+          <div id="shopList"></div>
         </div>
-        <div id="shopStats">
-          <div class="lab" id="statLab">Rifla di nå</div>
-          <div id="stats"></div>
-          <div class="side-note" id="statNote"></div>
-        </div>
-        <div id="shopList"></div>
+        <div class="mc-tabs" id="shopTabs" role="tablist"></div>
+        <div class="mc-store" id="shopStore"><div class="mc-grid" id="shopGrid"></div><div class="mc-sum" id="shopSum"></div></div>
+        <div class="mc-foot"><button class="act" type="button" id="meatBtn" hidden></button><button class="act" type="button" id="sleepBtn">Sov til morgengry</button></div>
       </div>
     </div>
   </div>
 </div>
 
+<div id="talk" class="box" hidden><div class="lab" id="talkWho"></div><div id="talkTxt"></div><div class="side-note">F eller trykk for å gå videre</div></div>
+
 <div id="book" class="sheet" hidden>
   <div class="card" role="dialog" aria-label="Jaktbok">
     <div class="card-h"><h2>Jaktbok</h2><span class="money" id="bookTot"></span><button class="xbtn" type="button" data-close>Lukk (Esc)</button></div>
-    <div class="book-body"><div id="bookSpecies"></div><div class="lab">Felt vilt, nyeste først</div><div id="bookList"></div></div>
+    <div class="book-body"><div id="bookStory"></div><div id="bookSpecies"></div><div class="lab">Felt vilt, nyeste først</div><div id="bookList"></div></div>
   </div>
 </div>
 
@@ -486,7 +440,7 @@ body.touch #log { top: calc(180px + env(safe-area-inset-top, 0px)); bottom: auto
     <div class="card-h"><h2 id="keysT">Taster</h2><button class="xbtn" type="button" data-back>Tilbake (Esc)</button></div>
     <div class="menu-body">
       <div class="key-list">
-        <kbd>WASD</kbd><span>Gå · musa snur deg og bildet · A/D flytter deg rolig til sidene i siktet</span>
+        <kbd>WASD</kbd><span>Gå · musa snur deg og bildet · i siktet flytter du deg rolig</span>
         <kbd>Shift</kbd><span>Snik</span>
         <kbd>Space</kbd><span>Spring · hold pusten i siktet</span>
         <kbd>Høyreklikk</kbd><span>Sikt (hold)</span>

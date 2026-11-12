@@ -3,7 +3,7 @@ const NET = { on: false, seen: false, ws: null, id: null, host: null, peers: new
 const isAuth = () => !NET.on || NET.host === NET.id;
 // Flerspiller i spillets forstand: minst én annen er faktisk i skogen (ikke bare på tittelskjermen)
 function mp() { if (!NET.on) return false; for (const r of NET.peers.values()) if (r.started) return true; return false; }
-const NAME_KEY = 'skogsro.name';
+const NAME_KEY = 'ud-pa-jakt.name';
 
 // Borte = skjult fane eller tittelskjerm; serveren lar helst en som spiller styre dyra
 function netAway() { netSend({ t: 'away', v: document.hidden || !G.started }); }
@@ -217,7 +217,7 @@ function netUi() {
 // ---------- omlasting når koden endres: serveren har bygget spillet på nytt ----------
 // Var du i skogen, lagres jakta, og etter omlastingen står du på samme sted og ser samme vei, uten tittelskjermen.
 // Spillet åpner med pausemenyen, siden nettleseren vil ha et klikk før den gir fra seg musepekeren og lyden
-const RELOAD_KEY = 'skogsro.reload';
+const RELOAD_KEY = 'ud-pa-jakt.reload';
 function devReload() {
   try { if (G.started) { save(); sessionStorage.setItem(RELOAD_KEY, JSON.stringify({ x: P.x, y: P.y, f: P.face, fl: P.flip })); } } catch (e) { }
   location.reload();

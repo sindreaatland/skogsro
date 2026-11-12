@@ -370,6 +370,8 @@ const VIL_PAL = [
   { civ: 1, cap: 1, hat: '#34404c', hatD: '#242e38', hatL: '#4a5866', band: '#34404c', jac: '#5a3a34', jacD: '#402824', jacL: '#744e46', pant: '#34322e', pantD: '#242220', beard: '#8a8a84' },
   { civ: 1, cap: 1, hat: '#d8a83c', hatD: '#a87e28', hatL: '#ecc460', band: '#d8a83c', jac: '#8c3a34', jacD: '#642824', jacL: '#aa5048', dress: '#8c3a34', apron: '#e8e2d2', beard: SKIN, hair: '#3a2a20' },
   { civ: 1, cap: 1, hat: '#3a4e6a', hatD: '#28384e', hatL: '#506886', band: '#3a4e6a', jac: '#c8c0a8', jacD: '#9c947e', jacL: '#e0d8c0', pant: '#3a3e4a', pantD: '#282c36', apron: '#6a7c84', beard: '#a04a22' },
+  // bestefar: grå filthatt, grønn vadmelsjakke og hvitt skjegg
+  { civ: 1, hat: '#5c5448', hatD: '#40392f', hatL: '#766c5c', band: '#2c2c2c', jac: '#5e6b4a', jacD: '#434d34', jacL: '#78865f', pant: '#4a4238', pantD: '#342e27', beard: '#e8e6e0' },
 ];
 
 // ---------- Hus ----------
@@ -390,7 +392,7 @@ const ROOFC = {
   slate: ['#2a3036', '#3a424a', '#4e5860', '#667076', '#828a8e'], thatch: ['#6e5424', '#927230', '#b08e40', '#c8aa56', '#dcc474'],
 };
 const HOUSE_STYLE = [
-  { id: 'store', sign: 'BUA', wall: 'panel', wc: 'ochre', roof: 'tile', awn: 1, side: 'crates', flowers: 1, L: 52 },
+  { id: 'store', sign: 'BUTIKK', wall: 'panel', wc: 'ochre', roof: 'tile', awn: 1, side: 'crates', flowers: 1, L: 52 },
   { id: 'gun', sign: 'VÅPEN', wall: 'log', wc: 'tar', roof: 'slate', antler: 1, side: 'wood' },
   { id: 'game', sign: 'VILT', wall: 'panel', wc: 'red', roof: 'slate', side: 'rack' },
   { id: 'farm', sign: 'GARD', wall: 'log', wc: 'log', roof: 'thatch', side: 'wood', flowers: 1, L: 54, D: 34 },

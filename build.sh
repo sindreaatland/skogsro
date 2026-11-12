@@ -1,5 +1,5 @@
 #!/bin/bash
-# Setter sammen spillet til én fil (dist/skogsro.html) og en testversjon med doctype
+# Setter sammen spillet til én fil (dist/ud-pa-jakt.html) og en testversjon med doctype
 set -e
 cd "$(dirname "$0")"
 mkdir -p dist
@@ -9,8 +9,8 @@ python3 - "$JS" <<'EOF'
 import sys
 js=open(sys.argv[1]).read()
 s=open('src/shell.html').read().replace('<!--SCRIPTS-->', js)
-open('dist/skogsro.html','w').write(s)
+open('dist/ud-pa-jakt.html','w').write(s)
 open('dist/test.html','w').write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Ud på jakt"><meta name="theme-color" content="#121a16"></head><body>'+s+'</body></html>')
 EOF
 rm "$JS"
-node -e "const fs=require('fs');const s=fs.readFileSync('dist/skogsro.html','utf8');const m=s.match(/<script>([\s\S]*)<\/script>/);new Function(m[1]);console.log('syntax ok',(s.length/1024|0)+'KB')"
+node -e "const fs=require('fs');const s=fs.readFileSync('dist/ud-pa-jakt.html','utf8');const m=s.match(/<script>([\s\S]*)<\/script>/);new Function(m[1]);console.log('syntax ok',(s.length/1024|0)+'KB')"

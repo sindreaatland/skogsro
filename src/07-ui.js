@@ -17,6 +17,7 @@ function windName() {
 function hudUpdate(dt) {
   HUD.t -= dt; if (HUD.t > 0 && !HUD.dirtyMsg) return; HUD.t = 0.1;
   setText('kr', fmtKr(G.money));
+  setText('xp', 'Nivå ' + xpLevel() + ' · ' + G.xp + ' / ' + xpNext() + ' XP'); setText('story', STORY[G.story] ? 'Oppdrag: ' + storyGoal() : 'Historien er fullført');
   const hh = Math.floor(G.hour), mm = Math.floor((G.hour - hh) * 60 / 10) * 10;
   setText('clock', 'Dag ' + G.day + ' · ' + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'));
   const [ws, wd] = windName(); setText('windS', ws); setText('windD', wd);
@@ -71,18 +72,18 @@ function hudUpdate(dt) {
 }
 
 // ---------- handel ----------
-// Hvert slags hus (se PLACES) har sine faner og kjøper sine ting (gruppene i sellOffer). meatK er hvor mye av verdien
-// stedet gir for kjøtt, bed om du kan sove der, og sells det som står øverst under Selg. I koia og på puben er det ingen
-// som handler (ingen faner): da står note i stedet for varene
+// Hvert slags hus (se PLACES) har sine faner med varer og kjøper sine ting (gruppene i sellOffer). meatK er hvor mye av
+// verdien stedet gir for kjøtt, bed om du kan sove der, og sells det som står over varene om hva stedet kjøper. I koia og
+// på puben er det ingen som handler: da står note i stedet for varene
 const SHOPS = {
-  store: { name: 'Bua', who: 'Landhandleren', tabs: ['lure', 'gear', 'clo', 'camp', 'sell'], buys: ['use', 'clo', 'upg'], bed: true,
-    sells: 'Landhandleren kjøper ved til fastpris, og utstyr, klær og forbruksvarer for halv pris. Kjøttet leverer du på viltmottaket, våpen selger du til børsemakeren, og kniv og øks til smeden.' },
-  gun: { name: 'Børsemakeren', who: 'Børsemakeren', tabs: ['rifle', 'hagle', 'bue', 'sell'], buys: ['gun'], sells: 'Børsemakeren tar våpen og våpendeler tilbake for halv pris, ett trinn om gangen.' },
-  game: { name: 'Viltmottaket', who: 'Viltmottaket', tabs: ['sell'], buys: ['meat'], sells: 'Viltmottaket betaler det dyret var verdt.' },
-  smith: { name: 'Smia', who: 'Smeden', tabs: ['smith', 'sell'], buys: ['smith'], sells: 'Smeden tar kniver og økser tilbake for halv pris, ett trinn om gangen.' },
+  store: { name: 'Bua', who: 'Landhandleren', tabs: ['lure', 'gear', 'clo', 'camp'], buys: ['use', 'clo', 'upg'], bed: true,
+    sells: 'Landhandleren kjøper ved til fastpris, og utstyr, klær og forbruksvarer for halv pris.' },
+  gun: { name: 'Børsemakeren', who: 'Børsemakeren', tabs: ['rifle', 'hagle', 'bue'], buys: ['gun'], sells: 'Børsemakeren tar våpen og våpendeler tilbake for halv pris, ett trinn om gangen.' },
+  game: { name: 'Viltmottaket', who: 'Viltmottaket', tabs: [], buys: ['meat'], sells: 'Viltmottaket betaler det dyret var verdt.' },
+  smith: { name: 'Smia', who: 'Smeden', tabs: ['smith'], buys: ['smith'], sells: 'Smeden tar kniver og økser tilbake for halv pris, ett trinn om gangen.' },
   stable: { name: 'Stallen', who: 'Stallkaren', tabs: ['stable'], buys: [] },
   farm: { name: 'Garden', who: 'Grunneieren', tabs: ['quest'], buys: [] },
-  post: { name: '', who: 'Verten', tabs: ['post', 'sell'], buys: ['meat', 'use'], meatK: 0.8, bed: true, sells: 'Verten gir 80 % av det viltmottaket i landsbyen betaler for kjøttet, og halv pris for forbruksvarer.' },
+  post: { name: '', who: 'Verten', tabs: ['post'], buys: ['meat', 'use'], meatK: 0.8, bed: true, sells: 'Verten gir 80 % av det viltmottaket i landsbyen betaler for kjøttet, og halv pris for forbruksvarer.' },
   pub: { name: 'Puben', who: 'Verten', tabs: [], buys: [], bed: true, note: 'Verten har ei seng til deg på loftet. Peisen varmer deg og tørker klærne, og du kan sove her til morgengry.' },
   koie: { name: 'Koia', who: '', tabs: [], buys: [], bed: true, note: 'Koia er ubetjent. Ovnen varmer deg og tørker klærne, og du kan sove her til morgengry. Handle må du gjøre i landsbyen eller på en av utpostene.' },
 };
@@ -157,13 +158,6 @@ function renderStats(ov) {
   $('statNote').hidden = shopCat !== 'rifle';
   setText('statNote', ST.cap[lv('mag')] === 1 ? 'Enkeltskudd: ett skudd, så må du lade.' : ST.cap[lv('mag')] + ' patroner i magasinet.');
 }
-// Kjøpsknapp med prisen. Har du ikke råd, står det hvor mye som mangler; why er en annen grunn til at det ikke går
-function buyBtn(id, price, why) {
-  const bt = document.createElement('button'), short = price - G.money; bt.className = 'buy'; bt.id = 'buy-' + id; bt.type = 'button';
-  bt.textContent = fmtKr(price);
-  if (short > 0 || why) { bt.disabled = true; bt.classList.add('poor'); const sm = document.createElement('small'); sm.textContent = why || 'mangler ' + fmtKr(short); bt.appendChild(sm); }
-  return bt;
-}
 const shopHead = (list, t) => { const h = document.createElement('div'); h.className = 'lab clo-h'; h.textContent = t; list.appendChild(h); };
 // Forbruksvarene i hver fane: [ikon, navn, antall du har, hva du får, id, pris, kjøp]
 function supplies(cat) {
@@ -177,61 +171,100 @@ function supplies(cat) {
     camp: [['match', 'Fyrstikker', G.matches, `Eske med ${MATCH_N}. Hver fyrstikk tenner ett bål.`, 'match', MATCH_PRICE, () => { G.matches += MATCH_N; }]],
   })[cat] || [];
 }
-// Hagla og buen før du eier dem: én stor rad med hva du får
+// Hagla og buen før du eier dem: én rute med hva du får
 const GUN_PITCH = {
   hagle: 'Til fugl i flukt og småvilt på kort hold. Haglpatroner, choke og grovere hagl kjøper du her etterpå.',
   bue: `Nesten lydløs, og dyr du feller med bue, gir ${Math.round((BOW_MEAT - 1) * 100)} % mer kjøtt. Pila faller på veien, så du sikter med pinnene for 20, 30 og 40 m. Piler kjøper du her etterpå.`,
 };
-function gunHero(list, u) {
-  const row = document.createElement('div'); row.className = 'item hero';
-  row.innerHTML = `<img class="ico" alt="" src="${ICONURL[u.icon]}"><div class="it-body"><div class="it-head"><span class="it-name">${u.lv[1]}</span></div><div class="it-now">${u.d[1]}</div><div class="it-next">${GUN_PITCH[u.id]}</div><div class="it-next">Den havner i utstyret. Dra den opp i en våpenplass i inventaret (E).</div></div>`;
-  const bt = buyBtn(u.id, u.price[1], newGunFull(u) && 'utstyret er fullt'); bt.onclick = () => buy(u);
-  row.appendChild(bt); list.appendChild(row);
-}
-function renderShop() {
-  setText('shopKr', fmtKr(G.money));
-  const SH = shopNow();
-  setText('shopName', SH.name || shopAt.name); setText('shopSellLab', SH.who + ' kjøper');
-  document.querySelectorAll('#shopTabs button').forEach(bt => { bt.hidden = !SH.tabs.includes(bt.dataset.cat); bt.setAttribute('aria-selected', bt.dataset.cat === shopCat); });
-  document.querySelectorAll('#shopTabs .tab-g').forEach(g => { g.hidden = ![...g.querySelectorAll('button')].some(bt => !bt.hidden); });
-  const list = $('shopList'); list.innerHTML = '';
-  $('shopMain').dataset.cat = shopCat;
-  renderMine(); renderStats(null);
-  if (!SH.tabs.length) { const n = document.createElement('p'); n.className = 'side-note'; n.textContent = SH.note; list.appendChild(n); return; }
-  if (shopCat === 'quest') return renderQuest(list);
-  if (shopCat === 'post') return renderPost(list);
-  if (shopCat === 'sell') return renderSell(list);
-  if (shopCat === 'clo') return renderClo(list);
-  // et våpen du ikke eier ennå, er bare én rad; resten av fanen kommer når du har det
-  if (GUNS[shopCat] && !GUNS[shopCat].own()) return gunHero(list, upg(shopCat));
-  if (shopCat === 'lure') { const n = document.createElement('p'); n.className = 'side-note'; n.textContent = 'Lokkefløyta di når ' + CALLSP[lv('call')].map(s => SPEC[s].name.toLowerCase()).join(', ') + '.'; list.appendChild(n); }
-  // forbruksvarene øverst, så oppgraderingene
-  const S = supplies(shopCat);
-  if (S.length) shopHead(list, 'Påfyll');
-  for (const a of S) supplyRow(list, ...a);
-  const U = UPG.filter(u => u.cat === shopCat);
-  if (U.length) shopHead(list, shopCat === 'smith' ? 'Kniv og øks' : shopCat === 'stable' ? 'Hest og utstyr' : 'Oppgraderinger');
-  for (const u of U) {
-    const L = lv(u.id), max = L >= u.lv.length - 1, next = max ? null : L + 1;
-    const row = document.createElement('div'); row.className = 'item';
-    row.innerHTML = `<img class="ico" alt="" src="${ICONURL[upgIco(u, L)]}"><div class="it-body"><div class="it-head"><span class="it-name">${u.name}</span><span class="pips">${u.lv.map((_, i) => `<i class="${i <= L ? 'on' : ''}"></i>`).join('')}</span></div>
-      <div class="it-now">${u.lv[L]}</div><div class="it-next">${max ? 'Fullt oppgradert.' : '<b>Neste:</b> ' + u.lv[next] + '. ' + u.d[next]}</div></div>`;
-    let bt;
-    if (max) { bt = document.createElement('button'); bt.className = 'buy'; bt.type = 'button'; bt.textContent = 'Ferdig'; bt.disabled = true; }
-    else {
-      bt = buyBtn(u.id, u.price[next], u.need && !lv(u.need) && 'kjøp hest først'); bt.onclick = () => buy(u); row.classList.toggle('cant', bt.disabled);
-      // stolpene øverst viser hva neste trinn gir mens du holder musa over raden
-      row.onmouseenter = () => renderStats({ id: u.id, lv: next }); row.onmouseleave = () => renderStats(null);
-      bt.onfocus = row.onmouseenter; bt.onblur = row.onmouseleave;
+// Varene i fanen cat, som ruter i butikkens inventar: { ico, n, d, price, why, buy, ov, back, max }. why er en grunn til
+// at du ikke kan kjøpe (utenom pengene), ov det stolpene viser mens musa står over ruta (se statsFor), back raden fra
+// sellOffer når stedet tar varen tilbake ett trinn, og max at den er fullt oppgradert
+const SHOP_TAB = { rifle: 'Rifla', hagle: 'Hagla', bue: 'Pil og bue', lure: 'Lokking', gear: 'Utstyr', clo: 'Klær', camp: 'Leir', smith: 'Kniv og øks', stable: 'Hest og utstyr', post: 'Påfyll', quest: 'Oppdrag' };
+function wares(cat) {
+  const W = [];
+  const sup = c => {
+    for (const [ico, name, have, desc, , price, add] of supplies(c)) W.push({ ico, n: name, d: desc + ' Du har ' + have + '.', price,
+      buy: () => { G.money -= price; add(); sfx.buy(); save(); renderShop(); } });
+  };
+  // utpostene har bare påfyll av det du bruker opp, til de våpnene du eier
+  if (cat === 'post') { for (const c of ['rifle', 'hagle', 'bue', 'lure', 'gear', 'camp']) if (!GUNS[c] || GUNS[c].own()) sup(c); return W; }
+  // klærne etter plass på kroppen; det du har på deg, er merket
+  if (cat === 'clo') {
+    const room = slotsOf('gear').includes(null);
+    for (const [sl] of CLO_SLOTS) for (const id in CLO) {
+      const c = CLO[id]; if (c.slot !== sl || !c.price) continue;
+      const on = G.wear[sl] === id, k = G.slots.gear.filter(o => o && o.clo === id).length;
+      W.push({ ico: c.icon, n: c.name + (on ? ' · på deg' : '') + (k ? ' · ' + k + ' i utstyret' : ''), d: cloTags(c) + '. ' + c.d + ' Havner i utstyret; dra det over på kroppen for å ta det på.',
+        on, price: c.price, why: !room && 'Utstyret er fullt, så selg noe først.', buy: () => buyClo(id), ov: !on && { clo: id } });
     }
-    row.appendChild(bt); list.appendChild(row);
+    return W;
   }
+  // et våpen du ikke eier ennå, er bare én rute; resten av fanen kommer når du har det
+  if (GUNS[cat] && !GUNS[cat].own()) {
+    const u = upg(cat);
+    return [{ ico: u.icon, n: u.lv[1], d: u.d[1] + ' ' + GUN_PITCH[u.id] + ' Den havner i utstyret. Dra den opp i en våpenplass i inventaret (E).', price: u.price[1], why: newGunFull(u) && 'Utstyret er fullt, så selg noe først.', buy: () => buy(u) }];
+  }
+  // forbruksvarene først, så oppgraderingene: ruta viser neste trinn, og tallet hvilket trinn du har
+  sup(cat);
+  for (const u of UPG.filter(u => u.cat === cat)) {
+    const L = lv(u.id), top = u.lv.length - 1, max = L >= top, next = max ? L : L + 1;
+    W.push({ ico: upgIco(u, next), n: u.name + ': ' + u.lv[next], d: u.d[next] + (max ? '' : ' Du har nå: ' + u.lv[L].toLowerCase() + '.'), c: 1, lab: L + '/' + top, max, price: u.price[next],
+      why: u.need && !lv(u.need) && 'Kjøp hest først.', buy: () => buy(u), ov: !max && { id: u.id, lv: next }, back: sellOffer(u.id).find(r => r[6] === 'u:' + u.id) });
+  }
+  return W;
 }
-// Utpostene har bare påfyll av det du bruker opp, til de våpnene du eier
-function renderPost(list) {
-  const n = document.createElement('p'); n.className = 'side-note'; n.textContent = 'Her får du påfyll av det du bruker opp. Våpen, klær og utstyr får du i landsbyen.'; list.appendChild(n);
-  shopHead(list, 'Påfyll');
-  for (const cat of ['rifle', 'hagle', 'bue', 'lure', 'gear', 'camp']) if (!GUNS[cat] || GUNS[cat].own()) for (const a of supplies(cat)) supplyRow(list, ...a);
+// På berøringsskjerm viser første trykk på en rute tipset med prisen, og neste trykk på den samme handler
+let tapKey = null;
+function tapFirst(s, it, key) {
+  if (!TOUCH.on || tapKey === key) return false;
+  tapKey = key; const r = s.getBoundingClientRect(); mcTip(it, r.right - 8, r.top + 8); return true;
+}
+// En vare i butikkens inventar: prisen står i tipset, klikk kjøper, og Shift+klikk selger ett trinn tilbake der stedet
+// tar varen. Det du ikke har råd til, er dempet
+function wareOn(s, w) {
+  if (!w) return;
+  const short = w.price - G.money, cant = !w.max && (w.why || short > 0), b = w.back && w.back[4][0];
+  w.hint = (w.max ? 'Fullt oppgradert.' : 'Pris: ' + fmtKr(w.price) + '. ' + (w.why || (short > 0 ? 'Du mangler ' + fmtKr(short) + '.' : 'Klikk for å kjøpe.')))
+    + (b ? b[3] ? ' ' + w.back[3] : ` Shift+klikk selger ett trinn tilbake for ${fmtKr(b[1])}.` : '');
+  s.classList.add('ware'); s.classList.toggle('nosell', !!cant);
+  // stolpene over varene viser hva varen endrer mens musa står over den
+  if (w.ov) { const tip = s.onmouseenter; s.onmouseenter = e => { tip(e); renderStats(w.ov); }; s.onmouseleave = () => { mcTip(null); renderStats(null); }; }
+  const act = e => {
+    if (e.shiftKey) { if (!b || b[3]) return sfx.deny(); b[2](); return sellDone(w.back[1], b[1], w.back[5]); }
+    if (w.max || tapFirst(s, w, 'w:' + w.n)) return;
+    if (cant) return sfx.deny();
+    w.buy();
+  };
+  s.onclick = act;
+  s.onkeydown = e => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); act(e); } };
+}
+// Bua: det du har til venstre og butikkens inventar til høyre, med en fane per slags vare. Over varene står hva stedet
+// kjøper og stolpene for våpenet eller klærne; oppdragene til grunneieren står som en liste
+function renderShop() {
+  const SH = shopNow(), quest = shopCat === 'quest';
+  setText('shopName', SH.name || shopAt.name); setText('shopWho', SH.who || SH.name);
+  setText('shopNote', SH.note || (SH.tabs.includes(shopCat) && !quest ? 'Klikk på en vare for å kjøpe den. ' : '') + (SH.buys.length ? 'Shift+klikk på det du har, eller dra det hit, for å selge det. ' + SH.sells : ''));
+  setText('shopSum', sold ? 'Solgt: ' + sold : '');
+  const tabs = $('shopTabs'); tabs.innerHTML = ''; tabs.hidden = SH.tabs.length < 2;
+  for (const k of SH.tabs) {
+    const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'mc-tab'; bt.setAttribute('role', 'tab'); bt.setAttribute('aria-selected', k === shopCat);
+    bt.textContent = SHOP_TAB[k]; bt.onclick = () => { if (shopCat === k) return; shopCat = k; sfx.ui(); renderShop(); };
+    tabs.appendChild(bt);
+  }
+  const grid = $('shopGrid'), list = $('shopList'); grid.innerHTML = ''; list.innerHTML = '';
+  renderMine(); renderStats(null);
+  $('shopStore').hidden = !!SH.note || quest;
+  if (quest) renderQuest(list);
+  else if (!SH.note) {
+    // varene først, og tomme ruter ut de tre radene, som i sekken
+    const W = wares(shopCat);
+    for (const w of W) grid.appendChild(mcSlot(w, wareOn));
+    for (let i = W.length; i < Math.max(27, Math.ceil(W.length / 9) * 9); i++) grid.appendChild(mcSlot(null));
+  }
+  // alt kjøttet på én knapp når du har flere partier med deg
+  const k0 = G.meat[0] ? 'meat:' + G.meat[0].sp : G.rack[0] ? 'rack:' + G.rack[0].sp : null, am = sellOffer(k0).find(r => r[6] === 'allmeat'), mb = $('meatBtn');
+  mb.hidden = !am;
+  if (am) { mb.textContent = 'Selg alt kjøttet · ' + fmtKr(am[4][0][1]); mb.onclick = () => { am[4][0][2](); sellDone(am[1], am[4][0][1], 'meat'); }; }
 }
 // ---------- oppdrag ----------
 const COMPASS = ['nord', 'nordøst', 'øst', 'sørøst', 'sør', 'sørvest', 'vest', 'nordvest'], MARK_N = { cairn: 'Varden', bauta: 'Bautasteinen', tower: 'Jakttårnet' };
@@ -268,8 +301,8 @@ function renderQuest(list) {
   for (const [o, i] of L) questRow(list, o, 'Premie ' + fmtKr(o.kr), [['Ta oppdraget', () => { G.quest = o; G.qd.used.push(i); sfx.buy(); msg('Nytt oppdrag: ' + questText(o), 'good'); save(); }]]);
   if (!L.length) { const n = document.createElement('p'); n.className = 'side-note'; n.textContent = 'Ingen flere oppdrag i dag. Kom tilbake i morgen.'; list.appendChild(n); }
 }
-// Klær: ett plagg av hvert på kroppen. Det du kjøper, havner i utstyret, og du tar det på i inventaret ved å dra det
-// over på kroppen; det du hadde på deg, havner da i utstyret
+// Klær: ett plagg av hvert på kroppen. Det du kjøper, havner i utstyret, og du tar det på ved å dra det over på kroppen
+// (i inventaret eller til venstre i bua); det du hadde på deg, havner da i utstyret
 function cloTags(c) {
   const T = [];
   if (c.warm) T.push(c.warm >= 0.3 ? 'Svært varm' : c.warm > 0 ? 'Varm' : 'Kald');
@@ -284,36 +317,6 @@ function cloTags(c) {
   if (c.dry) T.push('Tørker fort');
   return T.join(' · ') || 'Vanlig';
 }
-let cloTab = 'hat';
-function renderClo(list) {
-  const room = slotsOf('gear').includes(null), own = id => G.slots.gear.filter(o => o && o.clo === id).length;
-  // en underfane per plass på kroppen, med plagget du har på deg under navnet
-  const tabs = document.createElement('div'); tabs.className = 'sub-tabs'; tabs.setAttribute('role', 'tablist');
-  for (const [sl, lab] of CLO_SLOTS) {
-    const bt = document.createElement('button'); bt.type = 'button'; bt.setAttribute('role', 'tab'); bt.setAttribute('aria-selected', sl === cloTab);
-    bt.innerHTML = '<span></span><small></small>'; bt.firstChild.textContent = lab; bt.lastChild.textContent = worn(sl).name;
-    bt.onclick = () => { cloTab = sl; sfx.ui(); renderShop(); };
-    tabs.appendChild(bt);
-  }
-  list.appendChild(tabs);
-  const top = document.createElement('p'); top.className = 'side-note';
-  top.textContent = 'Det du kjøper, havner i utstyret. Ta det på i inventaret (E) ved å dra det over på kroppen.' + (room ? '' : ' Utstyret er fullt, så selg noe først.');
-  list.appendChild(top);
-  const sl = cloTab;
-  for (const id in CLO) {
-    const c = CLO[id]; if (c.slot !== sl || !c.price) continue;
-    const on = G.wear[sl] === id, k = own(id);
-    const row = document.createElement('div'); row.className = 'item' + (on ? ' worn' : '');
-    row.innerHTML = `<img class="ico" alt="" src="${ICONURL[c.icon]}"><div class="it-body"><div class="it-head"><span class="it-name"></span></div><div class="it-now"></div><div class="it-next"></div></div>`;
-    row.querySelector('.it-name').textContent = c.name + (on ? ' · på deg' + (sl === 'shoes' && c.life ? ', ' + Math.ceil(G.shoeHp) + ' % igjen' : '') : '') + (k ? ' · ' + k + ' i utstyret' : '');
-    row.querySelector('.it-now').textContent = cloTags(c);
-    row.querySelector('.it-next').textContent = c.d;
-    const bt = buyBtn(id, c.price, !room && 'utstyret er fullt'); bt.onclick = () => buyClo(id); row.classList.toggle('cant', bt.disabled);
-    // stolpene øverst viser hvordan du er kledd med dette plagget på
-    if (!on) { row.onmouseenter = () => renderStats({ clo: id }); row.onmouseleave = () => renderStats(null); bt.onfocus = row.onmouseenter; bt.onblur = row.onmouseleave; }
-    row.appendChild(bt); list.appendChild(row);
-  }
-}
 function buyClo(id) {
   const c = CLO[id], j = slotsOf('gear').indexOf(null);
   if (j < 0 || G.money < c.price) { sfx.deny(); return; }
@@ -321,41 +324,15 @@ function buyClo(id) {
   msg(c.name + ' ligger i utstyret. Ta det på i inventaret (E): dra plagget over på kroppen.', 'good');
   sfx.buy(); save(); renderShop();
 }
-// Forbruksvarer som kjøpes i pakker: en lav rad med antallet du har
-function supplyRow(list, ico, name, have, desc, id, price, add) {
-  const row = document.createElement('div'); row.className = 'item sup';
-  row.innerHTML = `<img class="ico" alt="" src="${ICONURL[ico]}"><div class="it-body"><div class="it-head"><span class="it-name">${name}</span><span class="have">Du har ${have}</span></div><div class="it-next">${desc}</div></div>`;
-  const bt = buyBtn(id, price); row.classList.toggle('cant', bt.disabled);
-  bt.onclick = () => { if (G.money < price) return sfx.deny(); G.money -= price; add(); sfx.buy(); save(); renderShop(); };
-  row.appendChild(bt); list.appendChild(row);
-}
 // ---------- salg ----------
-// Til venstre i bua ligger det du har, i de samme rutene som i inventaret. Dra en rute over til bua (eller klikk på
-// den): en stabel (kjøtt, ved, forbruksvarer) står da øverst under Selg med en glidebryter for hvor mye du selger, og
-// Shift+klikk selger hele stabelen med en gang. Utstyr, klær og våpen bekrefter du til høyre. sellKey er ruta du har
-// valgt, sold det du sist solgte
-let sellKey = null, dragKey = null, sold = '';
-const sellDone = (name, kr) => { G.money += kr; sold = name + ' · ' + fmtKr(kr); sfx.coin(); save(); renderShop(); };
-// q er mengden du kan velge med glidebryteren: { max, step, fmt(n), kr(n), take(n) }
+// Til venstre i bua ligger det du har, i de samme rutene som i inventaret. Shift+klikk på en rute, eller dra den over til
+// butikken, selger den: hele stabelen av kjøtt, ved og forbruksvarer, og utstyr og klær stykkevis. Et vanlig klikk på en
+// stabel selger én (ett kilo kjøtt). Prisen står i tipset. Våpendeler og annet i flere trinn selges fra butikkens side
+// (se wareOn). dragKey er ruta du drar, sold det du sist solgte, og grp gruppa i sellOffer (kjøtt teller i historien)
+let dragKey = null, sold = '';
+const sellDone = (name, kr, grp) => { if (grp === 'meat') storyEv('sell'); G.money += kr; sold = name + ' · ' + fmtKr(kr); sfx.coin(); save(); renderShop(); };
+// q er mengden en stabel kan deles i: { max, step, fmt(n), kr(n), take(n) }
 const qMany = q => !!q && q.max > q.step;
-function sellRow(list, ico, name, now, next, btns, q) {
-  const row = document.createElement('div'); row.className = 'item';
-  row.innerHTML = `<img class="ico" alt="" src="${ICONURL[ico]}"><div class="it-body"><div class="it-head"><span class="it-name">${name}</span></div><div class="it-now">${now}</div><div class="it-next">${next}</div></div>`;
-  const box = document.createElement('div'); box.className = 'sell-bts';
-  if (qMany(q)) {
-    const sl = document.createElement('input'), bt = document.createElement('button'), val = () => Math.min(q.max, kg1(+sl.value));
-    sl.type = 'range'; sl.className = 'qty'; sl.min = q.step; sl.max = q.max; sl.step = q.step; sl.value = q.max; sl.setAttribute('aria-label', 'Hvor mye du selger');
-    bt.className = 'buy'; bt.type = 'button';
-    (sl.oninput = () => { bt.textContent = 'Selg ' + q.fmt(val()) + ' · ' + fmtKr(q.kr(val())); })();
-    bt.onclick = () => { const n = val(), kr = q.kr(n); q.take(n); sellDone(name, kr); };
-    box.append(sl, bt);
-  } else for (const [lab, kr, take, off] of btns) {
-    const bt = document.createElement('button'); bt.className = 'buy'; bt.type = 'button'; bt.textContent = lab + ' · ' + fmtKr(kr); bt.disabled = !!off;
-    bt.onclick = () => { take(); sellDone(name, kr); };
-    box.appendChild(bt);
-  }
-  row.appendChild(box); list.appendChild(row);
-}
 // én eller alle av noe du har flere av
 const sellN = (n, each, take) => n > 1 ? [['Selg 1', each, () => take(1)], ['Selg alle', each * n, () => take(n)]] : [['Selg', each, () => take(1)]];
 const halfKr = p => Math.max(1, Math.round(p * SELL_K));
@@ -416,14 +393,15 @@ function sellOffer0(k) {
   }
   return R;
 }
-// Legg ruta k i salgsfeltet og vis budet
-function offerFor(k) { sellKey = k; sold = ''; shopCat = 'sell'; sfx.ui(); renderShop(); }
-// Klikk på (eller dra over) ruta k: en stabel med mer enn én i selges fra glidebryteren, og med all (Shift) selges
-// hele med en gang. Én enkelt forbruksvare selges direkte; alt annet bekrefter du til høyre
+// Klikk på ruta k hos deg: en stabel selger én om gangen, og med all (Shift, eller dratt over til butikken) hele. Utstyr
+// og klær selges bare med all, så du ikke selger noe med et uhell
 function sellClick(k, all) {
-  const r = sellOffer(k)[0]; if (!r) return;
-  if ((r[5] === 'meat' || r[5] === 'use') && (all || !qMany(r[7]))) { const b = r[4][r[4].length - 1]; b[2](); sellKey = null; shopCat = 'sell'; return sellDone(r[1], b[1]); }
-  offerFor(k);
+  const r = sellOffer(k)[0]; if (!r || GUNS[k]) return;
+  const stack = r[5] === 'meat' || r[5] === 'use', q = r[7], b = r[4][r[4].length - 1];
+  if (!stack && !all) return;
+  if (b[3]) return sfx.deny();
+  if (!all && qMany(q)) { const n = Math.min(q.max, 1), kr = q.kr(n); q.take(n); return sellDone(r[1], kr, r[5]); }
+  b[2](); sellDone(r[1], b[1], r[5]);
 }
 // hvor ruta k kan selges, når stedet du er på, ikke kjøper den
 function buyers(k) {
@@ -432,70 +410,31 @@ function buyers(k) {
   return N.length ? 'Kjøpes ikke her. Selges her: ' + N.join(', ') + '.' : '';
 }
 function dragDone() { dragKey = null; $('shop').classList.remove('dragging'); $('shopMain').classList.remove('over'); }
-// Alt bua kjøper av det du har med deg, én rad per ting (se sellOffer): [ikon, navn, nå, mer, knapper, gruppe, id]
-function sellAll() {
-  const here = horseNear(HORSE_SHOP), K = [...G.meat.map(l => 'meat:' + l.sp), ...(here ? G.rack.map(l => 'rack:' + l.sp) : []),
-    'wood', 'rounds', 'shells', 'arrows', 'scent', 'treat', 'match', ...CARGO.map(k => 'horse:' + k), ...CLO_SLOTS.map(([sl]) => 'clo:' + sl)];
-  for (const g of ['gear', 'horse']) G.slots[g].forEach((o, i) => { if (o && typeof o === 'object' && o.clo) K.push('o:' + g + ':' + i); });
-  for (const u of UPG) K.push(u.id);
-  const seen = new Set(), R = [];
-  for (const k of K) for (const r of sellOffer(k)) if (!seen.has(r[6])) { seen.add(r[6]); R.push(r); }
-  return R;
-}
-// Selg-fanen: alt bua kjøper, gruppert, med pris og selgknapp på hver rad, og alt kjøttet på én knapp øverst.
-// Det du klikker på eller drar over fra venstre, står øverst som valgt
-function renderSell(list) {
-  const R = sellAll(), pick = new Set(sellOffer(sellKey).map(r => r[6])); if (!pick.size) sellKey = null;
-  if (sold) { const d = document.createElement('div'); d.className = 'sold'; d.textContent = 'Solgt: ' + sold; list.appendChild(d); }
-  const total = R.reduce((a, r) => a + (r[6] === 'allmeat' ? 0 : r[4].filter(b => !b[3]).reduce((m, b) => Math.max(m, b[1]), 0)), 0);
-  const top = document.createElement('p'); top.className = 'side-note';
-  top.textContent = shopNow().sells + (R.length ? ' Det du har med deg av det, er verdt ' + fmtKr(total) + '.' : ' Du har ikke noe av det med deg nå.');
-  list.appendChild(top);
-  // kjøttet på hesten selges bare når den står ved bua; står den lenger unna, sier bua fra om det
-  if (shopNow().buys.includes('meat') && G.rack.length && !horseNear(HORSE_SHOP)) {
-    const far = document.createElement('p'); far.className = 'side-note';
-    far.textContent = 'Hesten står for langt unna til å selge fra. ' + fmtKg(rackKg()) + ' kjøtt ligger på den. Hent den bort til bua.';
-    list.appendChild(far);
-  }
-  const sec = (title, rows, box) => {
-    if (!rows.length) return;
-    const to = box || list; shopHead(to, title);
-    for (const r of rows) sellRow(to, ...r.slice(0, 5), box && r[7]);
-    if (box) list.appendChild(box);
-  };
-  const z = document.createElement('div'); z.className = 'drop full';
-  sec('Valgt', R.filter(r => pick.has(r[6])), z);
-  const rest = R.filter(r => !pick.has(r[6])), by = t => rest.filter(r => r[5] === t);
-  // alt kjøttet på én knapp først, så hvert parti
-  sec('Kjøtt', by('meat').sort((a, b) => (b[6] === 'allmeat') - (a[6] === 'allmeat')));
-  sec('Ved og forbruksvarer', by('use'));
-  sec('Klær', by('clo'));
-  sec('Utstyr · ett trinn ned om gangen', by('upg'));
-  sec('Våpen · ett trinn ned om gangen', by('gun'));
-  sec('Kniv og øks · ett trinn ned om gangen', by('smith'));
-}
-// Det du har, til venstre i bua, og lasten på hesten når den står parkert ved bua. Det bua kjøper, kan dras over (eller
-// klikkes på); ruta som ligger i salgsfeltet, er merket
+// Det du har, til venstre i bua, og lasten på hesten når den står parkert ved bua. Det bua kjøper, kan selges med
+// Shift+klikk eller dras over til butikken, og tipset sier hva du får for det
 function renderMine() {
   const on = (s, it, at) => {
     // et plagg du har kjøpt, kan dras rett over på plassen sin på kroppen her også
     if (at && at.g === 'wear') {
       const src = () => { const m = /^o:(gear|horse):(\d+)$/.exec(dragKey || ''), o = m && G.slots[m[1]][+m[2]]; return o && typeof o === 'object' && o.clo && CLO[o.clo].slot === at.i ? { g: m[1], i: +m[2], obj: o } : null; };
-      s.ondragover = e => { if (!src()) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
-      s.ondrop = e => { const d = src(); if (!d) return; e.preventDefault(); dragDone(); invDrop(d, 'wear', at.i); if (sellKey && sellKey.startsWith('o:')) sellKey = null; sfx.kneel(); save(); renderShop(); };
+      s.ondragover = e => { if (!src()) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; };
+      s.ondrop = e => { const d = src(); if (!d) return; e.preventDefault(); dragDone(); invDrop(d, 'wear', at.i); sfx.kneel(); save(); renderShop(); };
     }
     if (!it || it.empty || !it.sk) return;
-    const R = sellOffer(it.sk), r = R[0];
+    const r = sellOffer(it.sk)[0];
     // det stedet ikke kjøper, er dempet og sier hvor det kan selges
     if (!r) { s.classList.add('nosell'); it.hint = buyers(it.sk); return; }
-    const stack = r[5] === 'meat' || r[5] === 'use';
-    it.hint = (stack || R.length === 1 ? 'Her får du ' + fmtKr(r[4][r[4].length - 1][1]) + '. ' : '')
-      + (!stack ? 'Klikk for å selge, og bekreft til høyre.' : qMany(r[7]) ? 'Klikk for å velge hvor mye du selger. Shift+klikk selger alt.' : 'Klikk for å selge.');
-    s.classList.add('sell'); s.classList.toggle('pick', it.sk === sellKey); s.draggable = true;
+    // våpnene består av flere deler, som selges én for én fra butikkens side
+    if (GUNS[it.sk]) { it.hint = 'Delene selger du én for én: Shift+klikk på delen til høyre.'; return; }
+    const stack = r[5] === 'meat' || r[5] === 'use', q = r[7], b = r[4][r[4].length - 1], one = q && Math.min(q.max, 1);
+    it.hint = b[3] ? r[3] : (stack && qMany(q) ? `Klikk selger ${q.fmt(one)} for ${fmtKr(q.kr(one))}. Shift+klikk, eller dra over til høyre, selger alt for ${fmtKr(b[1])}.`
+      : `Shift+klikk, eller dra over til høyre, selger for ${fmtKr(b[1])}.`);
+    s.classList.add('sell'); s.draggable = true;
     s.ondragstart = e => { mcTip(null); dragKey = it.sk; e.dataTransfer.setData('text/plain', it.n); e.dataTransfer.effectAllowed = 'move'; $('shop').classList.add('dragging'); };
     s.ondragend = dragDone;
-    s.onclick = e => sellClick(it.sk, e.shiftKey);
-    s.onkeydown = e => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); sellClick(it.sk, e.shiftKey); } };
+    const act = e => { if (!tapFirst(s, it, it.sk)) sellClick(it.sk, e.shiftKey || TOUCH.on); };
+    s.onclick = act;
+    s.onkeydown = e => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); act(e); } };
   };
   mcRender($('shopMc'), on, renderMine, horseNear(HORSE_SHOP) && gridItems('horse').some(Boolean) && 'Hesten står utenfor.', true);
 }
@@ -527,15 +466,21 @@ function openShop(c) {
   if (!G.rounds && !G.cargo.rounds && !inGun('rifle') && G.money + meatKr() < AMMO.rifle.price) { G.rounds = AMMO_AID; msg(`Du fikk ${AMMO_AID} riflepatroner på krita, så du kan jakte igjen.`, 'good'); }
   // våpnene lades fra sekken, og ovnen og maten i bua gjør deg tørr, varm og frisk
   refill(); if (P.sick) msg('Du varmet deg ved ovnen og er frisk igjen.', 'good'); healFull();
-  // har du kjøtt med deg, står bua klar til å kjøpe det, og kjøttet vises til venstre
-  if (S.buys.includes('meat') && (G.meat.length || G.rack.length && horseNear(HORSE_SHOP))) { shopCat = 'sell'; invTab = 'meat'; }
-  else if (!S.tabs.includes(shopCat)) shopCat = S.tabs[0] || 'koie';
-  sellKey = null; sold = ''; invNote = '';
+  // har du kjøtt med deg der de kjøper det, vises kjøttet til venstre
+  if (S.buys.includes('meat') && (G.meat.length || G.rack.length && horseNear(HORSE_SHOP))) invTab = 'meat';
+  if (!S.tabs.includes(shopCat)) shopCat = S.tabs[0] || '';
+  sold = ''; tapKey = null; invNote = '';
   $('sleepBtn').hidden = mp() || !S.bed;
   renderShop(); $('shop').hidden = false; sfx.ui();
 }
 function openBook() {
   G.paused = true; G.panel = 'book'; aimReset(); try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
+  const st = $('bookStory'); st.innerHTML = '';
+  const row = (cls, t, d) => { const r = document.createElement('div'); r.className = 'ch ' + cls; const b = document.createElement('b'); b.textContent = t; r.append(b, d); st.appendChild(r); };
+  const lab = document.createElement('div'); lab.className = 'lab'; lab.textContent = `Historien · nivå ${xpLevel()}, ${rankName().toLowerCase()} · ${G.xp} / ${xpNext()} XP`; st.appendChild(lab);
+  STORY.slice(0, G.story).forEach(c => row('done', '✓ ' + c.t, '+' + c.xp + ' XP'));
+  const c = STORY[G.story];
+  if (c) row('now', c.t + ' · ' + storyGoal() + ' (+' + c.xp + ' XP)', G.sst ? c.d.join(' ') : ''); else row('now', 'Historien er fullført', '');
   const sum = $('bookSpecies'); sum.innerHTML = '';
   for (const sp of SPECIES) {
     const k = G.journal.filter(j => j.sp === sp), best = k.reduce((a, j) => Math.max(a, j.kg), 0);
@@ -960,9 +905,24 @@ function notice(title, text, sub) {
   $('notice').hidden = false; sfx.deny(); $('noticeOk').focus();
 }
 
+// ---------- samtaler ----------
+// Det den du snakker med, sier, står i en boks nederst, én replikk om gangen. F, Enter, Space eller et trykk går videre
+const TALK = { lines: [], i: 0 };
+function talk(who, lines) {
+  if (G.panel) return;
+  G.paused = true; G.panel = 'talk'; aimReset(); wheelClose(false); try { document.exitPointerLock && document.exitPointerLock(); } catch (e) { }
+  TALK.lines = lines; TALK.i = -1; setText('talkWho', who); $('talk').hidden = false; talkNext();
+}
+function talkNext() {
+  if (++TALK.i >= TALK.lines.length) return resume();
+  setText('talkTxt', TALK.lines[TALK.i]); sfx.ui();
+}
+
 // ---------- start ----------
+// Utenfor døra på bua, med hesten ved stallen: der et nytt spill begynner
+function spawnHome() { P.x = PLACES[0].door[0] + PLACES[0].out[0] * 8; P.y = PLACES[0].door[1] + PLACES[0].out[1] * 8; P.face = 'down'; P.flip = false; CAM.x = P.x; CAM.y = P.y - 30; horsePark(); }
 function startGame(fresh) {
-  if (fresh) { G.money = 0; for (const u of UPG) G.up[u.id] = 0; G.scents = 2; G.treats = TREAT_START; G.wood = G.matches = 0; G.rounds = AMMO.rifle.start; G.shells = 0; G.meat = []; G.rack = []; for (const k of CARGO) G.cargo[k] = 0; G.slots = { gear: [], meat: [], horse: [] }; G.arms = ['rifle', null]; G.gun = 'rifle'; G.arrows = 0; G.wear = { ...CLO_START }; G.shoeHp = 100; healFull(); G.huts = []; G.cut = new Set(); seenUnpack(''); chunks.clear(); G.journal = []; G.quest = null; G.qd = { day: 0, used: [] }; if (!mp()) { G.day = 1; G.hour = 6.6; G.animals = []; } save(); }
+  if (fresh) { spawnHome(); G.money = 0; for (const u of UPG) G.up[u.id] = 0; G.scents = 2; G.treats = TREAT_START; G.wood = G.matches = 0; G.rounds = AMMO.rifle.start; G.shells = 0; G.meat = []; G.rack = []; for (const k of CARGO) G.cargo[k] = 0; G.slots = { gear: [], meat: [], horse: [] }; G.arms = ['rifle', null]; G.gun = 'rifle'; G.arrows = 0; G.wear = { ...CLO_START }; G.shoeHp = 100; healFull(); G.huts = []; G.cut = new Set(); seenUnpack(''); chunks.clear(); G.journal = []; G.quest = null; G.qd = { day: 0, used: [] }; G.xp = 0; G.story = 0; G.sst = 0; if (!mp()) { G.day = 1; G.hour = 6.6; G.animals = []; } save(); }
   netSetName(); auInit(); G.started = true; G.paused = false; $('title').hidden = true; netAway();
   armsFix();
   // alle patronene ligger i sekken når du starter (lagringen tar med dem som satt i våpnene)
@@ -1061,6 +1021,7 @@ function bindInput() {
     }
     // Enter eller Space lukker en beskjed og går rett tilbake til spillet
     if (G.panel === 'notice' && !e.repeat && (e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); resume(); return; }
+    if (G.panel === 'talk' && !e.repeat && (e.code === 'KeyF' || e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); talkNext(); return; }
     if (KEYS[e.code]) return; KEYS[e.code] = true;
     if (!G.started) { if (e.code === 'Enter') startGame(false); return; }
     if (G.panel === 'inv' && e.code === 'KeyE') { closePanel(); return; }
@@ -1114,17 +1075,16 @@ function bindInput() {
   addEventListener('pagehide', () => { if (G.started) save(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden && G.started) save(); });
   addEventListener('resize', () => { resize(); if (TOUCH.on) touchPoint(); });
-  document.querySelectorAll('#shopTabs button').forEach(bt => bt.onclick = () => { shopCat = bt.dataset.cat; sfx.ui(); renderShop(); });
-  // det du drar fra venstre side, kan slippes hvor som helst i bua og havner i salgsfeltet
+  // det du drar fra venstre side, kan slippes hvor som helst på butikkens side og selges da
   const sm = $('shopMain');
   sm.ondragenter = sm.ondragover = e => { if (!dragKey) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; sm.classList.add('over'); };
   sm.ondragleave = e => { if (!sm.contains(e.relatedTarget)) sm.classList.remove('over'); };
-  sm.ondrop = e => { e.preventDefault(); const k = dragKey; dragDone(); if (k) sellClick(k, e.shiftKey); };
+  sm.ondrop = e => { e.preventDefault(); const k = dragKey; dragDone(); if (k) sellClick(k, true); };
   document.querySelectorAll('[data-close]').forEach(bt => bt.onclick = closePanel);
   $('sleepBtn').onclick = () => { if (mp()) return; sleepToDawn('Du sov godt. Det lysner over skogen.'); closePanel(); };
   $('startBtn').onclick = () => startGame(false);
   $('pauseBtn').onclick = () => openPause();
-  $('resumeBtn').onclick = () => { auInit(); resume(); }; $('noticeOk').onclick = resume;
+  $('resumeBtn').onclick = () => { auInit(); resume(); }; $('noticeOk').onclick = resume; $('talk').onclick = talkNext;
   $('keysBtn').onclick = () => pauseSub('keysSheet');
   $('plBtn').onclick = () => { plList(); pauseSub('plSheet'); };
   document.querySelectorAll('[data-back]').forEach(bt => bt.onclick = pauseBack);
@@ -1150,8 +1110,8 @@ function boot() {
   ICONURL.dog = dataURL(cropSprite(DOGSPR.stand[0], 1)); ICONURL.hut = dataURL(cropSprite(FX.hut, 1));
   for (const k of ['house', 'horse', 'dog', 'deer']) $('leg_' + k).src = dataURL(FX[k]);
   $('windArrow').src = dataURL(FX.arrow); $('callIco').src = ICONURL.call; $('scentIco').src = ICONURL.scent; $('treatIco').src = ICONURL.treat; $('campIco').src = ICONURL.pack;
+  spawnHome();
   const has = load();
-  P.x = PLACES[0].door[0] + PLACES[0].out[0] * 8; P.y = PLACES[0].door[1] + PLACES[0].out[1] * 8; CAM.x = P.x; CAM.y = P.y - 30; horsePark();
   if (has) {
     $('startBtn').textContent = 'Fortsett jakt'; $('newBtn').hidden = false;
     setText('saveTxt', 'Lagret jakt: dag ' + G.day + ' · ' + fmtKr(G.money) + ' · ' + G.journal.length + ' dyr felt'); $('saveTxt').hidden = false;
